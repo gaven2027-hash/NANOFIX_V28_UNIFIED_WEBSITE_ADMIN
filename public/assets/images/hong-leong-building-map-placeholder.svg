@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">NANOFIX Hong Leong Building Singapore map placeholder</title>
+  <desc id="desc">Static placeholder map for 16 Raffles Quay, Hong Leong Building, Singapore 048581.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2f7"/>
+      <stop offset="1" stop-color="#dbe4ef"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b8d8ee"/>
+      <stop offset="1" stop-color="#d7edf7"/>
+    </linearGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0f172a" flood-opacity="0.22"/>
+    </filter>
+    <pattern id="grid" width="90" height="90" patternUnits="userSpaceOnUse">
+      <path d="M90 0H0V90" fill="none" stroke="#cbd5e1" stroke-width="2" opacity=".55"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity=".9"/>
+  <path d="M-50 640 C250 570 420 650 640 600 C875 548 1000 610 1220 570 C1390 540 1500 545 1650 520 L1650 950 L-50 950 Z" fill="url(#water)" opacity=".9"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 185 C350 260 520 250 710 318 C920 395 1090 430 1390 370" stroke="#ffffff" stroke-width="56" opacity=".95"/>
+    <path d="M170 185 C350 260 520 250 710 318 C920 395 1090 430 1390 370" stroke="#f59e0b" stroke-width="8" opacity=".75"/>
+    <path d="M230 740 C410 650 510 545 650 500 C850 438 1045 500 1330 438" stroke="#ffffff" stroke-width="44" opacity=".9"/>
+    <path d="M230 740 C410 650 510 545 650 500 C850 438 1045 500 1330 438" stroke="#94a3b8" stroke-width="7" opacity=".65"/>
+    <path d="M760 110 L760 785" stroke="#ffffff" stroke-width="42" opacity=".92"/>
+    <path d="M760 110 L760 785" stroke="#64748b" stroke-width="7" opacity=".55"/>
+  </g>
+  <g opacity=".95">
+    <rect x="980" y="180" width="180" height="110" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="4"/>
+    <rect x="1185" y="210" width="135" height="86" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="4"/>
+    <rect x="420" y="405" width="190" height="105" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="4"/>
+    <rect x="880" y="555" width="220" height="115" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="4"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M800 255c-78 0-142 62-142 139 0 107 142 251 142 251s142-144 142-251c0-77-64-139-142-139z" fill="#ff5f00"/>
+    <circle cx="800" cy="392" r="55" fill="#ffffff"/>
+    <circle cx="800" cy="392" r="28" fill="#ff5f00" opacity=".95"/>
+  </g>
+  <g font-family="Inter,Arial,sans-serif" text-anchor="middle">
+    <rect x="420" y="680" width="760" height="122" rx="34" fill="#111827" opacity=".92"/>
+    <text x="800" y="724" fill="#ffffff" font-size="34" font-weight="900" letter-spacing="2">NANOFIX</text>
+    <text x="800" y="764" fill="#f8fafc" font-size="25" font-weight="700">16 Raffles Quay, Hong Leong Building</text>
+    <text x="800" y="795" fill="#fdba74" font-size="20" font-weight="800" letter-spacing="1.5">Singapore 048581</text>
+  </g>
+</svg>

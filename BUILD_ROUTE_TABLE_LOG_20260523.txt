@@ -1,0 +1,78 @@
+   ▲ Next.js 15.5.18
+   - Experiments (use with caution):
+     · cpus: 1
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 17.8s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/3) ...
+ ✓ Generating static pages (3/3)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                         Size  First Load JS
+┌ ƒ /                                            1.99 kB         104 kB
+├ ○ /_not-found                                    999 B         103 kB
+├ ƒ /[...slug]                                   1.99 kB         104 kB
+├ ƒ /admin                                       1.16 kB         104 kB
+├ ƒ /admin/[module]                                164 B         106 kB
+├ ƒ /ai-intelligence                               196 B         176 kB
+├ ƒ /api/admin/ai-draft                            218 B         103 kB
+├ ƒ /api/admin/ai/drafts                           218 B         103 kB
+├ ƒ /api/admin/ai/drafts/[id]/review               218 B         103 kB
+├ ƒ /api/admin/backup                              218 B         103 kB
+├ ƒ /api/admin/backup-schedules                    218 B         103 kB
+├ ƒ /api/admin/backups/schedules                   218 B         103 kB
+├ ƒ /api/admin/customer-binding-suggestions        218 B         103 kB
+├ ƒ /api/admin/customer-binding/bind               218 B         103 kB
+├ ƒ /api/admin/customer-binding/pending            218 B         103 kB
+├ ƒ /api/admin/entity-events                       218 B         103 kB
+├ ƒ /api/admin/global-search                       218 B         103 kB
+├ ƒ /api/admin/module-health                       218 B         103 kB
+├ ƒ /api/admin/search                              218 B         103 kB
+├ ƒ /api/admin/service-requests/[id]/create-job    218 B         103 kB
+├ ƒ /api/admin/status-transition                   218 B         103 kB
+├ ƒ /api/customer/register                         218 B         103 kB
+├ ƒ /api/global-search                             218 B         103 kB
+├ ƒ /api/health                                    218 B         103 kB
+├ ƒ /api/health/[module]                           218 B         103 kB
+├ ƒ /api/leads                                     218 B         103 kB
+├ ƒ /api/portal/customer                           218 B         103 kB
+├ ƒ /api/portal/engineer                           218 B         103 kB
+├ ƒ /api/portal/repair-tracking                    218 B         103 kB
+├ ƒ /api/public-repair-request                     218 B         103 kB
+├ ƒ /api/public/repair-request                     218 B         103 kB
+├ ƒ /api/public/repair-requests                    218 B         103 kB
+├ ƒ /api/ready                                     218 B         103 kB
+├ ƒ /api/service-requests                          218 B         103 kB
+├ ƒ /api/system/health                             218 B         103 kB
+├ ƒ /api/system/modules                            218 B         103 kB
+├ ƒ /api/webhooks/[source]                         218 B         103 kB
+├ ƒ /api/webhooks/payment                          218 B         103 kB
+├ ƒ /api/webhooks/social                           218 B         103 kB
+├ ƒ /customer-center                               196 B         176 kB
+├ ƒ /customer-portal                               181 B         110 kB
+├ ƒ /dashboard                                     196 B         176 kB
+├ ƒ /en                                          1.99 kB         104 kB
+├ ƒ /en/[...slug]                                1.99 kB         104 kB
+├ ƒ /engineer-portal                               180 B         110 kB
+├ ƒ /login                                       1.74 kB         165 kB
+├ ƒ /service-operations                            196 B         176 kB
+├ ƒ /social-media                                  196 B         176 kB
+├ ƒ /system-settings                               196 B         176 kB
+├ ƒ /website-management                            196 B         176 kB
+├ ƒ /zh                                          1.99 kB         104 kB
+└ ƒ /zh/[...slug]                                1.99 kB         104 kB
++ First Load JS shared by all                     102 kB
+  ├ chunks/1255-b28ea36bf0cdbd65.js              46.2 kB
+  ├ chunks/4bd1b696-f785427dddbba9fb.js          54.2 kB
+  └ other shared chunks (total)                  1.95 kB
+
+
+ƒ Middleware                                     35.8 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

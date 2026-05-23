@@ -1,0 +1,35 @@
+NANOFIX V28 Backend Production Fix v2 Validation
+
+Executed in local package directory after dependency and code repair.
+
+1. npm run lint
+Result: PASS
+
+2. npm run typecheck
+Result: PASS
+
+3. npm run build
+Result: PASS
+Key output:
+- Next.js 16.2.6
+- Compiled successfully
+- Generated dynamic routes for Admin, Customer Portal, Engineer Portal and API routes
+- Build exit code: 0
+
+4. npm run validate:package
+Result: PASS
+Output: Package validation passed.
+
+5. npm run audit:prod / npm audit --omit=dev
+Result: PASS
+Output: found 0 vulnerabilities
+
+6. package-lock internal registry scan
+Result: PASS
+No internal package registry URLs found.
+
+7. Supabase security scan checks
+Result: PASS
+- No raw_user_meta_data role trust remains in handle_new_auth_user.
+- search_all_records execution revoked from public/anon/authenticated and granted to service_role.
+- transition_status_tx, create_backup_job_tx, create_ai_draft_tx, social ingestion and payment reconciliation RPCs are service-role controlled.

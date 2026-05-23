@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "generated_at": "2026-05-23T10:46:52.776Z",
+  "package": "NANOFIX V28 CG Stable Base + GP Complete Unified Super Stable",
+  "missing_required_files": [],
+  "map_checks": [
+    {
+      "file": "lib/legacy/body.html",
+      "stable_map_iframes": 4,
+      "old_pb_embed_iframes": 0,
+      "eager_iframes": 5
+    },
+    {
+      "file": "lib/legacy/body.en.html",
+      "stable_map_iframes": 4,
+      "old_pb_embed_iframes": 0,
+      "eager_iframes": 5
+    },
+    {
+      "file": "lib/legacy/body.zh.html",
+      "stable_map_iframes": 4,
+      "old_pb_embed_iframes": 0,
+      "eager_iframes": 5
+    }
+  ],
+  "chain_checks": {
+    "public_to_admin_paths": [
+      "/admin",
+      "/member-sign-up-login",
+      "/api/public-repair-request",
+      "/api/customer/register"
+    ],
+    "admin_api_protection": true,
+    "verified_middleware_rbac": true,
+    "admin_token_fallback_disabled_by_default": true,
+    "transactional_status_rpc": true,
+    "cg_hardening_rpc_restricted": true,
+    "cms_runtime_and_api_present": true,
+    "encrypted_backup_job_present": true,
+    "module_worker_cron_present": true,
+    "seo_routes_present": true,
+    "sitemap_hreflang": true
+  },
+  "security_checks": {
+    "middleware_present": true,
+    "security_module_present": true,
+    "admin_rbac_present": true,
+    "public_form_rate_limit_present": true,
+    "upload_magic_byte_validation_present": true,
+    "no_client_role_header_trust": true,
+    "no_service_request_public_write": true,
+    "backup_requires_encryption_key": true
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "package": "NANOFIX V28 Central Admin Backend",
+  "language": "English / 中文",
+  "lead_entrances": [
+    {
+      "name": "Quick Repair Request / 快捷报修",
+      "login_required": false,
+      "creates": ["Website Lead", "Unified Intake", "Service Request"],
+      "success_message_en": "Thank you. Your repair request has been received. Our NANOFIX team will review it shortly and contact you as soon as possible.",
+      "success_message_zh": "谢谢您，您的报修请求已提交成功。NANOFIX 团队会尽快查看，并尽快与您联系。",
+      "success_next_step_buttons": []
+    },
+    {
+      "name": "Customer Registration + Repair / 注册会员并提交报修",
+      "login_required": false,
+      "creates": ["Customer Account", "Linked Service Request"],
+      "success_message_en": "Welcome to NANOFIX. Your account and repair request have been created successfully. Our team will review your request shortly, and you can track the progress from your customer portal.",
+      "success_message_zh": "欢迎加入 NANOFIX，您的会员账户和报修请求已创建成功。我们的团队会尽快查看您的请求，您也可以在客户中心追踪处理进度。",
+      "success_next_step_buttons": ["View Customer Portal / 查看客户中心", "Submit Another Request / 再次提交报修"]
+    }
+  ],
+  "workflow": [
+    "Lead / 线索",
+    "Service Request / 服务请求",
+    "Inspection / 现场勘查",
+    "Quotation / 报价",
+    "Approval / 审批",
+    "Job / Work Execution / 工单 / 现场施工",
+    "Invoice / 发票",
+    "Payment / 付款",
+    "Receipt / 收据",
+    "Warranty / Claim / 保修 / 保修申请"
+  ],
+  "roles": [
+    "Super Admin / 超级管理员",
+    "Operations Admin / 运营管理员",
+    "Finance / 财务",
+    "Content Admin / 内容管理员",
+    "Support / 客服",
+    "Engineer / 工程师",
+    "Customer / 客户"
+  ],
+  "priorities": {
+    "P0": "Critical / 紧急",
+    "P1": "High / 高优先级",
+    "P2": "Normal / 普通",
+    "P3": "Low / 低优先级"
+  }
+}

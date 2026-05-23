@@ -1,0 +1,1253 @@
+-- NANOFIX V28 Schema
+-- Supabase Postgres + Auth + Storage + RLS compatible migration.
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  profile_id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique,
+  email text unique,
+  full_name text,
+  role text not null check (role in ('super_admin','operations_admin','finance','content_admin','support','engineer','customer')) default 'customer',
+  is_active boolean not null default true,
+  password_status text not null default 'set',
+  last_password_changed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.customers (
+  customer_id uuid primary key default gen_random_uuid(),
+  profile_id uuid references public.profiles(profile_id),
+  name text not null,
+  phone text,
+  whatsapp text,
+  email text,
+  address_json jsonb default '{}'::jsonb,
+  binding_status text not null default 'linked',
+  risk_tags text[] default array[]::text[],
+  vip_tags text[] default array[]::text[],
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.unified_intake (
+  intake_id uuid primary key default gen_random_uuid(),
+  source_platform text not null,
+  raw_message jsonb default '{}'::jsonb,
+  extracted_data jsonb default '{}'::jsonb,
+  priority text not null default 'P2' check (priority in ('P0','P1','P2','P3')),
+  urgency_score int not null default 0,
+  binding_status text not null default 'pending',
+  status text not null default 'pending_review',
+  owner_id uuid references public.profiles(profile_id),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.leads (
+  lead_id uuid primary key default gen_random_uuid(),
+  intake_id uuid references public.unified_intake(intake_id),
+  customer_id uuid references public.customers(customer_id),
+  source_platform text not null,
+  ai_extracted_data jsonb default '{}'::jsonb,
+  priority text not null default 'P2' check (priority in ('P0','P1','P2','P3')),
+  urgency_score int not null default 0,
+  binding_status text not null default 'pending',
+  owner_id uuid references public.profiles(profile_id),
+  status text not null default 'new' check (status in ('new','qualified','converted','duplicate','lost','archived')),
+  duplicate_reason text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.service_requests (
+  service_request_id uuid primary key default gen_random_uuid(),
+  lead_id uuid references public.leads(lead_id),
+  customer_id uuid references public.customers(customer_id),
+  issue_type text,
+  address_json jsonb default '{}'::jsonb,
+  binding_status text not null default 'pending',
+  status text not null default 'pending_review' check (status in ('pending_review','scheduled','inspected','quoted','approved','cancelled')),
+  admin_approval_required boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.inspections (
+  inspection_id uuid primary key default gen_random_uuid(),
+  service_request_id uuid not null references public.service_requests(service_request_id),
+  engineer_id uuid references public.profiles(profile_id),
+  scheduled_at timestamptz,
+  checklist_json jsonb default '{}'::jsonb,
+  photos jsonb default '[]'::jsonb,
+  status text not null default 'scheduled' check (status in ('scheduled','assigned','in_progress','completed','rescheduled','cancelled')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.quotations (
+  quotation_id uuid primary key default gen_random_uuid(),
+  service_request_id uuid references public.service_requests(service_request_id),
+  job_id uuid,
+  current_version int not null default 1,
+  total numeric(12,2) not null default 0,
+  valid_until date,
+  approval_status text not null default 'draft' check (approval_status in ('draft','sent','viewed','accepted','rejected','expired','revised','cancelled')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.quotation_versions (
+  version_id uuid primary key default gen_random_uuid(),
+  quotation_id uuid not null references public.quotations(quotation_id),
+  version int not null,
+  line_items jsonb not null default '[]'::jsonb,
+  total numeric(12,2) not null default 0,
+  created_by uuid references public.profiles(profile_id),
+  approval_log jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  unique (quotation_id, version)
+);
+
+create table if not exists public.jobs (
+  job_id uuid primary key default gen_random_uuid(),
+  service_request_id uuid not null references public.service_requests(service_request_id),
+  quotation_id uuid references public.quotations(quotation_id),
+  engineer_id uuid references public.profiles(profile_id),
+  scheduled_at timestamptz,
+  status text not null default 'assigned' check (status in ('assigned','en_route','arrived','in_progress','completed','rework_required','cancelled')),
+  completion_notes text,
+  eta_json jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.quotations drop constraint if exists quotations_job_id_fkey;
+alter table public.quotations add constraint quotations_job_id_fkey foreign key (job_id) references public.jobs(job_id);
+
+create table if not exists public.invoices (
+  invoice_id uuid primary key default gen_random_uuid(),
+  invoice_no text unique not null,
+  customer_id uuid references public.customers(customer_id),
+  job_id uuid references public.jobs(job_id),
+  total numeric(12,2) not null default 0,
+  status text not null default 'draft' check (status in ('draft','issued','partially_paid','paid','overdue','void')),
+  due_date date,
+  void_reason text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.invoice_items (
+  invoice_item_id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references public.invoices(invoice_id) on delete cascade,
+  description text not null,
+  qty numeric(12,2) not null default 1,
+  unit_price numeric(12,2) not null default 0,
+  amount numeric(12,2) generated always as (qty * unit_price) stored
+);
+
+create table if not exists public.payments (
+  payment_id uuid primary key default gen_random_uuid(),
+  invoice_id uuid references public.invoices(invoice_id),
+  gateway text,
+  transaction_id text unique,
+  amount numeric(12,2) not null default 0,
+  fee numeric(12,2) not null default 0,
+  status text not null default 'pending' check (status in ('pending','processing','succeeded','failed','refunded','partially_refunded')),
+  reconciled_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.receipts (
+  receipt_id uuid primary key default gen_random_uuid(),
+  receipt_no text unique not null,
+  payment_id uuid references public.payments(payment_id),
+  invoice_id uuid references public.invoices(invoice_id),
+  issued_at timestamptz,
+  status text not null default 'draft' check (status in ('draft','issued','corrected','void')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.warranties (
+  warranty_id uuid primary key default gen_random_uuid(),
+  job_id uuid references public.jobs(job_id),
+  customer_id uuid references public.customers(customer_id),
+  starts_at date,
+  ends_at date,
+  coverage text,
+  status text not null default 'active' check (status in ('active','expiring','expired','claim_opened','claim_approved','claim_rejected','resolved')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.social_messages (
+  message_id uuid primary key default gen_random_uuid(),
+  source_platform text not null check (source_platform in ('whatsapp','google_my_business','website_live_chat','facebook','instagram','tiktok','youtube','xiaohongshu')),
+  sender_name text,
+  sender_contact text,
+  message_text text,
+  ai_extracted_data jsonb default '{}'::jsonb,
+  priority text not null default 'P2' check (priority in ('P0','P1','P2','P3')),
+  human_required boolean not null default false,
+  linked_lead_id uuid references public.leads(lead_id),
+  linked_service_request_id uuid references public.service_requests(service_request_id),
+  status text not null default 'new',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.content_drafts (
+  content_id uuid primary key default gen_random_uuid(),
+  module text not null check (module in ('website','social','gmb','whatsapp','ai_knowledge_base')),
+  platform text,
+  prompt text,
+  title text not null,
+  body_json jsonb default '{}'::jsonb,
+  approval_status text not null default 'draft' check (approval_status in ('draft','pending_review','approved','rejected','scheduled','published','cancelled')),
+  publish_status text not null default 'not_published',
+  created_by uuid references public.profiles(profile_id),
+  approved_by uuid references public.profiles(profile_id),
+  scheduled_at timestamptz,
+  published_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.ai_logs (
+  ai_log_id uuid primary key default gen_random_uuid(),
+  module text not null,
+  provider text,
+  prompt_hash text,
+  input_summary text,
+  output_summary text,
+  safety_status text not null default 'pending_review',
+  usage_cost numeric(12,4) default 0,
+  human_required boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.backup_jobs (
+  backup_id uuid primary key default gen_random_uuid(),
+  module_key text not null,
+  schedule_text text not null,
+  status text not null default 'queued' check (status in ('queued','running','completed','failed','restored','cancelled')),
+  encryption_required boolean not null default true,
+  signed_url text,
+  signed_url_expires_at timestamptz,
+  failure_reason text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.audit_logs (
+  audit_id uuid primary key default gen_random_uuid(),
+  actor_id uuid,
+  role text,
+  action text not null,
+  object_type text not null,
+  object_id text,
+  before_json jsonb,
+  after_json jsonb,
+  ip_address text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.status_transition_logs (
+  transition_id uuid primary key default gen_random_uuid(),
+  object_type text not null,
+  object_id text not null,
+  from_status text not null,
+  to_status text not null,
+  reason text,
+  actor_id uuid,
+  actor_role text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.export_approvals (
+  approval_id uuid primary key default gen_random_uuid(),
+  requester_id uuid references public.profiles(profile_id),
+  approver_id uuid references public.profiles(profile_id),
+  dataset text not null,
+  purpose text not null,
+  status text not null default 'pending' check (status in ('pending','approved','rejected','expired','downloaded')),
+  signed_url_expiry timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.module_health (
+  module_key text primary key,
+  status text not null default 'healthy',
+  last_sync_at timestamptz,
+  last_error text,
+  retry_queue_count int not null default 0,
+  degraded_mode boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.job_assignments (
+  assignment_id uuid primary key default gen_random_uuid(),
+  job_id uuid references public.jobs(job_id),
+  engineer_id uuid references public.profiles(profile_id),
+  assigned_by uuid references public.profiles(profile_id),
+  assignment_reason text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.job_checklists (
+  checklist_id uuid primary key default gen_random_uuid(),
+  job_id uuid references public.jobs(job_id),
+  engineer_id uuid references public.profiles(profile_id),
+  checklist_json jsonb not null default '{}'::jsonb,
+  required_items_completed boolean not null default false,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.job_photos (
+  photo_id uuid primary key default gen_random_uuid(),
+  job_id uuid references public.jobs(job_id),
+  storage_path text not null,
+  photo_type text check (photo_type in ('before','after','inspection','signature','other')) default 'other',
+  uploaded_by uuid references public.profiles(profile_id),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.customer_signatures (
+  signature_id uuid primary key default gen_random_uuid(),
+  job_id uuid references public.jobs(job_id),
+  customer_id uuid references public.customers(customer_id),
+  storage_path text,
+  signed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.payment_transactions (
+  transaction_row_id uuid primary key default gen_random_uuid(),
+  payment_id uuid references public.payments(payment_id),
+  provider text,
+  external_transaction_id text unique,
+  payload_json jsonb default '{}'::jsonb,
+  reconciliation_status text default 'pending',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.refunds_voids (
+  refund_void_id uuid primary key default gen_random_uuid(),
+  object_type text not null,
+  object_id uuid not null,
+  amount numeric(12,2),
+  reason text not null,
+  requested_by uuid references public.profiles(profile_id),
+  approved_by uuid references public.profiles(profile_id),
+  status text not null default 'pending',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.webhook_events (
+  webhook_event_id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  event_type text not null,
+  external_id text,
+  payload_json jsonb default '{}'::jsonb,
+  processing_status text not null default 'received',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.purpose_notices (
+  notice_id uuid primary key default gen_random_uuid(),
+  version text not null,
+  channel text not null,
+  content_en text not null,
+  content_zh text,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.consents (
+  consent_id uuid primary key default gen_random_uuid(),
+  customer_id uuid references public.customers(customer_id),
+  notice_id uuid references public.purpose_notices(notice_id),
+  channel text not null,
+  consent_status text not null check (consent_status in ('granted','withdrawn','not_required')),
+  source text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.access_correction_requests (
+  request_id uuid primary key default gen_random_uuid(),
+  customer_id uuid references public.customers(customer_id),
+  request_type text not null check (request_type in ('access','correction','deletion','withdrawal')),
+  details text,
+  status text not null default 'open',
+  owner_id uuid references public.profiles(profile_id),
+  due_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.data_retention_policies (
+  policy_id uuid primary key default gen_random_uuid(),
+  module_key text not null,
+  retention_days int not null,
+  action text not null check (action in ('archive','delete','anonymize','review')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.breach_assessments (
+  breach_id uuid primary key default gen_random_uuid(),
+  reported_by uuid references public.profiles(profile_id),
+  severity text not null default 'under_review',
+  scope_summary text,
+  impact_summary text,
+  notification_decision text,
+  status text not null default 'open',
+  created_at timestamptz not null default now()
+);
+
+-- Indexes for workflow, search, RLS and dashboard performance.
+create index if not exists idx_unified_intake_source_created on public.unified_intake(source_platform, created_at desc);
+create index if not exists idx_unified_intake_priority on public.unified_intake(priority, urgency_score desc);
+create index if not exists idx_leads_customer_status on public.leads(customer_id, status);
+create index if not exists idx_service_requests_customer_status on public.service_requests(customer_id, status, created_at desc);
+create index if not exists idx_inspections_engineer_schedule on public.inspections(engineer_id, scheduled_at);
+create index if not exists idx_jobs_engineer_status_schedule on public.jobs(engineer_id, status, scheduled_at);
+create index if not exists idx_invoices_customer_status on public.invoices(customer_id, status);
+create index if not exists idx_payments_invoice_status on public.payments(invoice_id, status);
+create index if not exists idx_warranties_customer_job on public.warranties(customer_id, job_id);
+create index if not exists idx_audit_logs_object on public.audit_logs(object_type, object_id, created_at desc);
+create index if not exists idx_social_messages_platform_priority on public.social_messages(source_platform, priority, created_at desc);
+
+-- Helper functions.
+create or replace function public.current_profile_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select profile_id from public.profiles where auth_user_id = auth.uid() limit 1;
+$$;
+
+create or replace function public.current_profile_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where auth_user_id = auth.uid() and is_active = true limit 1;
+$$;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_profile_role() in ('super_admin','operations_admin','finance','content_admin','support'), false);
+$$;
+
+create or replace function public.is_engineer()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_profile_role() = 'engineer', false);
+$$;
+
+create or replace function public.owns_customer(target_customer_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.customers c
+    join public.profiles p on p.profile_id = c.profile_id
+    where c.customer_id = target_customer_id and p.auth_user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_assigned_engineer(target_job_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.jobs j
+    where j.job_id = target_job_id and j.engineer_id = public.current_profile_id()
+  );
+$$;
+
+-- Enable RLS on exposed tables.
+alter table public.profiles enable row level security;
+alter table public.customers enable row level security;
+alter table public.unified_intake enable row level security;
+alter table public.leads enable row level security;
+alter table public.service_requests enable row level security;
+alter table public.inspections enable row level security;
+alter table public.quotations enable row level security;
+alter table public.quotation_versions enable row level security;
+alter table public.jobs enable row level security;
+alter table public.invoices enable row level security;
+alter table public.invoice_items enable row level security;
+alter table public.payments enable row level security;
+alter table public.receipts enable row level security;
+alter table public.warranties enable row level security;
+alter table public.social_messages enable row level security;
+alter table public.content_drafts enable row level security;
+alter table public.ai_logs enable row level security;
+alter table public.backup_jobs enable row level security;
+alter table public.audit_logs enable row level security;
+alter table public.status_transition_logs enable row level security;
+alter table public.export_approvals enable row level security;
+alter table public.module_health enable row level security;
+alter table public.job_assignments enable row level security;
+alter table public.job_checklists enable row level security;
+alter table public.job_photos enable row level security;
+alter table public.customer_signatures enable row level security;
+alter table public.payment_transactions enable row level security;
+alter table public.refunds_voids enable row level security;
+alter table public.webhook_events enable row level security;
+alter table public.purpose_notices enable row level security;
+alter table public.consents enable row level security;
+alter table public.access_correction_requests enable row level security;
+alter table public.data_retention_policies enable row level security;
+alter table public.breach_assessments enable row level security;
+
+-- Policy cleanup for repeatable local migrations.
+-- Restricted to NANOFIX-owned tables only, so existing unrelated public policies are not touched.
+do $$
+declare r record;
+begin
+  for r in
+    select schemaname, tablename, policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = any(array[
+        'profiles','customers','unified_intake','leads','service_requests','inspections','quotations','quotation_versions','jobs','invoices','invoice_items','payments','receipts','warranties','social_messages','content_drafts','ai_logs','backup_jobs','audit_logs','status_transition_logs','export_approvals','module_health','job_assignments','job_checklists','job_photos','customer_signatures','payment_transactions','refunds_voids','webhook_events','purpose_notices','consents','access_correction_requests','data_retention_policies','breach_assessments'
+      ])
+  loop
+    execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename);
+  end loop;
+end $$;
+
+-- Admin policies.
+create policy "admin read all profiles" on public.profiles for select to authenticated using (public.is_admin() or auth_user_id = auth.uid());
+create policy "admin manage profiles" on public.profiles for all to authenticated using (public.current_profile_role() = 'super_admin') with check (public.current_profile_role() = 'super_admin');
+
+create policy "admin all customers" on public.customers for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own customers" on public.customers for select to authenticated using (public.owns_customer(customer_id));
+
+create policy "admin all intake" on public.unified_intake for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "anon insert intake" on public.unified_intake for insert to anon with check (source_platform = 'website_form');
+
+create policy "admin all leads" on public.leads for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own leads" on public.leads for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+
+create policy "admin all service requests" on public.service_requests for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own service requests" on public.service_requests for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+
+create policy "admin all inspections" on public.inspections for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "engineer own inspections" on public.inspections for select to authenticated using (engineer_id = public.current_profile_id());
+create policy "engineer update own inspections" on public.inspections for update to authenticated using (engineer_id = public.current_profile_id()) with check (engineer_id = public.current_profile_id());
+
+create policy "admin all quotations" on public.quotations for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own quotations" on public.quotations for select to authenticated using (exists (select 1 from public.service_requests sr where sr.service_request_id = quotations.service_request_id and public.owns_customer(sr.customer_id)));
+
+create policy "admin all quotation versions" on public.quotation_versions for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy "admin all jobs" on public.jobs for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "engineer assigned jobs" on public.jobs for select to authenticated using (engineer_id = public.current_profile_id());
+create policy "engineer update assigned jobs" on public.jobs for update to authenticated using (engineer_id = public.current_profile_id()) with check (engineer_id = public.current_profile_id());
+create policy "customer own jobs" on public.jobs for select to authenticated using (exists (select 1 from public.service_requests sr where sr.service_request_id = jobs.service_request_id and public.owns_customer(sr.customer_id)));
+
+create policy "admin all invoices" on public.invoices for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own invoices" on public.invoices for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+
+create policy "admin all invoice items" on public.invoice_items for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own invoice items" on public.invoice_items for select to authenticated using (exists (select 1 from public.invoices i where i.invoice_id = invoice_items.invoice_id and public.owns_customer(i.customer_id)));
+
+create policy "admin all payments" on public.payments for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own payments" on public.payments for select to authenticated using (exists (select 1 from public.invoices i where i.invoice_id = payments.invoice_id and public.owns_customer(i.customer_id)));
+
+create policy "admin all receipts" on public.receipts for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own receipts" on public.receipts for select to authenticated using (exists (select 1 from public.invoices i where i.invoice_id = receipts.invoice_id and public.owns_customer(i.customer_id)));
+
+create policy "admin all warranties" on public.warranties for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own warranties" on public.warranties for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+
+create policy "admin all social messages" on public.social_messages for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "admin all content drafts" on public.content_drafts for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "admin all ai logs" on public.ai_logs for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "super admin backup jobs" on public.backup_jobs for all to authenticated using (public.current_profile_role() = 'super_admin') with check (public.current_profile_role() = 'super_admin');
+create policy "admin read audit logs" on public.audit_logs for select to authenticated using (public.is_admin());
+create policy "system insert audit logs" on public.audit_logs for insert to authenticated with check (public.is_admin());
+create policy "admin all transition logs" on public.status_transition_logs for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "super admin export approvals" on public.export_approvals for all to authenticated using (public.current_profile_role() in ('super_admin','finance')) with check (public.current_profile_role() in ('super_admin','finance'));
+create policy "admin read module health" on public.module_health for select to authenticated using (public.is_admin());
+create policy "super admin manage module health" on public.module_health for all to authenticated using (public.current_profile_role() = 'super_admin') with check (public.current_profile_role() = 'super_admin');
+
+create policy "admin all job assignments" on public.job_assignments for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "engineer own job assignments" on public.job_assignments for select to authenticated using (engineer_id = public.current_profile_id());
+create policy "admin all job checklists" on public.job_checklists for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "engineer own job checklists" on public.job_checklists for all to authenticated using (engineer_id = public.current_profile_id()) with check (engineer_id = public.current_profile_id());
+create policy "admin all job photos" on public.job_photos for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "engineer assigned job photos" on public.job_photos for all to authenticated using (public.is_assigned_engineer(job_id)) with check (public.is_assigned_engineer(job_id));
+create policy "admin all customer signatures" on public.customer_signatures for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own signatures" on public.customer_signatures for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+
+create policy "admin all payment transactions" on public.payment_transactions for all to authenticated using (public.current_profile_role() in ('super_admin','finance')) with check (public.current_profile_role() in ('super_admin','finance'));
+create policy "admin all refunds voids" on public.refunds_voids for all to authenticated using (public.current_profile_role() in ('super_admin','finance')) with check (public.current_profile_role() in ('super_admin','finance'));
+create policy "admin all webhook events" on public.webhook_events for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy "public read active purpose notices" on public.purpose_notices for select to anon, authenticated using (active = true);
+create policy "super admin manage purpose notices" on public.purpose_notices for all to authenticated using (public.current_profile_role() = 'super_admin') with check (public.current_profile_role() = 'super_admin');
+create policy "admin all consents" on public.consents for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own consents" on public.consents for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+create policy "admin all access correction" on public.access_correction_requests for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "customer own access correction" on public.access_correction_requests for select to authenticated using (customer_id is not null and public.owns_customer(customer_id));
+create policy "super admin retention policies" on public.data_retention_policies for all to authenticated using (public.current_profile_role() = 'super_admin') with check (public.current_profile_role() = 'super_admin');
+create policy "admin breach assessments" on public.breach_assessments for all to authenticated using (public.current_profile_role() in ('super_admin','operations_admin')) with check (public.current_profile_role() in ('super_admin','operations_admin'));
+
+
+-- Supabase Storage buckets and RLS policies for NANOFIX V28 uploads/backups.
+-- These policies keep customer/engineer uploads, media library files and encrypted backups aligned with the central RBAC model.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values
+  ('nanofix-service-media', 'nanofix-service-media', false, 52428800, array['image/jpeg','image/png','image/webp','video/mp4','application/pdf']),
+  ('nanofix-content-media', 'nanofix-content-media', false, 52428800, array['image/jpeg','image/png','image/webp','video/mp4','application/pdf']),
+  ('nanofix-secure-backups', 'nanofix-secure-backups', false, 2147483648, array['application/zip','application/gzip','application/octet-stream'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'nanofix admin read storage objects') then
+    create policy "nanofix admin read storage objects"
+    on storage.objects for select to authenticated
+    using (
+      bucket_id in ('nanofix-service-media','nanofix-content-media','nanofix-secure-backups')
+      and public.is_admin()
+    );
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'nanofix service media upload') then
+    create policy "nanofix service media upload"
+    on storage.objects for insert to authenticated
+    with check (
+      bucket_id = 'nanofix-service-media'
+      and public.current_profile_role() in ('super_admin','operations_admin','support','engineer')
+    );
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'nanofix content media manage') then
+    create policy "nanofix content media manage"
+    on storage.objects for all to authenticated
+    using (
+      bucket_id = 'nanofix-content-media'
+      and public.current_profile_role() in ('super_admin','content_admin')
+    )
+    with check (
+      bucket_id = 'nanofix-content-media'
+      and public.current_profile_role() in ('super_admin','content_admin')
+    );
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'nanofix encrypted backups super admin only') then
+    create policy "nanofix encrypted backups super admin only"
+    on storage.objects for all to authenticated
+    using (
+      bucket_id = 'nanofix-secure-backups'
+      and public.current_profile_role() = 'super_admin'
+    )
+    with check (
+      bucket_id = 'nanofix-secure-backups'
+      and public.current_profile_role() = 'super_admin'
+    );
+  end if;
+end $$;
+
+-- V28 Production Fix additions: automatic profile creation, global search RPC and additional operational indexes.
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles(auth_user_id, email, full_name, role, is_active)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    'customer',
+    true
+  )
+  on conflict (auth_user_id) do update set
+    email = excluded.email,
+    full_name = coalesce(public.profiles.full_name, excluded.full_name),
+    updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_create_profile on auth.users;
+create trigger on_auth_user_created_create_profile
+after insert on auth.users
+for each row execute function public.handle_new_auth_user();
+
+create index if not exists idx_profiles_auth_user_role on public.profiles(auth_user_id, role, is_active);
+create index if not exists idx_customers_phone on public.customers(phone);
+create index if not exists idx_customers_email on public.customers(email);
+create index if not exists idx_customers_name_lower on public.customers(lower(name));
+create index if not exists idx_leads_status_created on public.leads(status, created_at desc);
+create index if not exists idx_service_requests_status_created on public.service_requests(status, created_at desc);
+create index if not exists idx_jobs_status_created on public.jobs(status, created_at desc);
+create index if not exists idx_invoices_status_created on public.invoices(status, created_at desc);
+create index if not exists idx_payments_status_created on public.payments(status, created_at desc);
+create index if not exists idx_warranties_status_created on public.warranties(status, created_at desc);
+create index if not exists idx_backup_jobs_status_created on public.backup_jobs(status, created_at desc);
+
+create or replace function public.search_all_records(search_text text, max_results int default 20)
+returns table (
+  type text,
+  title text,
+  subtitle text,
+  href text,
+  status text,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with q as (
+    select '%' || replace(replace(left(coalesce(search_text, ''), 80), '%', ''), '_', '') || '%' as pattern,
+           greatest(1, least(coalesce(max_results, 20), 50)) as lim
+  ), combined as (
+    select 'customer'::text as type,
+      coalesce(c.name, 'Customer')::text as title,
+      concat_ws(' · ', c.phone, c.email)::text as subtitle,
+      ('/customer-center#customer-' || c.customer_id::text)::text as href,
+      c.binding_status::text as status,
+      c.created_at
+    from public.customers c, q
+    where c.name ilike q.pattern or c.phone ilike q.pattern or c.email ilike q.pattern
+
+    union all
+    select 'lead',
+      ('Lead ' || left(l.lead_id::text, 8))::text,
+      concat_ws(' · ', l.source_platform, l.priority)::text,
+      ('/service-operations#lead-' || l.lead_id::text)::text,
+      l.status::text,
+      l.created_at
+    from public.leads l, q
+    where l.source_platform ilike q.pattern or l.priority ilike q.pattern or l.status ilike q.pattern
+
+    union all
+    select 'job',
+      ('Job ' || left(j.job_id::text, 8))::text,
+      coalesce(('Scheduled ' || j.scheduled_at::text), 'No schedule yet')::text,
+      ('/service-operations#job-' || j.job_id::text)::text,
+      j.status::text,
+      j.created_at
+    from public.jobs j, q
+    where j.status ilike q.pattern or coalesce(j.completion_notes, '') ilike q.pattern
+
+    union all
+    select 'invoice',
+      i.invoice_no::text,
+      ('Total SGD ' || i.total::text)::text,
+      ('/service-operations#invoice-' || i.invoice_id::text)::text,
+      i.status::text,
+      i.created_at
+    from public.invoices i, q
+    where i.invoice_no ilike q.pattern or i.status ilike q.pattern
+
+    union all
+    select 'warranty',
+      ('Warranty ' || left(w.warranty_id::text, 8))::text,
+      coalesce(w.coverage, 'Warranty record')::text,
+      ('/service-operations#warranty-' || w.warranty_id::text)::text,
+      w.status::text,
+      w.created_at
+    from public.warranties w, q
+    where w.status ilike q.pattern or coalesce(w.coverage, '') ilike q.pattern
+
+    union all
+    select 'ai_log',
+      ('AI Log ' || left(a.ai_log_id::text, 8))::text,
+      coalesce(a.module, 'AI module')::text,
+      ('/ai-intelligence#ai-log-' || a.ai_log_id::text)::text,
+      a.safety_status::text,
+      a.created_at
+    from public.ai_logs a, q
+    where a.module ilike q.pattern or a.safety_status ilike q.pattern or coalesce(a.input_summary, '') ilike q.pattern or coalesce(a.output_summary, '') ilike q.pattern
+
+    union all
+    select 'backup',
+      ('Backup ' || left(b.backup_id::text, 8))::text,
+      b.module_key::text,
+      ('/system-settings#backup-' || b.backup_id::text)::text,
+      b.status::text,
+      b.created_at
+    from public.backup_jobs b, q
+    where b.module_key ilike q.pattern or b.status ilike q.pattern
+
+    union all
+    select 'audit_log',
+      ('Audit ' || left(al.audit_id::text, 8))::text,
+      concat_ws(' · ', al.action, al.object_type)::text,
+      ('/system-settings#audit-' || al.audit_id::text)::text,
+      al.role::text,
+      al.created_at
+    from public.audit_logs al, q
+    where al.action ilike q.pattern or al.object_type ilike q.pattern or coalesce(al.object_id, '') ilike q.pattern
+  )
+  select combined.type, combined.title, combined.subtitle, combined.href, combined.status, combined.created_at
+  from combined, q
+  order by combined.created_at desc nulls last
+  limit (select lim from q);
+$$;
+
+-- V28 Production Fix v2: hardened auth trigger, protected RPC search, transactional status and data-loop helpers.
+-- New users are always customers. Admin roles must be assigned by an existing Super Admin in the backend.
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles(auth_user_id, email, full_name, role, is_active)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    'customer',
+    true
+  )
+  on conflict (auth_user_id) do update set
+    email = excluded.email,
+    full_name = coalesce(public.profiles.full_name, excluded.full_name),
+    updated_at = now();
+  return new;
+end;
+$$;
+
+create or replace function public.nanofix_rpc_actor_is_valid(p_actor_id uuid, p_actor_role text, p_allowed_roles text[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(auth.role(), '') = 'service_role'
+    and p_actor_role = any(p_allowed_roles)
+    and (
+      (p_actor_id = '00000000-0000-0000-0000-000000000000'::uuid and p_actor_role = 'super_admin')
+      or exists (
+        select 1 from public.profiles p
+        where p.profile_id = p_actor_id
+          and p.role = p_actor_role
+          and p.is_active = true
+      )
+    );
+$$;
+
+create or replace function public.nanofix_allowed_transition(p_machine text, p_from_status text, p_to_status text)
+returns boolean
+language sql
+immutable
+as $$
+  select case p_machine
+    when 'lead' then case p_from_status
+      when 'new' then p_to_status = any(array['qualified','duplicate','lost','archived'])
+      when 'qualified' then p_to_status = any(array['converted','lost','archived'])
+      when 'converted' then p_to_status = 'archived'
+      when 'duplicate' then p_to_status = 'archived'
+      when 'lost' then p_to_status = 'archived'
+      else false end
+    when 'service_request' then case p_from_status
+      when 'pending_review' then p_to_status = any(array['scheduled','cancelled'])
+      when 'scheduled' then p_to_status = any(array['inspected','cancelled'])
+      when 'inspected' then p_to_status = any(array['quoted','cancelled'])
+      when 'quoted' then p_to_status = any(array['approved','cancelled'])
+      else false end
+    when 'inspection' then case p_from_status
+      when 'scheduled' then p_to_status = any(array['assigned','rescheduled','cancelled'])
+      when 'assigned' then p_to_status = any(array['in_progress','rescheduled','cancelled'])
+      when 'in_progress' then p_to_status = any(array['completed','rescheduled'])
+      when 'rescheduled' then p_to_status = any(array['assigned','cancelled'])
+      else false end
+    when 'quotation' then case p_from_status
+      when 'draft' then p_to_status = any(array['sent','cancelled'])
+      when 'sent' then p_to_status = any(array['viewed','accepted','rejected','expired','revised'])
+      when 'viewed' then p_to_status = any(array['accepted','rejected','expired','revised'])
+      when 'accepted' then p_to_status = 'revised'
+      when 'rejected' then p_to_status = any(array['revised','cancelled'])
+      when 'expired' then p_to_status = any(array['revised','cancelled'])
+      when 'revised' then p_to_status = any(array['sent','cancelled'])
+      else false end
+    when 'job' then case p_from_status
+      when 'assigned' then p_to_status = any(array['en_route','cancelled'])
+      when 'en_route' then p_to_status = any(array['arrived','cancelled'])
+      when 'arrived' then p_to_status = 'in_progress'
+      when 'in_progress' then p_to_status = any(array['completed','rework_required'])
+      when 'completed' then p_to_status = 'rework_required'
+      when 'rework_required' then p_to_status = any(array['assigned','in_progress','completed'])
+      else false end
+    when 'invoice' then case p_from_status
+      when 'draft' then p_to_status = any(array['issued','void'])
+      when 'issued' then p_to_status = any(array['partially_paid','paid','overdue','void'])
+      when 'partially_paid' then p_to_status = any(array['paid','overdue','void'])
+      when 'overdue' then p_to_status = any(array['partially_paid','paid','void'])
+      else false end
+    when 'payment' then case p_from_status
+      when 'pending' then p_to_status = any(array['processing','failed'])
+      when 'processing' then p_to_status = any(array['succeeded','failed'])
+      when 'succeeded' then p_to_status = any(array['refunded','partially_refunded'])
+      when 'partially_refunded' then p_to_status = 'refunded'
+      else false end
+    when 'receipt' then case p_from_status
+      when 'draft' then p_to_status = 'issued'
+      when 'issued' then p_to_status = any(array['corrected','void'])
+      when 'corrected' then p_to_status = any(array['issued','void'])
+      else false end
+    when 'warranty' then case p_from_status
+      when 'active' then p_to_status = any(array['expiring','claim_opened','expired'])
+      when 'expiring' then p_to_status = any(array['expired','claim_opened'])
+      when 'expired' then p_to_status = 'claim_opened'
+      when 'claim_opened' then p_to_status = any(array['claim_approved','claim_rejected'])
+      when 'claim_approved' then p_to_status = 'resolved'
+      when 'claim_rejected' then p_to_status = 'resolved'
+      else false end
+    else false end;
+$$;
+
+create or replace function public.transition_status_tx(
+  p_machine text,
+  p_object_id uuid,
+  p_to_status text,
+  p_reason text default '',
+  p_actor_id uuid default null,
+  p_actor_role text default null,
+  p_ip text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_table text;
+  v_id_col text;
+  v_status_col text;
+  v_from_status text;
+  v_record jsonb;
+begin
+  if not public.nanofix_rpc_actor_is_valid(p_actor_id, p_actor_role, array['super_admin','operations_admin','finance','support']) then
+    raise exception 'permission denied for transactional status transition';
+  end if;
+
+  case p_machine
+    when 'lead' then v_table := 'leads'; v_id_col := 'lead_id'; v_status_col := 'status';
+    when 'service_request' then v_table := 'service_requests'; v_id_col := 'service_request_id'; v_status_col := 'status';
+    when 'inspection' then v_table := 'inspections'; v_id_col := 'inspection_id'; v_status_col := 'status';
+    when 'quotation' then v_table := 'quotations'; v_id_col := 'quotation_id'; v_status_col := 'approval_status';
+    when 'job' then v_table := 'jobs'; v_id_col := 'job_id'; v_status_col := 'status';
+    when 'invoice' then v_table := 'invoices'; v_id_col := 'invoice_id'; v_status_col := 'status';
+    when 'payment' then v_table := 'payments'; v_id_col := 'payment_id'; v_status_col := 'status';
+    when 'receipt' then v_table := 'receipts'; v_id_col := 'receipt_id'; v_status_col := 'status';
+    when 'warranty' then v_table := 'warranties'; v_id_col := 'warranty_id'; v_status_col := 'status';
+    else raise exception 'unsupported status machine: %', p_machine;
+  end case;
+
+  execute format('select %I from public.%I where %I = $1 for update', v_status_col, v_table, v_id_col)
+    into v_from_status
+    using p_object_id;
+
+  if v_from_status is null then
+    raise exception 'record not found for % %', p_machine, p_object_id;
+  end if;
+
+  if not public.nanofix_allowed_transition(p_machine, v_from_status, p_to_status) then
+    raise exception 'invalid % transition: % -> %', p_machine, v_from_status, p_to_status;
+  end if;
+
+  execute format('with updated as (update public.%I set %I = $1 where %I = $2 returning *) select to_jsonb(updated.*) from updated', v_table, v_status_col, v_id_col)
+    into v_record
+    using p_to_status, p_object_id;
+
+  insert into public.status_transition_logs(object_type, object_id, from_status, to_status, reason, actor_id, actor_role)
+  values (p_machine, p_object_id::text, v_from_status, p_to_status, coalesce(p_reason, ''), p_actor_id, p_actor_role);
+
+  insert into public.audit_logs(actor_id, role, action, object_type, object_id, before_json, after_json, ip_address)
+  values (
+    p_actor_id,
+    p_actor_role,
+    'status_transition_tx',
+    p_machine,
+    p_object_id::text,
+    jsonb_build_object(v_status_col, v_from_status),
+    jsonb_build_object(v_status_col, p_to_status, 'record', v_record),
+    p_ip
+  );
+
+  return jsonb_build_object(
+    'machine', p_machine,
+    'object_id', p_object_id,
+    'from_status', v_from_status,
+    'to_status', p_to_status,
+    'record', v_record
+  );
+end;
+$$;
+
+create or replace function public.search_all_records(search_text text, max_results int default 20)
+returns table (
+  type text,
+  title text,
+  subtitle text,
+  href text,
+  status text,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_pattern text := '%' || replace(replace(left(coalesce(search_text, ''), 80), '%', ''), '_', '') || '%';
+  v_limit int := greatest(1, least(coalesce(max_results, 20), 50));
+begin
+  if coalesce(auth.role(), '') <> 'service_role' and not public.is_admin() then
+    raise exception 'permission denied for global search';
+  end if;
+
+  return query
+  with combined as (
+    select 'customer'::text, coalesce(c.name, 'Customer')::text, concat_ws(' · ', c.phone, c.email)::text, ('/customer-center#customer-' || c.customer_id::text)::text, c.binding_status::text, c.created_at from public.customers c where c.name ilike v_pattern or c.phone ilike v_pattern or c.email ilike v_pattern
+    union all select 'lead', ('Lead ' || left(l.lead_id::text, 8))::text, concat_ws(' · ', l.source_platform, l.priority)::text, ('/service-operations#lead-' || l.lead_id::text)::text, l.status::text, l.created_at from public.leads l where l.source_platform ilike v_pattern or l.priority ilike v_pattern or l.status ilike v_pattern
+    union all select 'service_request', ('Service Request ' || left(sr.service_request_id::text, 8))::text, concat_ws(' · ', sr.issue_type, sr.binding_status)::text, ('/service-operations#service-request-' || sr.service_request_id::text)::text, sr.status::text, sr.created_at from public.service_requests sr where sr.issue_type ilike v_pattern or sr.status ilike v_pattern or sr.binding_status ilike v_pattern
+    union all select 'job', ('Job ' || left(j.job_id::text, 8))::text, coalesce(('Scheduled ' || j.scheduled_at::text), 'No schedule yet')::text, ('/service-operations#job-' || j.job_id::text)::text, j.status::text, j.created_at from public.jobs j where j.status ilike v_pattern or coalesce(j.completion_notes, '') ilike v_pattern
+    union all select 'invoice', i.invoice_no::text, ('Total SGD ' || i.total::text)::text, ('/service-operations#invoice-' || i.invoice_id::text)::text, i.status::text, i.created_at from public.invoices i where i.invoice_no ilike v_pattern or i.status ilike v_pattern
+    union all select 'payment', ('Payment ' || left(p.payment_id::text, 8))::text, concat_ws(' · ', p.gateway, p.transaction_id)::text, ('/service-operations#payment-' || p.payment_id::text)::text, p.status::text, p.created_at from public.payments p where p.status ilike v_pattern or coalesce(p.gateway, '') ilike v_pattern or coalesce(p.transaction_id, '') ilike v_pattern
+    union all select 'warranty', ('Warranty ' || left(w.warranty_id::text, 8))::text, coalesce(w.coverage, 'Warranty record')::text, ('/service-operations#warranty-' || w.warranty_id::text)::text, w.status::text, w.created_at from public.warranties w where w.status ilike v_pattern or coalesce(w.coverage, '') ilike v_pattern
+    union all select 'social_message', ('Social ' || left(sm.message_id::text, 8))::text, concat_ws(' · ', sm.source_platform, sm.sender_contact)::text, ('/social-media#social-message-' || sm.message_id::text)::text, sm.status::text, sm.created_at from public.social_messages sm where sm.source_platform ilike v_pattern or coalesce(sm.sender_name, '') ilike v_pattern or coalesce(sm.sender_contact, '') ilike v_pattern or coalesce(sm.message_text, '') ilike v_pattern
+    union all select 'content_draft', coalesce(cd.title, 'Content Draft')::text, concat_ws(' · ', cd.module, cd.platform)::text, ('/ai-intelligence#content-draft-' || cd.content_id::text)::text, cd.approval_status::text, cd.created_at from public.content_drafts cd where cd.title ilike v_pattern or coalesce(cd.prompt, '') ilike v_pattern or cd.module ilike v_pattern or coalesce(cd.platform, '') ilike v_pattern
+    union all select 'ai_log', ('AI Log ' || left(a.ai_log_id::text, 8))::text, coalesce(a.module, 'AI module')::text, ('/ai-intelligence#ai-log-' || a.ai_log_id::text)::text, a.safety_status::text, a.created_at from public.ai_logs a where a.module ilike v_pattern or a.safety_status ilike v_pattern or coalesce(a.input_summary, '') ilike v_pattern or coalesce(a.output_summary, '') ilike v_pattern
+    union all select 'backup', ('Backup ' || left(b.backup_id::text, 8))::text, b.module_key::text, ('/system-settings#backup-' || b.backup_id::text)::text, b.status::text, b.created_at from public.backup_jobs b where b.module_key ilike v_pattern or b.status ilike v_pattern
+    union all select 'audit_log', ('Audit ' || left(al.audit_id::text, 8))::text, concat_ws(' · ', al.action, al.object_type)::text, ('/system-settings#audit-' || al.audit_id::text)::text, al.role::text, al.created_at from public.audit_logs al where al.action ilike v_pattern or al.object_type ilike v_pattern or coalesce(al.object_id, '') ilike v_pattern
+  )
+  select combined.* from combined
+  order by created_at desc nulls last
+  limit v_limit;
+end;
+$$;
+
+create or replace function public.create_backup_job_tx(
+  p_module_key text,
+  p_schedule_text text,
+  p_actor_id uuid,
+  p_actor_role text,
+  p_ip text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_backup_id uuid;
+begin
+  if not public.nanofix_rpc_actor_is_valid(p_actor_id, p_actor_role, array['super_admin']) then
+    raise exception 'permission denied for backup job';
+  end if;
+
+  insert into public.backup_jobs(module_key, schedule_text, status, encryption_required, signed_url, signed_url_expires_at)
+  values (coalesce(nullif(p_module_key, ''), 'central_database'), coalesce(nullif(p_schedule_text, ''), 'manual_now'), 'queued', true, null, null)
+  returning backup_id into v_backup_id;
+
+  insert into public.audit_logs(actor_id, role, action, object_type, object_id, after_json, ip_address)
+  values (p_actor_id, p_actor_role, 'backup_queued', 'backup_job', v_backup_id::text, jsonb_build_object('module_key', p_module_key, 'encrypted', true, 'signed_url_status', 'not_generated_until_worker_and_approval'), p_ip);
+
+  return jsonb_build_object('backup_id', v_backup_id, 'status', 'queued');
+end;
+$$;
+
+create or replace function public.create_ai_draft_tx(
+  p_module text,
+  p_platform text,
+  p_prompt text,
+  p_title text,
+  p_body_json jsonb,
+  p_actor_id uuid,
+  p_actor_role text,
+  p_ip text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_content_id uuid;
+  v_ai_log_id uuid;
+begin
+  if not public.nanofix_rpc_actor_is_valid(p_actor_id, p_actor_role, array['super_admin','operations_admin','content_admin']) then
+    raise exception 'permission denied for AI draft';
+  end if;
+
+  insert into public.content_drafts(module, platform, prompt, title, body_json, approval_status, publish_status, created_by)
+  values (coalesce(nullif(p_module, ''), 'website'), nullif(p_platform, ''), coalesce(p_prompt, ''), coalesce(nullif(p_title, ''), 'AI Draft'), coalesce(p_body_json, '{}'::jsonb), 'draft', 'not_published', p_actor_id)
+  returning content_id into v_content_id;
+
+  insert into public.ai_logs(module, provider, prompt_hash, input_summary, output_summary, safety_status, usage_cost, human_required)
+  values (coalesce(nullif(p_module, ''), 'website'), 'configured_provider_or_manual', encode(digest(coalesce(p_prompt, ''), 'sha256'), 'hex'), left(coalesce(p_prompt, ''), 500), 'Draft saved for human review; AI cannot auto-publish.', 'pending_review', 0, true)
+  returning ai_log_id into v_ai_log_id;
+
+  insert into public.audit_logs(actor_id, role, action, object_type, object_id, after_json, ip_address)
+  values (p_actor_id, p_actor_role, 'ai_draft_created', 'content_draft', v_content_id::text, jsonb_build_object('ai_log_id', v_ai_log_id, 'approval_status', 'draft', 'publish_status', 'not_published'), p_ip);
+
+  return jsonb_build_object('content_id', v_content_id, 'ai_log_id', v_ai_log_id, 'approval_status', 'draft', 'publish_status', 'not_published');
+end;
+$$;
+
+create or replace function public.ingest_social_message_tx(
+  p_platform text,
+  p_sender_name text,
+  p_sender_contact text,
+  p_message_text text,
+  p_payload jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_platform text := coalesce(nullif(p_platform, ''), 'website_live_chat');
+  v_urgent boolean := position('urgent' in lower(coalesce(p_message_text, ''))) > 0 or coalesce((p_payload->>'rating')::int, 5) <= 3;
+  v_priority text := case when v_urgent then 'P0' else 'P2' end;
+  v_message_id uuid;
+  v_intake_id uuid;
+  v_lead_id uuid;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'permission denied for social ingestion';
+  end if;
+
+  insert into public.social_messages(source_platform, sender_name, sender_contact, message_text, ai_extracted_data, priority, human_required, status)
+  values (v_platform, nullif(p_sender_name, ''), nullif(p_sender_contact, ''), coalesce(p_message_text, ''), coalesce(p_payload, '{}'::jsonb), v_priority, v_urgent, case when v_urgent then 'human_required' else 'new' end)
+  returning message_id into v_message_id;
+
+  insert into public.unified_intake(source_platform, raw_message, extracted_data, priority, urgency_score, binding_status, status)
+  values (v_platform, coalesce(p_payload, '{}'::jsonb) || jsonb_build_object('message_id', v_message_id), jsonb_build_object('sender_name', p_sender_name, 'sender_contact', p_sender_contact, 'message_text', p_message_text), v_priority, case when v_urgent then 95 else 35 end, 'pending', 'pending_review')
+  returning intake_id into v_intake_id;
+
+  insert into public.leads(intake_id, source_platform, ai_extracted_data, priority, urgency_score, binding_status, status)
+  values (v_intake_id, v_platform, jsonb_build_object('message_id', v_message_id, 'sender_contact', p_sender_contact), v_priority, case when v_urgent then 95 else 35 end, 'pending', 'new')
+  returning lead_id into v_lead_id;
+
+  update public.social_messages set linked_lead_id = v_lead_id where message_id = v_message_id;
+
+  insert into public.audit_logs(role, action, object_type, object_id, after_json)
+  values ('webhook', 'social_message_ingested', 'social_message', v_message_id::text, jsonb_build_object('intake_id', v_intake_id, 'lead_id', v_lead_id, 'priority', v_priority));
+
+  return jsonb_build_object('message_id', v_message_id, 'intake_id', v_intake_id, 'lead_id', v_lead_id, 'priority', v_priority, 'human_required', v_urgent);
+end;
+$$;
+
+create or replace function public.reconcile_payment_webhook_tx(
+  p_provider text,
+  p_event_type text,
+  p_external_id text,
+  p_invoice_id uuid default null,
+  p_invoice_no text default null,
+  p_amount numeric default 0,
+  p_status text default 'processing',
+  p_payload jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_event_id uuid;
+  v_invoice_id uuid := p_invoice_id;
+  v_payment_id uuid;
+  v_total numeric := 0;
+  v_paid numeric := 0;
+  v_invoice_status text := 'issued';
+  v_receipt_id uuid;
+  v_receipt_no text;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'permission denied for payment reconciliation';
+  end if;
+
+  insert into public.webhook_events(provider, event_type, external_id, payload_json, processing_status)
+  values (coalesce(nullif(p_provider, ''), 'payment_gateway'), coalesce(nullif(p_event_type, ''), 'payment.updated'), nullif(p_external_id, ''), coalesce(p_payload, '{}'::jsonb), 'processing')
+  returning webhook_event_id into v_event_id;
+
+  if v_invoice_id is null and p_invoice_no is not null then
+    select invoice_id into v_invoice_id from public.invoices where invoice_no = p_invoice_no limit 1;
+  end if;
+
+  if v_invoice_id is not null then
+    insert into public.payments(invoice_id, gateway, transaction_id, amount, fee, status, reconciled_at)
+    values (v_invoice_id, coalesce(nullif(p_provider, ''), 'payment_gateway'), nullif(p_external_id, ''), coalesce(p_amount, 0), coalesce((p_payload->>'fee')::numeric, 0), case when p_status in ('succeeded','paid','success') then 'succeeded' when p_status in ('failed','cancelled') then 'failed' else 'processing' end, case when p_status in ('succeeded','paid','success') then now() else null end)
+    on conflict (transaction_id) do update set
+      amount = excluded.amount,
+      fee = excluded.fee,
+      status = excluded.status,
+      reconciled_at = excluded.reconciled_at
+    returning payment_id into v_payment_id;
+
+    insert into public.payment_transactions(payment_id, provider, external_transaction_id, payload_json, reconciliation_status)
+    values (v_payment_id, coalesce(nullif(p_provider, ''), 'payment_gateway'), nullif(p_external_id, ''), coalesce(p_payload, '{}'::jsonb), case when p_status in ('succeeded','paid','success') then 'matched' else 'pending' end)
+    on conflict (external_transaction_id) do update set payload_json = excluded.payload_json, reconciliation_status = excluded.reconciliation_status;
+
+    select total into v_total from public.invoices where invoice_id = v_invoice_id;
+    select coalesce(sum(amount), 0) into v_paid from public.payments where invoice_id = v_invoice_id and status = 'succeeded';
+    v_invoice_status := case when v_paid >= v_total and v_total > 0 then 'paid' when v_paid > 0 then 'partially_paid' else 'issued' end;
+    update public.invoices set status = v_invoice_status where invoice_id = v_invoice_id;
+
+    if v_invoice_status = 'paid' then
+      v_receipt_no := 'NF-RCPT-' || to_char(now(), 'YYYYMMDD') || '-' || upper(left(replace(v_payment_id::text, '-', ''), 8));
+      insert into public.receipts(receipt_no, payment_id, invoice_id, issued_at, status)
+      values (v_receipt_no, v_payment_id, v_invoice_id, now(), 'issued')
+      on conflict (receipt_no) do nothing
+      returning receipt_id into v_receipt_id;
+    end if;
+  end if;
+
+  update public.webhook_events set processing_status = case when v_invoice_id is null then 'needs_review' else 'processed' end where webhook_event_id = v_event_id;
+
+  insert into public.audit_logs(role, action, object_type, object_id, after_json)
+  values ('webhook', 'payment_webhook_reconciled', 'webhook_event', v_event_id::text, jsonb_build_object('invoice_id', v_invoice_id, 'payment_id', v_payment_id, 'invoice_status', v_invoice_status, 'receipt_id', v_receipt_id));
+
+  return jsonb_build_object('webhook_event_id', v_event_id, 'invoice_id', v_invoice_id, 'payment_id', v_payment_id, 'invoice_status', v_invoice_status, 'receipt_id', v_receipt_id);
+end;
+$$;
+
+revoke execute on function public.search_all_records(text, int) from public, anon, authenticated;
+revoke execute on function public.transition_status_tx(text, uuid, text, text, uuid, text, text) from public, anon, authenticated;
+revoke execute on function public.create_backup_job_tx(text, text, uuid, text, text) from public, anon, authenticated;
+revoke execute on function public.create_ai_draft_tx(text, text, text, text, jsonb, uuid, text, text) from public, anon, authenticated;
+revoke execute on function public.ingest_social_message_tx(text, text, text, text, jsonb) from public, anon, authenticated;
+revoke execute on function public.reconcile_payment_webhook_tx(text, text, text, uuid, text, numeric, text, jsonb) from public, anon, authenticated;
+
+grant execute on function public.search_all_records(text, int) to service_role;
+grant execute on function public.transition_status_tx(text, uuid, text, text, uuid, text, text) to service_role;
+grant execute on function public.create_backup_job_tx(text, text, uuid, text, text) to service_role;
+grant execute on function public.create_ai_draft_tx(text, text, text, text, jsonb, uuid, text, text) to service_role;
+grant execute on function public.ingest_social_message_tx(text, text, text, text, jsonb) to service_role;
+grant execute on function public.reconcile_payment_webhook_tx(text, text, text, uuid, text, numeric, text, jsonb) to service_role;

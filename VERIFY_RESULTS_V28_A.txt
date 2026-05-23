@@ -1,0 +1,19 @@
+NANOFIX Website V28 verification results
+
+Executed in sandbox:
+- npm ci --no-audit --no-fund: PASS
+- npm audit: PASS, 0 vulnerabilities after postcss override
+- npm run typecheck: PASS
+- npm run lint: PASS
+- npm run build: PASS
+
+Build summary:
+- Next.js compiled successfully.
+- Static pages generated successfully.
+- Route manifest and build traces generated successfully.
+- Route output includes /, /[...slug], /admin, /api routes, robots.txt and sitemap.xml.
+
+Notes:
+- The UI layer was kept intact: existing layout, display effect, carousel, widgets and animation scripts are preserved.
+- Production form submission requires Supabase configuration unless NANOFIX_ALLOW_FORM_WITHOUT_SUPABASE=true is explicitly set for preview/demo.
+- Production admin access requires NANOFIX_ADMIN_API_TOKEN or a future Supabase Auth admin login integration.

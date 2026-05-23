@@ -1,0 +1,17 @@
+node_modules
+.next
+.vercel
+out
+coverage
+playwright-report
+test-results
+*.zip
+*.tar.gz
+compare_systems
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env*.local
+*.pem
+*.key

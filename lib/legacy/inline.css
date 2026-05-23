@@ -1,0 +1,1264 @@
+html { font-size: 85%; }
+        :root { --orange: #FF5F00; --dark: #1A1A1A; }
+        .smooth-scroll { scroll-behavior: smooth; }
+        .dropdown:hover .dropdown-menu { display: block; opacity: 1; transform: translateY(0); pointer-events: auto;}
+        .dropdown-menu { display: none; opacity: 0; transform: translateY(10px); transition: all 0.3s ease; }
+        .orange-gradient { background: linear-gradient(135deg, #FF8C00 0%, #FF5F00 100%); }
+        .service-tile { transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); border: 1px solid #e5e7eb; background: #fff; }
+        .service-tile:hover { transform: translateY(-12px); box-shadow: 0 25px 50px -12px rgba(255, 95, 0, 0.2); border-color: var(--orange); }
+        .floating-wa { position: fixed; right: 20px; top: 60%; transform: translateY(-50%); z-index: 1000; transition: transform 0.3s; }
+        .floating-wa:hover { transform: scale(1.1) translateY(-45%); }
+        .play-btn { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 95, 0, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(255, 95, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 95, 0, 0); } }
+
+        /* 极速钢琴键序列动画 */
+        @keyframes piano-key {
+            0%, 100% { transform: translateY(0); filter: brightness(1); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-color: transparent; }
+            15% { transform: translateY(-15px); filter: brightness(1.3); box-shadow: 0 20px 30px rgba(255,95,0,0.7); border-color: var(--orange); }
+            30% { transform: translateY(0); filter: brightness(1); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-color: transparent; }
+        }
+        .piano-1 { animation: piano-key 1.2s infinite 0s; }
+        .piano-3 { animation: piano-key 1.2s infinite 0.3s; }
+        .piano-2 { animation: piano-key 1.2s infinite 0.6s; }
+        .piano-4 { animation: piano-key 1.2s infinite 0.9s; }
+
+        /* 图标表意动效 */
+        @keyframes heartbreak {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+            10%, 30% { transform: scale(1.3) rotate(-15deg); filter: drop-shadow(0 0 12px #ef4444); }
+            20%, 40% { transform: scale(1.3) rotate(15deg); filter: drop-shadow(0 0 12px #ef4444); }
+            50% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+        }
+        .anim-heartbreak i { animation: heartbreak 3s infinite ease-in-out; color: #ef4444;}
+        
+        @keyframes thunder {
+            0%, 100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 0 transparent); }
+            10%, 30%, 50% { transform: scale(1.4); opacity: 0.5; color: #fff; filter: drop-shadow(0 0 25px #FF5F00); }
+            20%, 40% { transform: scale(1.5); opacity: 1; color: #FF5F00; filter: drop-shadow(0 0 35px #FF5F00); }
+        }
+        .anim-thunder i { animation: thunder 3s infinite ease-in-out; }
+
+        @keyframes strike {
+            0%, 100% { transform: rotate(0deg) scale(1); transform-origin: bottom right; }
+            10% { transform: rotate(-45deg) scale(1.2); transform-origin: bottom right; }
+            20% { transform: rotate(30deg) scale(1.1); transform-origin: bottom right; }
+        }
+        .anim-strike i { animation: strike 3s infinite ease-in-out; color: #fbbf24;}
+
+        @keyframes sway { 0%, 100% { transform: rotate(-15deg); } 50% { transform: rotate(15deg); } }
+        .anim-sway i { animation: sway 3s infinite ease-in-out; color: #10b981;}
+
+        @keyframes glow-spin {
+            0%, 100% { transform: rotate(0deg); filter: drop-shadow(0 0 0 transparent); }
+            50% { transform: rotate(180deg); filter: drop-shadow(0 0 20px #FF5F00); color: #FF5F00; }
+        }
+        .anim-glow-spin i { animation: glow-spin 4s infinite linear; }
+        
+        @keyframes box-open {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.1) translateY(-5px); filter: drop-shadow(0 0 15px #3b82f6); color: #3b82f6; }
+        }
+        .anim-box i { animation: box-open 3s infinite ease-in-out; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes scroll-y { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+        .animate-scroll-y { animation: scroll-y 20s linear infinite; }
+        .animate-scroll-y:hover { animation-play-state: paused; }
+        .animate-scroll-reviews { animation: scroll-y 21s linear infinite; }
+        .animate-scroll-reviews:hover { animation-play-state: paused; }
+    
+        html { scroll-padding-top: 150px; }
+        header, header > div, nav { overflow: visible !important; }
+        .dropdown { position: relative; }
+        .dropdown-menu { visibility: hidden; display: block; opacity: 0; transform: translateY(12px); pointer-events: none; }
+        .dropdown:hover .dropdown-menu { visibility: visible; display: block; opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .dropdown-menu a i { font-size: 0.95rem; }
+        .service-page { scroll-margin-top: 140px; }
+        .service-sidebar { position: sticky; top: 150px; align-self: start; max-height: calc(100vh - 170px); overflow-y: auto; }
+        .service-sidebar::-webkit-scrollbar { width: 5px; }
+        .service-sidebar::-webkit-scrollbar-thumb { background: rgba(255,95,0,.45); border-radius: 20px; }
+        .service-detail-card { scroll-margin-top: 150px; }
+        .service-detail-card details > summary { list-style: none; }
+        .service-detail-card details > summary::-webkit-details-marker { display: none; }
+        .service-detail-card details[open] .chev { transform: rotate(180deg); }
+        .floating-quote-safe { top: 1.5rem !important; right: 1.5rem !important; opacity: .55; pointer-events: none; }
+        .map-complete iframe { width: 100% !important; height: 100% !important; min-height: 364px; }
+        @media (max-width: 1023px) { .service-sidebar { position: relative; top: auto; max-height: none; } html { scroll-padding-top: 120px; } }
+
+
+
+        /* Homepage curated highlight feed: original-style carousel, not the same layout as service detail pages */
+        .homepage-highlight-card { transition: all .35s ease; }
+        .homepage-highlight-card:hover { transform: translateY(-10px); box-shadow: 0 28px 55px -18px rgba(255,95,0,.35); }
+        .homepage-rank-badge { backdrop-filter: blur(10px); }
+        .homepage-engine-chip { background: rgba(255,95,0,.08); border: 1px solid rgba(255,95,0,.18); }
+        .featured-meter { height: 5px; border-radius: 999px; background: linear-gradient(90deg,#FF5F00,#FFB000); }
+    
+
+/* NANOFIX requested update: stable logo, clean English, carousels, page routing */
+.nanofix-logo-img { width: auto; object-fit: contain; display: block; }
+.nanofix-header-logo { height: 64px; max-width: 120px; }
+@media (min-width: 1024px){ .nanofix-header-logo { height: 78px; max-width: 145px; } }
+.nanofix-footer-logo { height: 96px; max-width: 190px; }
+.nanofix-logo-card { background: #ffffff; border-radius: 22px; padding: 10px 14px; box-shadow: 0 16px 40px rgba(0,0,0,.16); }
+.nav-shell { overflow: visible !important; position: relative; z-index: 1005; }
+.dropdown-menu { z-index: 5000 !important; overflow: visible !important; }
+header, header > div { overflow: visible !important; }
+.quote-bg-mark, .decor-cut-mark, .corner-quote-mark { display: none !important; }
+.social-color-facebook { color: #1877F2 !important; }
+.social-color-instagram { color: #E4405F !important; }
+.social-color-tiktok { color: #111827 !important; }
+.social-color-youtube { color: #FF0000 !important; }
+.footer-social-facebook { background:#1877F2 !important; color:#fff !important; }
+.footer-social-instagram { background:#E4405F !important; color:#fff !important; }
+.footer-social-tiktok { background:#ffffff !important; color:#111827 !important; }
+.footer-social-youtube { background:#FF0000 !important; color:#fff !important; }
+.home-carousel-section { scroll-margin-top: 130px; }
+.home-carousel-card { transition: all .35s ease; }
+.home-carousel-card:hover { transform: translateY(-10px); box-shadow: 0 24px 55px -20px rgba(255,95,0,.55); border-color: #FF5F00; }
+.home-carousel-card img { display:block; }
+.route-hidden { display: none !important; }
+.service-page { scroll-margin-top: 130px; }
+.service-page .sticky { top: 128px; }
+.map-complete { min-height: 364px; }
+.map-complete iframe { width: 100% !important; height: 100% !important; min-height: 364px !important; display:block; }
+@media (max-width: 768px){ .map-complete { min-height: 364px; } .map-complete iframe{ min-height:364px!important; } }
+
+
+/* NANOFIX latest tuning: compact home carousels, centered arrows, balanced contact/map, transparent footer logo */
+.home-carousel-section {
+  padding-top: 2.8rem !important;
+  padding-bottom: 2.8rem !important;
+}
+.home-carousel-section > div:first-child {
+  margin-bottom: 2.25rem !important;
+}
+.home-carousel-card > div:first-child {
+  aspect-ratio: 16 / 7.2 !important;
+  max-height: 210px !important;
+}
+.home-carousel-card > div:nth-child(2) {
+  padding: 1.35rem !important;
+}
+.home-carousel-card h3 {
+  font-size: clamp(1.15rem, 1.5vw, 1.55rem) !important;
+  margin-bottom: .65rem !important;
+  line-height: 1.08 !important;
+}
+.home-carousel-card p {
+  font-size: .94rem !important;
+  line-height: 1.45 !important;
+  margin-bottom: .9rem !important;
+}
+.home-carousel-card .mt-auto {
+  padding-top: .65rem !important;
+  padding-bottom: .65rem !important;
+  font-size: .76rem !important;
+}
+.home-carousel-card .w-12.h-12 {
+  width: 2.45rem !important;
+  height: 2.45rem !important;
+  margin-bottom: .75rem !important;
+}
+.home-carousel-section [onclick*="scrollCarousel"] {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+@media (min-width: 640px) {
+  .home-carousel-section {
+    padding-top: 3.2rem !important;
+    padding-bottom: 3.2rem !important;
+  }
+  .home-carousel-card > div:nth-child(2) { padding: 1.65rem !important; }
+}
+@media (max-width: 767px) {
+  .home-carousel-card > div:first-child { max-height: 190px !important; }
+}
+
+#contact-map {
+  padding-top: 3.2rem !important;
+  padding-bottom: 3.2rem !important;
+}
+#contact-map .contact-reviews-card,
+#contact-map .contact-info-map-card {
+  height: 100% !important;
+  min-height: 620px !important;
+}
+#contact-map .contact-info-map-card {
+  justify-content: space-between !important;
+}
+#contact-map .contact-review-scroll {
+  height: 385px !important;
+}
+#contact-map .map-complete {
+  height: 364px !important;
+  min-height: 364px !important;
+  margin-top: 1rem !important;
+  flex: 0 0 auto !important;
+}
+#contact-map .map-complete iframe {
+  height: 100% !important;
+  min-height: 364px !important;
+}
+@media (min-width: 1024px) {
+  #contact-map .contact-reviews-card,
+  #contact-map .contact-info-map-card {
+    min-height: 690px !important;
+  }
+  #contact-map .contact-review-scroll {
+    height: 460px !important;
+  }
+  #contact-map .map-complete {
+    height: 434px !important;
+    min-height: 434px !important;
+  }
+  #contact-map .map-complete iframe {
+    min-height: 434px !important;
+  }
+}
+.nanofix-footer-logo-wrap {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.nanofix-footer-logo {
+  background: transparent !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,.45));
+}
+
+
+
+/* NANOFIX 2026-05 final routing/language/guide/quote fixes */
+body:not(.js-ready) .service-page { display: none !important; }
+body:not(.js-ready) [data-home-only="true"], body:not(.js-ready) #contact-map { display: block; }
+.service-page.route-hidden, .route-hidden { display: none !important; }
+.service-detail-card details > summary { user-select: none; }
+.service-detail-card details[open] { border-color: rgba(255,95,0,.35); }
+#guide.service-page, #get-free-quote-page.service-page { scroll-margin-top: 130px; }
+#quote-company-info .anim-sway i, #quote-company-info .anim-box i, #quote-company-info .anim-thunder i, #quote-company-info .anim-glow-spin i { display:inline-block; }
+.nanofix-footer-logo-wrap { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.nanofix-footer-logo { background: transparent !important; filter: drop-shadow(0 10px 20px rgba(0,0,0,.35)); }
+footer .border-l-2 { border-left-width: 2px !important; }
+@media (min-width:1280px){ nav.hidden.xl\:flex { gap: .05rem; } }
+
+
+/* NANOFIX contact icon + native details toggle fix */
+#quote-company-info .grid > a > div:first-child,
+#quote-company-info .grid > div > div:first-child {
+  width: 5.75rem !important;
+  height: 5.75rem !important;
+  font-size: 2.45rem !important;
+  border-radius: 1.75rem !important;
+  margin-bottom: 1.35rem !important;
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.10) !important;
+}
+#quote-company-info .grid > a,
+#quote-company-info .grid > div {
+  padding-top: 2.1rem !important;
+  padding-bottom: 2.1rem !important;
+}
+.service-detail-card details > summary {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+}
+.service-detail-card details > summary .chev {
+  transition: transform .25s ease;
+}
+.service-detail-card details[open] > summary .chev {
+  transform: rotate(180deg);
+}
+.service-detail-card details:not([open]) > div {
+  display: none;
+}
+.service-detail-card details[open] > div {
+  display: grid;
+}
+
+
+
+/* NANOFIX 2026-05 final tuning: compact service cards, controlled expansion, larger contact icons */
+.service-detail-card > .grid > div.relative:first-child {
+  height: 210px !important;
+  min-height: 210px !important;
+}
+@media (min-width: 1280px) {
+  .service-detail-card > .grid > div.relative:first-child {
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+  .service-detail-card.detail-open > .grid > div.relative:first-child {
+    height: auto !important;
+    min-height: 360px !important;
+  }
+}
+.service-detail-card details:not([open]) > *:not(summary) {
+  display: none !important;
+}
+.service-detail-card details[open] > div {
+  display: grid !important;
+}
+.service-detail-card details .chev {
+  transition: transform .25s ease;
+}
+.service-detail-card details[open] .chev {
+  transform: rotate(180deg);
+}
+#quote-company-info .company-contact-icon,
+#quote-company-info a > div:first-child,
+#quote-company-info .contact-info-icon {
+  width: 5.25rem !important;
+  height: 5.25rem !important;
+  font-size: 2.35rem !important;
+  border-radius: 1.55rem !important;
+}
+#quote-company-info .company-contact-card {
+  cursor: pointer;
+}
+.home-section-title-link {
+  cursor: pointer;
+  display: inline-block;
+  transition: color .2s ease, transform .2s ease;
+}
+.home-section-title-link:hover {
+  color: #FF5F00 !important;
+  transform: translateY(-2px);
+}
+
+
+/* NANOFIX tuned sidebar badge and carousel cleanup */
+.ndt-specialist-badge .fa-award { line-height: 1; }
+.service-sidebar > div.mb-4 { background-color: #f3f4f6; border-color: #e5e7eb; }
+
+/* NANOFIX patch: Guide/Get Quote sidebars + embedded logo display */
+.nanofix-logo-img { display:block !important; opacity:1 !important; visibility:visible !important; object-fit:contain !important; background:transparent !important; }
+.nanofix-header-logo { height:72px !important; max-height:72px !important; min-width:64px; }
+.nanofix-footer-logo { height:96px !important; max-height:96px !important; min-width:80px; }
+.service-sidebar-title-panel { background:#f3f4f6; border:1px solid #e5e7eb; border-radius:1rem; padding:1rem; margin-bottom:1rem; }
+@media (max-width:640px){ .nanofix-header-logo{height:52px !important;max-height:52px !important;} .nanofix-footer-logo{height:78px !important;max-height:78px !important;} }
+
+@keyframes nanofix-member-breath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,95,0,.18), 0 2px 8px rgba(255,95,0,.08); transform: translateY(0); }
+  45% { box-shadow: 0 0 0 7px rgba(255,95,0,.10), 0 8px 18px rgba(255,95,0,.20); transform: translateY(-1px); }
+}
+.nanofix-member-pulse {
+  position: relative;
+  animation: nanofix-member-breath 2.8s ease-in-out infinite;
+  will-change: box-shadow, transform;
+}
+.nanofix-member-pulse:hover {
+  animation-play-state: paused;
+}
+
+.nanofix-logo-aura {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  flex: 0 0 auto;
+}
+.nanofix-logo-aura::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 132%;
+  height: 132%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+  background:
+    conic-gradient(
+      from 11deg,
+      rgba(255,255,255,0) 0deg,
+      rgba(255,221,128,.40) 8deg,
+      rgba(255,255,255,.70) 12deg,
+      rgba(255,95,0,0) 18deg,
+      rgba(255,95,0,0) 31deg,
+      rgba(255,180,52,.36) 36deg,
+      rgba(255,255,255,.62) 42deg,
+      rgba(255,95,0,0) 49deg,
+      rgba(255,95,0,0) 69deg,
+      rgba(255,207,93,.46) 75deg,
+      rgba(255,255,255,.68) 79deg,
+      rgba(255,95,0,0) 88deg,
+      rgba(255,95,0,0) 111deg,
+      rgba(255,176,0,.30) 118deg,
+      rgba(255,255,255,.60) 124deg,
+      rgba(255,95,0,0) 132deg,
+      rgba(255,95,0,0) 157deg,
+      rgba(255,211,117,.42) 164deg,
+      rgba(255,255,255,.66) 170deg,
+      rgba(255,95,0,0) 179deg,
+      rgba(255,95,0,0) 205deg,
+      rgba(255,190,60,.32) 214deg,
+      rgba(255,255,255,.58) 220deg,
+      rgba(255,95,0,0) 229deg,
+      rgba(255,95,0,0) 251deg,
+      rgba(255,226,145,.38) 259deg,
+      rgba(255,255,255,.64) 265deg,
+      rgba(255,95,0,0) 276deg,
+      rgba(255,95,0,0) 302deg,
+      rgba(255,180,34,.34) 311deg,
+      rgba(255,255,255,.62) 317deg,
+      rgba(255,95,0,0) 328deg,
+      rgba(255,95,0,0) 360deg
+    ),
+    radial-gradient(circle, rgba(255,255,255,.72) 0 12%, rgba(255,176,0,.24) 23%, rgba(255,95,0,.11) 39%, rgba(255,95,0,0) 66%);
+  -webkit-mask: radial-gradient(circle, transparent 0 18%, #000 25% 72%, transparent 75%);
+  mask: radial-gradient(circle, transparent 0 18%, #000 25% 72%, transparent 75%);
+  animation: nanofix-logo-natural-rays 4.8s linear infinite;
+}
+.nanofix-logo-aura::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 108%;
+  height: 108%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle, rgba(255,255,255,.74) 0 18%, rgba(255,176,0,.24) 42%, rgba(255,95,0,0) 70%);
+  animation: nanofix-logo-natural-core 4.8s linear infinite;
+}
+.nanofix-logo-aura .nanofix-logo-img {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 10px rgba(255,176,0,.30)) drop-shadow(0 8px 18px rgba(0,0,0,.18));
+}
+@keyframes nanofix-logo-natural-rays {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.78) rotate(0deg); filter: blur(.15px); }
+  13% { opacity: .52; transform: translate(-50%, -50%) scale(.88) rotate(48deg); filter: blur(.18px); }
+  72% { opacity: .36; transform: translate(-50%, -50%) scale(.98) rotate(318deg); filter: blur(.28px); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.02) rotate(360deg); filter: blur(.32px); }
+}
+@keyframes nanofix-logo-natural-core {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
+  15% { opacity: .42; transform: translate(-50%, -50%) scale(1.02); }
+  72% { opacity: .30; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+
+/* V28 logo motion lock: footer logo must remain static; header aura remains shortened. */
+.nanofix-footer-logo-wrap {
+  position: relative;
+  isolation: auto;
+  overflow: visible;
+}
+.nanofix-footer-logo-wrap::before,
+.nanofix-footer-logo-wrap::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+  background: none !important;
+}
+.nanofix-footer-logo-wrap .nanofix-logo-img {
+  animation: none !important;
+}
+.nanofix-header-logo-aura::before {
+  width: 132% !important;
+  height: 132% !important;
+}
+
+@keyframes nanofix-intake-button-breath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,95,0,.12), 0 6px 14px rgba(15,23,42,.04); transform: translateY(0); }
+  48% { box-shadow: 0 0 0 7px rgba(255,95,0,.12), 0 14px 24px rgba(255,95,0,.16); transform: translateY(-1px); }
+}
+.nanofix-intake-pulse {
+  animation: nanofix-intake-button-breath 2.55s ease-in-out infinite;
+  will-change: box-shadow, transform;
+}
+.nanofix-intake-pulse:nth-child(2) { animation-delay: .22s; }
+.nanofix-intake-pulse:nth-child(3) { animation-delay: .44s; }
+.nanofix-intake-pulse:hover { animation-play-state: paused; }
+
+
+/* NANOFIX patch: first-level page hero visual consistency */
+.service-hero-visual {
+    position: relative;
+    overflow: hidden;
+    border-radius: 34px;
+    padding: clamp(28px, 4vw, 56px);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 28px 72px -34px rgba(15, 23, 42, 0.65);
+    background-color: #0f172a;
+    background-image: none !important;
+}
+.service-hero-visual::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--hero-bg);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: .96;
+    transform: scale(1.01);
+    pointer-events: none;
+}
+.service-hero-visual::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(15, 23, 42, .88) 0%, rgba(15, 23, 42, .66) 45%, rgba(15, 23, 42, .28) 100%), radial-gradient(circle at 82% 22%, rgba(255, 122, 24, .20), transparent 32%);
+    pointer-events: none;
+}
+.service-hero-visual > * { position: relative; z-index: 2; }
+.service-hero-visual h1,
+.service-hero-visual h2 { color: #fff !important; text-shadow: 0 8px 28px rgba(0,0,0,.25); }
+.service-hero-visual p { color: rgba(255,255,255,.86) !important; }
+.service-hero-visual .hero-kicker { color: #ff7a18 !important; letter-spacing: .18em; }
+.service-hero-visual .hero-soft-btn { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.24); }
+.service-hero-visual .hero-soft-btn:hover { background: rgba(255,255,255,.2); }
+#leak-detection .service-hero-visual::before { background-image: url('/assets/images/sg_thermal_detection_tech.webp') !important; }
+#no-hacking-repair .service-hero-visual::before { background-image: url('/assets/images/home_sg_brand_hero.webp') !important; }
+#waterproofing-works .service-hero-visual::before { background-image: url('/assets/images/waterproof_polyurea_roof_tech.webp') !important; }
+#track-record-warranty .service-hero-visual::before { background-image: url('/assets/images/client_testimonials_premium.webp') !important; }
+#guide .service-hero-visual::before { background-image: url('/assets/images/why_choose_premium.webp') !important; }
+@media (max-width: 768px) {
+    .service-hero-visual { border-radius: 26px; padding: 28px 22px; }
+}
+
+
+
+/* Round 3 image optimization: homepage conversion impact, secondary-page consistency,
+   Singapore premium waterproofing brand visual tone */
+.home-section-title-link { text-decoration-thickness: 2px; text-underline-offset: 8px; }
+.premium-home-frame, .premium-secondary-frame { position: relative; background: linear-gradient(135deg,#edf2f7 0%,#f8fafc 100%); }
+.premium-home-frame::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg,rgba(255,255,255,0) 35%,rgba(15,23,42,0.10) 100%);
+  pointer-events: none;
+}
+.premium-home-img {
+  filter: contrast(1.08) saturate(1.08) brightness(0.99);
+  transform-origin: center center;
+}
+.home-carousel-card:hover .premium-home-img,
+#cms-news-list a.group:hover .premium-home-img {
+  transform: scale(1.07);
+}
+.home-carousel-card {
+  box-shadow: 0 18px 45px -22px rgba(15,23,42,.18);
+}
+.home-carousel-card:hover {
+  box-shadow: 0 28px 65px -22px rgba(255,95,0,.24), 0 18px 32px -18px rgba(15,23,42,.12);
+}
+.premium-secondary-frame::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg,rgba(255,255,255,0.02),rgba(15,23,42,0.06));
+  pointer-events: none;
+}
+.premium-secondary-img {
+  filter: contrast(1.03) saturate(1.02) brightness(0.995);
+  object-position: center center;
+}
+.service-detail-card {
+  box-shadow: 0 16px 45px -24px rgba(15,23,42,.16);
+}
+.service-detail-card:hover {
+  box-shadow: 0 24px 56px -24px rgba(15,23,42,.18), 0 10px 25px -20px rgba(255,95,0,.22);
+}
+.service-detail-card .grid > div:first-child { min-height: 230px; }
+@media (min-width: 1280px) {
+  .service-detail-card .grid > div:first-child { min-height: 100%; }
+}
+.premium-hero-visual { position: relative; isolation: isolate; overflow: hidden; }
+.premium-hero-visual::after {
+  content: ''; position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(135deg,rgba(255,255,255,.06),rgba(17,24,39,.12));
+  pointer-events: none;
+}
+.premium-hero-visual > * { position: relative; z-index: 1; }
+#cms-news-list a.group {
+  border-radius: 24px; transition: all .28s ease;
+}
+#cms-news-list a.group:hover {
+  background: linear-gradient(180deg,#fff 0%,#fffaf5 100%);
+  box-shadow: 0 18px 45px -28px rgba(15,23,42,.16);
+}
+#cms-news-list img { border-radius: 18px; }
+
+/* Round 4 focused update: stronger home hero, leak tech visuals, Singapore premium brand mood */
+#home .group.min-h-\[400px\]::after {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(90deg, rgba(4,16,32,.78) 0%, rgba(4,16,32,.42) 42%, rgba(255,95,0,.08) 100%);
+  pointer-events:none;
+}
+#home .group.min-h-\[400px\] > * { position: relative; z-index: 1; }
+#home .group.min-h-\[400px\] img { filter: contrast(1.08) saturate(1.06) brightness(.98); }
+.service-hero-visual {
+  box-shadow: 0 22px 50px -20px rgba(15,23,42,.24);
+}
+.service-detail-card .premium-secondary-img,
+.home-carousel-card .premium-home-img {
+  filter: contrast(1.05) saturate(1.04) brightness(1.00);
+}
+
+
+
+/* Final home hero restoration: keep image full-size and text overlay visible like reference screenshot */
+#home .home-hero-frame {
+  position: relative !important;
+  min-height: 400px;
+  isolation: isolate;
+  background: #0f172a;
+}
+@media (min-width: 1024px) { #home .home-hero-frame { min-height: 540px; } }
+#home .home-hero-frame > img.home-hero-img {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  filter: contrast(1.05) saturate(1.03) brightness(.98);
+}
+#home .home-hero-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.62) 42%, rgba(0,0,0,.12) 100%) !important;
+  pointer-events: none;
+}
+#home .home-hero-frame > div.home-hero-copy {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  background: transparent !important;
+}
+#home .home-hero-frame h1 span.text-orange-500 { color: #FF5F00 !important; }
+
+
+/* NANOFIX active first-level navigation state */
+.nanofix-nav-active,
+.nanofix-nav-active span {
+  color: #FF5F00 !important;
+}
+.nanofix-nav-active {
+  background: #FFF7ED !important;
+}
+.nanofix-nav-active::after {
+  opacity: 1 !important;
+}
+
+
+/* NANOFIX final nav/footer active-state tuning */
+header > div > a[href="#home"].nanofix-nav-active,
+header > div > a[aria-label="NANOFIX Home"].nanofix-nav-active {
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+}
+header nav a.nanofix-nav-active,
+header .xl\:hidden a.nanofix-nav-active {
+  color: #FF5F00 !important;
+  background: #FFF3E6 !important;
+  box-shadow: none !important;
+}
+header nav a.nanofix-nav-active span,
+header .xl\:hidden a.nanofix-nav-active span {
+  color: #FF5F00 !important;
+}
+footer a.nanofix-nav-active,
+footer a.nanofix-nav-active span,
+footer .nanofix-footer-active,
+footer .nanofix-footer-active span {
+  color: #FF5F00 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+footer a.nanofix-nav-active:hover,
+footer .nanofix-footer-active:hover {
+  color: #FF5F00 !important;
+  background: transparent !important;
+}
+#customer-login-helper-text {
+  font-size: 14px !important;
+  line-height: 1.15 !important;
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  margin-top: 0 !important;
+}
+@media (min-width: 640px) {
+  #customer-login-helper-text { font-size: 15px !important; }
+}
+
+.comparison-table, .comparison-table * { }
+.comparison-bad-text, .comparison-bad-text * { color:#fff !important; }
+
+
+/* NANOFIX social/login helper update */
+.customer-login-helper-text {
+  font-size: clamp(11px, 1.35vw, 15px) !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.01em;
+  white-space: nowrap !important;
+  max-width: 100%;
+}
+@media (max-width: 560px) {
+  .customer-login-helper-text { font-size: clamp(9px, 2.6vw, 12px) !important; }
+}
+#quote-page-customer-login-block {
+  margin-top: 0.15rem;
+}
+#quote-page-customer-login-block .customer-login-helper-text {
+  align-self: center;
+}
+footer a.active-section,
+footer a.nav-active,
+footer a.active {
+  color: #ff7a18 !important;
+  background: transparent !important;
+}
+
+
+/* NANOFIX final correction: first-level nav and footer Services active state = text color only */
+header nav a.nanofix-nav-active,
+header nav a.nanofix-nav-active:hover,
+header .xl\:hidden a.nanofix-nav-active,
+header .xl\:hidden a.nanofix-nav-active:hover {
+  color: #FF5F00 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+header nav a.nanofix-nav-active span,
+header .xl\:hidden a.nanofix-nav-active span {
+  color: #FF5F00 !important;
+}
+header nav a.nanofix-nav-active::after,
+header .xl\:hidden a.nanofix-nav-active::after {
+  opacity: 0 !important;
+  display: none !important;
+}
+header a[aria-label="NANOFIX Home"].nanofix-nav-active,
+header a[aria-label="NANOFIX Home"].nanofix-nav-active * {
+  color: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+footer .nanofix-footer-link.nanofix-footer-active,
+footer .nanofix-footer-link.nanofix-footer-active span,
+footer a.nanofix-footer-active,
+footer a.nanofix-footer-active span {
+  color: #FF5F00 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+footer .nanofix-footer-link.nanofix-footer-active:hover,
+footer a.nanofix-footer-active:hover {
+  color: #FF5F00 !important;
+  background: transparent !important;
+}
+
+
+/* NANOFIX strict active-state rule: top main nav text-only; Free Inspection & Quote keeps original orange CTA style */
+header nav a.nanofix-nav-active:not([href="#get-free-quote-page"]),
+header nav a.nanofix-nav-active:not([href="#get-free-quote-page"]):hover,
+header nav .dropdown > a.nanofix-nav-active:not([href="#get-free-quote-page"]),
+header nav .dropdown > a.nanofix-nav-active:not([href="#get-free-quote-page"]):hover,
+header .xl\:hidden a.nanofix-nav-active:not([href="#get-free-quote-page"]),
+header .xl\:hidden a.nanofix-nav-active:not([href="#get-free-quote-page"]):hover {
+  color: #FF5F00 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+header nav a.nanofix-nav-active:not([href="#get-free-quote-page"]) span,
+header nav .dropdown > a.nanofix-nav-active:not([href="#get-free-quote-page"]) span,
+header .xl\:hidden a.nanofix-nav-active:not([href="#get-free-quote-page"]) span {
+  color: #FF5F00 !important;
+}
+header nav a.nanofix-nav-active:not([href="#get-free-quote-page"])::after,
+header nav .dropdown > a.nanofix-nav-active:not([href="#get-free-quote-page"])::after,
+header .xl\:hidden a.nanofix-nav-active:not([href="#get-free-quote-page"])::after {
+  display: none !important;
+  opacity: 0 !important;
+}
+header nav a[href="#get-free-quote-page"],
+header nav .dropdown > a[href="#get-free-quote-page"],
+header .xl\:hidden a[href="#get-free-quote-page"],
+header nav a[href="#get-free-quote-page"].nanofix-nav-active,
+header nav .dropdown > a[href="#get-free-quote-page"].nanofix-nav-active,
+header .xl\:hidden a[href="#get-free-quote-page"].nanofix-nav-active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #FF8C00 0%, #FF5F00 100%) !important;
+  box-shadow: 0 8px 18px rgba(255,95,0,.22) !important;
+}
+header nav a[href="#get-free-quote-page"] span,
+header nav .dropdown > a[href="#get-free-quote-page"] span,
+header .xl\:hidden a[href="#get-free-quote-page"] span,
+header nav a[href="#get-free-quote-page"].nanofix-nav-active span,
+header nav .dropdown > a[href="#get-free-quote-page"].nanofix-nav-active span,
+header .xl\:hidden a[href="#get-free-quote-page"].nanofix-nav-active span {
+  color: #ffffff !important;
+}
+footer .nanofix-footer-link.nanofix-footer-active,
+footer .nanofix-footer-link.nanofix-footer-active:hover,
+footer a.nanofix-footer-active,
+footer a.nanofix-footer-active:hover {
+  color: #FF5F00 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+footer .nanofix-footer-link.nanofix-footer-active span,
+footer a.nanofix-footer-active span {
+  color: #FF5F00 !important;
+}
+header a[aria-label="NANOFIX Home"].nanofix-nav-active,
+header a[aria-label="NANOFIX Home"].nanofix-nav-active * {
+  color: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+
+/* NANOFIX V28 dark masked service hero fix: make every first-level service banner match the black-overlay reference visual. */
+.service-hero-visual,
+.service-hero-visual.premium-hero-visual {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+  border-radius: 34px !important;
+  background-color: #0b1220 !important;
+}
+.service-hero-visual::before,
+.service-hero-visual.premium-hero-visual::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  background-image: var(--hero-bg) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  opacity: 1 !important;
+  transform: scale(1.02) !important;
+  filter: contrast(1.06) saturate(1.02) brightness(.76) !important;
+  pointer-events: none !important;
+}
+.service-hero-visual::after,
+.service-hero-visual.premium-hero-visual::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.84) 0%, rgba(0,0,0,.70) 34%, rgba(0,0,0,.48) 64%, rgba(0,0,0,.34) 100%),
+    linear-gradient(180deg, rgba(3,7,18,.30) 0%, rgba(3,7,18,.12) 45%, rgba(3,7,18,.42) 100%) !important;
+  pointer-events: none !important;
+}
+.service-hero-visual > *,
+.service-hero-visual.premium-hero-visual > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+.service-hero-visual h1,
+.service-hero-visual h2 {
+  color: #ffffff !important;
+  text-shadow: 0 10px 30px rgba(0,0,0,.55) !important;
+}
+.service-hero-visual h1,
+.service-hero-visual h2,
+.premium-hero-visual h1,
+.premium-hero-visual h2 {
+  font-size: clamp(2.35rem, 4.35vw, 4.8rem) !important;
+  line-height: .98 !important;
+  max-width: min(100%, 760px) !important;
+}
+#track-record-warranty .service-hero-visual h2 {
+  font-size: clamp(2.2rem, 3.8vw, 4.15rem) !important;
+  white-space: nowrap !important;
+  max-width: none !important;
+}
+@media (max-width: 640px) {
+  #track-record-warranty .service-hero-visual h2 {
+    font-size: clamp(1.7rem, 9vw, 2.45rem) !important;
+    white-space: normal !important;
+  }
+}
+.service-hero-visual p {
+  color: rgba(255,255,255,.92) !important;
+  text-shadow: 0 6px 20px rgba(0,0,0,.45) !important;
+}
+
+
+/* NANOFIX fix: keep member portal helper text centered inside the repair-request card.
+   Prevents the long tracking sentence from overflowing outside the column on desktop/mobile. */
+#customer-login-helper-text,
+#quote-page-customer-login-block .customer-login-helper-text {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 0 !important;
+  margin: .25rem auto 0 !important;
+  padding: 0 .5rem !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  text-wrap: balance;
+  font-size: clamp(10px, 1.25vw, 14px) !important;
+  line-height: 1.35 !important;
+  letter-spacing: -0.015em !important;
+}
+#quote-page-customer-login-block {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: .65rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  padding-top: .5rem !important;
+  text-align: center !important;
+}
+@media (max-width: 640px) {
+  #customer-login-helper-text,
+  #quote-page-customer-login-block .customer-login-helper-text {
+    font-size: clamp(9px, 2.8vw, 12px) !important;
+    line-height: 1.32 !important;
+    padding-inline: .25rem !important;
+  }
+}
+
+/* NANOFIX V28 patch: Get A Free Quote hero image visibility + controlled dark mask.
+   Fixes the issue where this banner appeared fully black after replacing the image. */
+#get-free-quote-page .service-hero-visual,
+#get-free-quote-page .service-hero-visual.premium-hero-visual {
+  background-color: #0b1220 !important;
+  min-height: 250px !important;
+}
+#get-free-quote-page .service-hero-visual::before,
+#get-free-quote-page .service-hero-visual.premium-hero-visual::before {
+  background-image: url('/assets/images/get_free_quote_hero_fullbleed.webp') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  opacity: 1 !important;
+  filter: brightness(.86) contrast(1.08) saturate(1.08) !important;
+  transform: scale(1.01) !important;
+}
+#get-free-quote-page .service-hero-visual::after,
+#get-free-quote-page .service-hero-visual.premium-hero-visual::after {
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.56) 34%, rgba(0,0,0,.32) 64%, rgba(0,0,0,.18) 100%),
+    linear-gradient(180deg, rgba(3,7,18,.18) 0%, rgba(3,7,18,.08) 45%, rgba(3,7,18,.28) 100%) !important;
+}
+
+/* NANOFIX V28 patch: keep the member helper sentence on one horizontal line, centered,
+   with automatic sizing so it stays inside the request card width. */
+#customer-login-helper-text,
+#quote-page-customer-login-block .customer-login-helper-text {
+  display: block !important;
+  flex: 0 1 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: .1rem auto 0 !important;
+  padding: 0 .35rem !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  overflow-wrap: normal !important;
+  word-break: keep-all !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.035em !important;
+  font-size: clamp(7px, 2.15cqw, 12px) !important;
+}
+#quote-page-customer-login-block,
+#nanofix-lead-form [id="customer-login-helper-text"] {
+  container-type: inline-size;
+}
+#quote-page-customer-login-block {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-align: center !important;
+}
+@media (max-width: 640px) {
+  #customer-login-helper-text,
+  #quote-page-customer-login-block .customer-login-helper-text {
+    font-size: clamp(6.5px, 2.45cqw, 10px) !important;
+    letter-spacing: -0.045em !important;
+  }
+}
+@supports not (font-size: 1cqw) {
+  #customer-login-helper-text,
+  #quote-page-customer-login-block .customer-login-helper-text {
+    font-size: clamp(7px, 1.55vw, 11px) !important;
+  }
+}
+
+
+/* NANOFIX V28.1 patch: make GET A FREE QUOTE hero visually match the other dark masked first-level banners.
+   Use the selected quote hero artwork as the banner background, avoid duplicate visible HTML copy over the baked text,
+   and keep the CTA buttons active on the right side. */
+#get-free-quote-page .service-hero-visual,
+#get-free-quote-page .service-hero-visual.premium-hero-visual {
+  min-height: 250px !important;
+  background-color: #0b1220 !important;
+}
+#get-free-quote-page .service-hero-visual::before,
+#get-free-quote-page .service-hero-visual.premium-hero-visual::before {
+  background-image: url('/assets/images/get_free_quote_hero_fullbleed.webp') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
+#get-free-quote-page .service-hero-visual::after,
+#get-free-quote-page .service-hero-visual.premium-hero-visual::after {
+  background: linear-gradient(180deg, rgba(3,7,18,.06) 0%, rgba(3,7,18,.12) 100%) !important;
+}
+#get-free-quote-page .service-hero-visual > .max-w-4xl {
+  visibility: hidden !important;
+}
+#get-free-quote-page .service-hero-visual > .max-w-4xl * {
+  visibility: hidden !important;
+}
+#get-free-quote-page .service-hero-visual > .flex.flex-wrap.gap-3.shrink-0 {
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+/* NANOFIX V28.1 patch: enable reliable homepage carousel dragging and arrow scrolling on desktop/mobile. */
+.home-carousel-section [data-carousel-target] {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.home-carousel-section [id$='-track'] {
+  cursor: grab;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+}
+.home-carousel-section [id$='-track'].is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none !important;
+}
+.home-carousel-section [id$='-track'].is-dragging * {
+  user-select: none !important;
+  -webkit-user-drag: none;
+}
+
+
+/* NANOFIX V28.2: keep all first-level pages (except Home) close to the top header with the same visual gap as the homepage. */
+body.js-ready section.service-page,
+section.service-page {
+  padding-top: 2rem !important;
+}
+@media (min-width: 1024px) {
+  body.js-ready section.service-page,
+  section.service-page {
+    padding-top: 3rem !important;
+  }
+}
+@media (max-width: 640px) {
+  body.js-ready section.service-page,
+  section.service-page {
+    padding-top: 1.5rem !important;
+  }
+}
+
+/* NANOFIX V28.2: make homepage carousel cards behave like clear clickable page cards. */
+.home-carousel-card {
+  position: relative !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+.home-carousel-card * {
+  pointer-events: none;
+}
+.home-carousel-section [data-carousel-target] {
+  pointer-events: auto !important;
+}
+
+
+/* NANOFIX V28.2 patch: move the home hero text block down slightly so the team faces stay clear,
+   while keeping the same left alignment and banner look. */
+#home .home-hero-frame > div.home-hero-copy {
+  justify-content: flex-start !important;
+  padding-top: clamp(4.1rem, 8vw, 5.6rem) !important;
+  padding-right: clamp(1.6rem, 4vw, 3rem) !important;
+  padding-bottom: clamp(1.9rem, 4vw, 3rem) !important;
+  padding-left: clamp(1.6rem, 4vw, 3rem) !important;
+}
+@media (max-width: 640px) {
+  #home .home-hero-frame > div.home-hero-copy {
+    padding-top: clamp(3.4rem, 10vw, 4.6rem) !important;
+  }
+}
+
+
+/* NANOFIX V28.3 final home hero text correction:
+   move the complete text group straight downward in parallel so the hijab staff member's head remains visible. */
+#home .home-hero-frame > div.home-hero-copy {
+  justify-content: center !important;
+  padding: clamp(1.5rem, 4vw, 3rem) !important;
+  transform: translateY(clamp(5.8rem, 8.5vw, 7.4rem)) !important;
+  will-change: transform;
+}
+@media (max-width: 768px) {
+  #home .home-hero-frame > div.home-hero-copy {
+    transform: translateY(clamp(3.6rem, 10vw, 5rem)) !important;
+  }
+}
+
+
+/* Production performance/security additions: map iframe is created only after user intent. */
+.nanofix-hp-field{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;}
+.nanofix-map-placeholder{position:relative;width:100%;height:100%;min-height:inherit;display:block;cursor:pointer;background:#e5e7eb;overflow:hidden;}
+.nanofix-map-placeholder img{width:100%;height:100%;display:block;object-fit:cover;filter:saturate(.95);}
+.nanofix-map-placeholder::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,95,0,.10));pointer-events:none;}
+.nanofix-map-cta{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:2;background:rgba(17,24,39,.90);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:12px 18px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 16px 40px rgba(0,0,0,.22);white-space:nowrap;}
+.nanofix-map-placeholder:focus{outline:3px solid rgba(255,95,0,.45);outline-offset:-3px;}
+.map-complete iframe{width:100%!important;height:100%!important;min-height:inherit!important;border:0!important;display:block!important;}
+
+/* NANOFIX V28.3: production layout repair for all first-level pages except Home.
+   Static Tailwind CSS must preserve the original two-column service page structure. */
+#nanofix-website-root .service-page .service-sidebar,
+.service-page .service-sidebar {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+#nanofix-website-root .service-page .space-y-6,
+.service-page .space-y-6,
+#nanofix-website-root .service-page .service-detail-card,
+.service-page .service-detail-card {
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (min-width: 1024px) {
+  #nanofix-website-root .lg\:grid-cols-\[320px\,1fr\],
+  .lg\:grid-cols-\[320px\,1fr\] {
+    grid-template-columns: 320px minmax(0, 1fr) !important;
+  }
+  #nanofix-website-root .lg\:grid-cols-\[1fr\,300px\],
+  .lg\:grid-cols-\[1fr\,300px\] {
+    grid-template-columns: minmax(0, 1fr) 300px !important;
+  }
+  #nanofix-website-root .lg\:grid-cols-\[1\.3fr\,0\.7fr\],
+  .lg\:grid-cols-\[1\.3fr\,0\.7fr\] {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr) !important;
+  }
+}
+@media (min-width: 1280px) {
+  #nanofix-website-root .xl\:grid-cols-\[260px\,1fr\],
+  .xl\:grid-cols-\[260px\,1fr\] {
+    grid-template-columns: 260px minmax(0, 1fr) !important;
+  }
+}
+
+/* NANOFIX V28.5: Google Map display repair.
+   Keep the homepage and Get a Free Quote map areas as real Google Maps,
+   with fixed responsive heights so the iframe cannot collapse or stretch. */
+#nanofix-website-root .map-complete,
+.map-complete {
+  position: relative !important;
+  width: 100% !important;
+  display: block !important;
+  overflow: hidden !important;
+  background: #e5e7eb !important;
+  min-height: 364px !important;
+}
+#quote-google-map .map-complete {
+  height: 430px !important;
+  min-height: 430px !important;
+}
+#contact-map .map-complete {
+  height: 364px !important;
+  min-height: 364px !important;
+}
+#nanofix-website-root .map-complete iframe,
+#nanofix-website-root .nanofix-google-map-iframe,
+.map-complete iframe,
+.nanofix-google-map-iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  border: 0 !important;
+  display: block !important;
+}
+@media (min-width: 1024px) {
+  #quote-google-map .map-complete {
+    height: 500px !important;
+    min-height: 500px !important;
+  }
+  #contact-map .map-complete {
+    height: 434px !important;
+    min-height: 434px !important;
+  }
+}
+@media (max-width: 640px) {
+  #quote-google-map .map-complete,
+  #contact-map .map-complete {
+    height: 360px !important;
+    min-height: 360px !important;
+    border-radius: 0 !important;
+  }
+  .nanofix-google-map-iframe {
+    min-height: 360px !important;
+  }
+}
+
+/* NANOFIX V28 mobile visual lock: prevent narrow-screen deformation while preserving approved desktop visuals. */
+@media (max-width: 767px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: clip !important; }
+  header, section, footer, main, .nanofix-route-safe { max-width: 100vw !important; overflow-x: clip; }
+  img, video, iframe, canvas, svg { max-width: 100% !important; }
+  iframe { display: block; }
+  input, select, textarea, button { max-width: 100% !important; min-width: 0 !important; }
+  .home-hero-frame { min-height: 360px !important; border-width: 3px !important; border-radius: 24px !important; }
+  .home-hero-copy { padding: 1.25rem !important; justify-content: flex-end !important; }
+  .home-hero-copy h1 { font-size: clamp(2.25rem, 12vw, 3.5rem) !important; line-height: 1.05 !important; }
+  .home-hero-copy p { font-size: .95rem !important; line-height: 1.5 !important; }
+  .metric-card { min-width: 0 !important; padding-left: .65rem !important; padding-right: .65rem !important; }
+  .metric-card span:first-child { font-size: clamp(1.65rem, 8vw, 2.25rem) !important; }
+  .home-carousel-card { width: 85vw !important; max-width: 85vw !important; min-width: 0 !important; }
+  .home-carousel-card h3 { font-size: clamp(1.35rem, 6.5vw, 1.9rem) !important; }
+  .service-sidebar { width: 100% !important; max-width: 100% !important; }
+  .service-detail-card, article, details { max-width: 100% !important; min-width: 0 !important; }
+  .map-complete, [data-lazy-map="true"] { min-height: 360px !important; max-width: 100% !important; overflow: hidden !important; }
+  .map-complete iframe, [data-lazy-map="true"] iframe { width: 100% !important; min-height: 360px !important; }
+  .dropdown-menu { max-width: calc(100vw - 2rem) !important; }
+  [class*="grid-cols-3"], [class*="grid-cols-4"] { min-width: 0 !important; }
+}
+@media (max-width: 430px) {
+  .nanofix-header-logo { height: 48px !important; max-height: 48px !important; }
+  header .text-2xl { font-size: 1.35rem !important; }
+  .home-carousel-section { padding-left: 1rem !important; padding-right: 1rem !important; }
+  #get-free-quote, #quote-submit-request { border-radius: 24px !important; padding-left: 1.1rem !important; padding-right: 1.1rem !important; }
+  #nanofix-lead-form .grid, #quote-page-form .grid { grid-template-columns: minmax(0, 1fr) !important; }
+  #nanofix-lead-form .col-span-1, #nanofix-lead-form .col-span-2,
+  #quote-page-form .col-span-1, #quote-page-form .col-span-2 { grid-column: auto !important; }
+}

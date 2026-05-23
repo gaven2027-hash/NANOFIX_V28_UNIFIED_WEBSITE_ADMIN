@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+}
+
+/* NANOFIX V28 visual safety layer: preserves the approved layout while preventing mobile overflow/deformation. */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  img,
+  video,
+  canvas,
+  iframe,
+  svg {
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .nanofix-route-safe {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  .nanofix-route-safe [data-rendered-route],
+  .nanofix-route-safe section,
+  .nanofix-route-safe footer,
+  .nanofix-route-safe header {
+    max-width: 100vw;
+  }
+
+  .nanofix-route-safe .home-carousel-card,
+  .nanofix-route-safe .service-detail-card {
+    min-width: 0;
+  }
+}
+
+/* V28 mobile parity hardening for Next routes. */
+@media (max-width: 767px) {
+  .nanofix-route-safe, .nanofix-route-safe * { min-width: 0; }
+  .nanofix-route-safe input,
+  .nanofix-route-safe select,
+  .nanofix-route-safe textarea,
+  .nanofix-route-safe button { max-width: 100%; }
+  .nanofix-route-safe iframe,
+  .nanofix-route-safe img,
+  .nanofix-route-safe video { max-width: 100%; }
+}

@@ -1,0 +1,27 @@
+NANOFIX Website V28 Verification Results
+Generated: 2026-05-21 16:48:33 UTC
+
+Checks performed:
+- npm audit --audit-level=moderate: PASS, 0 vulnerabilities
+- npm run typecheck: PASS
+- npm run lint: PASS
+- npm run build:css: PASS
+- npm run build: PASS, async status code 0
+- npm run build:preview: PASS
+
+Build output summary:
+- Next.js version: 15.5.18
+- Static pages generated: 11
+- Main website routes: dynamic server-rendered with ISR support preserved
+- First Load JS shared by all: about 102 kB
+- Middleware: about 34.3 kB
+
+Image optimization:
+- Converted 34 public website images from PNG to WebP
+- Image directory before: about 65.33 MB
+- Image directory after: about 3.55 MB
+- Estimated image saving: about 94.57%
+
+Notes:
+- Direct shell execution inside this sandbox can sometimes time out while Next.js is printing the final route table, so the production build was additionally verified with an asynchronous status file. Exit status was 0.
+- The current visual layer intentionally preserves legacy inline CSS/JS to avoid layout, component, carousel and animation changes.

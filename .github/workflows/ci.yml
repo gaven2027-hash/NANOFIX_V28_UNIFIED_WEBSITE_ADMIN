@@ -1,0 +1,36 @@
+name: NANOFIX V28 Quality Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SITE_URL: https://www.nanofixsg.com
+      NANOFIX_ADMIN_PUBLIC_PREVIEW: "false"
+      NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED: "false"
+      NANOFIX_ALLOW_FORM_WITHOUT_SUPABASE: "false"
+      NANOFIX_SAFE_BUILD_TRACE_GRACE_SECONDS: "35"
+      NANOFIX_SAFE_BUILD_TOTAL_TIMEOUT_SECONDS: "240"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unified quality gate
+        run: npm run quality:gate

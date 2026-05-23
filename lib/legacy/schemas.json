@@ -1,0 +1,47 @@
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "NANOFIX PTE. LTD.",
+    "image": "https://www.nanofixsg.com/assets/images/nanofix-logo-transparent.webp",
+    "@id": "https://www.nanofixsg.com",
+    "url": "https://www.nanofixsg.com",
+    "telephone": "+6580387877",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "16 Raffles Quay, Hong Leong Building",
+      "addressLocality": "Singapore",
+      "postalCode": "048581",
+      "addressCountry": "SG"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 1.2811,
+      "longitude": 103.8517
+    },
+    "priceRange": "$$",
+    "logo": "https://www.nanofixsg.com/assets/images/nanofix-logo-transparent.webp"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Who is responsible for HDB/Condo toilet leaks?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "In Singapore, for inter-floor leakage, both upper and lower floor owners typically share the repair cost 50/50."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "No-Hacking Waterproofing vs. Traditional Hacking?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No-hacking uses high-pressure PU injection taking 2-4 hours, dust-free and costs about 30% of traditional hacking."
+        }
+      }
+    ]
+  }
+]

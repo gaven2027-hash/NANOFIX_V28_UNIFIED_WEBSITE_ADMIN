@@ -1,0 +1,16 @@
+NANOFIX V28 Domain Unification Verification
+
+Target public website domain:
+https://www.nanofixsg.com
+www.nanofixsg.com
+
+Checks completed:
+- npm run typecheck: PASSED
+- npm run lint: PASSED
+- npm run build:css: PASSED
+- npm run build:preview: PASSED
+- Legacy NANOFIX-owned website domain variants removed: PASSED
+- Preview canonical URLs updated: PASSED
+
+Result:
+No legacy NANOFIX-owned website domain variants remain in the source or generated preview package.

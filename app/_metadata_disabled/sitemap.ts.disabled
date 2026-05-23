@@ -1,0 +1,29 @@
+import type { MetadataRoute } from "next";
+import { routeDefinitions, siteBaseUrl } from "@/lib/nanofix/seo";
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const now = new Date();
+
+  return routeDefinitions.flatMap((route) => {
+    const path = route.path || "/";
+    const cleanPath = path === "/" ? "" : path;
+    const baseEntry = {
+      lastModified: now,
+      changeFrequency: route.changeFrequency,
+      priority: route.priority,
+      alternates: {
+        languages: {
+          "en-SG": `${siteBaseUrl}/en${cleanPath}`,
+          "zh-SG": `${siteBaseUrl}/zh${cleanPath}`,
+          "x-default": `${siteBaseUrl}${path}`
+        }
+      }
+    };
+
+    return [
+      { ...baseEntry, url: `${siteBaseUrl}${path}` },
+      { ...baseEntry, url: `${siteBaseUrl}/en${cleanPath}` },
+      { ...baseEntry, url: `${siteBaseUrl}/zh${cleanPath}` }
+    ];
+  });
+}

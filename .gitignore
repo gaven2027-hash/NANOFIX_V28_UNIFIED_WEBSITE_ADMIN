@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js / Vercel
+.next/
+out/
+.vercel/
+.next-build.log
+
+# environment and secrets
+.env
+.env*.local
+*.pem
+*.key
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# generated packages
+*.zip
+*.tar.gz
+
+# TypeScript incremental cache
+tsconfig.tsbuildinfo
+
+# local deployment reports / runtime artifacts
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo

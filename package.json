@@ -1,0 +1,68 @@
+{
+  "name": "nanofix-v28-cg-gp-super-stable",
+  "version": "28.1.0-cg-gp-fusion",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "bash tools/safe-next-build.sh",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "prepare:legacy": "node tools/extract-legacy-html.mjs && node tools/repair-google-maps.mjs && node tools/generate-legacy-content.mjs",
+    "generate:legacy-content": "node tools/generate-legacy-content.mjs",
+    "repair:maps": "node tools/repair-google-maps.mjs && node tools/generate-legacy-content.mjs",
+    "build:preview:static": "node tools/repair-google-maps.mjs && node tools/generate-legacy-content.mjs && node tools/build-preview-package.mjs",
+    "typecheck": "tsc --noEmit",
+    "verify": "node tools/verify-v28.mjs",
+    "build:css": "tailwindcss -i ./app/globals.css -o ./public/static/nanofix-tailwind.css --minify",
+    "build:preview": "npm run build:css && node tools/build-preview-package.mjs",
+    "analyze:images": "node tools/analyze-images.mjs",
+    "verify:production": "npm run validate:predeploy && npm run verify && npm run test:e2e:smoke",
+    "build:next": "next build",
+    "build:compile": "next build --experimental-build-mode=compile",
+    "build:full": "npm run build",
+    "verify:anchors": "node tools/verify-anchors-v28.mjs",
+    "build:standard": "next build",
+    "build:native": "next build",
+    "build:production": "npm run build",
+    "sync:seo-assets": "node tools/sync-static-seo-assets-v28.mjs",
+    "audit:v28": "node tools/audit-v28.mjs",
+    "build:generate": "next build --experimental-build-mode=generate",
+    "validate:package": "node tools/validate-unified-package.mjs",
+    "quality:gate": "npm run validate:predeploy && npm run build:ci && npm run verify && npm run test:e2e:smoke",
+    "validate:ci": "npm run quality:gate",
+    "audit:prod": "npm audit --omit=dev",
+    "build:ci": "npm run build",
+    "test:e2e:smoke": "node tools/e2e-smoke.mjs",
+    "test:e2e": "npm run test:e2e:smoke",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "check:staging": "node tools/staging-supabase-check.mjs",
+    "validate:platform": "node tools/deploy-readiness-check.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "next": "15.5.18",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.4",
+    "@supabase/ssr": "^0.8.0",
+    "clsx": "^2.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.27.0",
+    "eslint-config-next": "15.5.18",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20.11.0 <23",
+    "npm": ">=10.0.0"
+  },
+  "overrides": {
+    "postcss": "8.5.10"
+  },
+  "description": "NANOFIX V28 fusion package: CG stable public website foundation plus GP complete admin, portals, Supabase bridge, CI and production hardening."
+}
