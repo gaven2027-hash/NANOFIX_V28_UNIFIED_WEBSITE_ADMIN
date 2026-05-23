@@ -23,7 +23,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-adminBg p-6">
       <section className="w-full max-w-md rounded-3xl bg-white p-8 shadow-soft ring-1 ring-slate-200">
         <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-white p-1 shadow-soft ring-1 ring-slate-200">
-          <img src="/nanofix-logo.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
+          <img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
         </div>
         <h1 className="mt-5 text-center text-2xl font-black text-slate-950">NANOFIX Admin Login</h1>
         <p className="mt-2 text-center text-sm text-slate-500">后台登录页面显示 NANOFIX LOGO，并接入 Supabase Auth、角色权限和路由保护。</p>
