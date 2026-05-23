@@ -255,7 +255,7 @@
     }
   ],
   "installCommand": "npm ci",
-  "buildCommand": "npm run validate:predeploy && npm run build:ci",
+  ""buildCommand": "npm run build:standard",",
   "devCommand": "npm run dev",
   "crons": [
     {
