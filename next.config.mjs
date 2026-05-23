@@ -34,11 +34,6 @@ const nextConfig = {
     cpus: 1,
     workerThreads: false
   },
-  outputFileTracingRoot: process.cwd(),
-  outputFileTracingExcludes: {
-    "/*": ["**/.next/**", "**/docs/**", "**/*.zip", "**/node_modules/.cache/**"],
-    "/api/**": ["**/.next/**", "**/docs/**", "**/*.zip", "**/node_modules/.cache/**"]
-  },
   eslint: {
     // Lint is still enforced by npm run lint / npm run verify before deployment.
     // Skipping duplicate lint inside next build keeps Vercel builds faster and avoids double-reporting.
