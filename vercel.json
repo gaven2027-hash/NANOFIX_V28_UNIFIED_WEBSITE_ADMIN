@@ -255,7 +255,7 @@
     }
   ],
   "installCommand": "npm ci",
-  ""buildCommand": "npm run build:standard",",
+  "buildCommand": "npm run build:standard",
   "devCommand": "npm run dev",
   "crons": [
     {
