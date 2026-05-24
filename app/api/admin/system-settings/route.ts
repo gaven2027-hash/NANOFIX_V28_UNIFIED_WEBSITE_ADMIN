@@ -14,217 +14,94 @@ const backupJobColumns = 'backup_id,module,schedule_cron,encrypted_file_path,sig
 const backupScheduleColumns = 'module,frequency,exact_run_time,timezone,weekdays,day_of_month,custom_cron,retention_days,enabled,next_run_at,updated_by,updated_at';
 const healthColumns = 'health_event_id,module_key,check_name,status,message,latency_ms,metadata,created_at';
 const moduleColumns = 'module_key,name,category,owner_role,criticality,health_status,enabled,metadata,updated_at';
-const profileColumns = 'profile_id,email,full_name,role,is_active,password_status,last_password_changed_at,created_at,updated_at';
+const profileColumns = 'profile_id,auth_user_id,email,full_name,role,is_active,password_status,username,mobile_phone,whatsapp_phone,username_verified,mobile_verified,whatsapp_verified,email_verified,password_reset_required,profile_status,review_status,reviewed_by,reviewed_at,account_admin_note,last_admin_password_reset_at,last_password_changed_at,created_at,updated_at';
 
 const recordStatuses = ['draft', 'active', 'pending_review', 'approved', 'archived', 'disabled', 'failed', 'healthy', 'degraded'];
 const versionStatuses = ['draft', 'approved', 'published', 'archived', 'cancelled'];
 
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status });
-}
-function cleanText(value: unknown, fallback = '') {
-  return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback;
-}
-function cleanSearch(value: string | null) {
-  return (value || '').replace(/[,%()]/g, ' ').trim().slice(0, 120);
-}
-function validUuid(value: unknown) {
-  return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
-}
-function safeJson(value: unknown, fallback: Payload | unknown[] = {}) {
-  if (!value) return fallback;
-  if (typeof value === 'object') return value;
-  if (typeof value === 'string') {
-    try { return JSON.parse(value); } catch { return fallback; }
-  }
-  return fallback;
-}
+function jsonError(message: string, status = 400) { return NextResponse.json({ ok: false, error: message }, { status }); }
+function cleanText(value: unknown, fallback = '') { return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback; }
+function cleanSearch(value: string | null) { return (value || '').replace(/[,%()]/g, ' ').trim().slice(0, 120); }
+function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
+function safeJson(value: unknown, fallback: Payload | unknown[] = {}) { if (!value) return fallback; if (typeof value === 'object') return value; if (typeof value === 'string') { try { return JSON.parse(value); } catch { return fallback; } } return fallback; }
 function buildRecordPayload(body: Payload, actorId?: string) {
   const section = getSystemSettingsSection(cleanText(body.section_key));
   const status = recordStatuses.includes(String(body.status)) ? String(body.status) : 'draft';
-  const payload: Payload = {
-    section_key: section?.key || cleanText(body.section_key, 'company-settings'),
-    category: cleanText(body.category, section?.category || 'general'),
-    title: cleanText(body.title, section?.title || 'System Setting Record'),
-    body: cleanText(body.body),
-    config_json: safeJson(body.config_json, {}),
-    status,
-    is_sensitive: Boolean(body.is_sensitive ?? section?.sensitive ?? false)
-  };
+  const payload: Payload = { section_key: section?.key || cleanText(body.section_key, 'company-settings'), category: cleanText(body.category, section?.category || 'general'), title: cleanText(body.title, section?.title || 'System Setting Record'), body: cleanText(body.body), config_json: safeJson(body.config_json, {}), status, is_sensitive: Boolean(body.is_sensitive ?? section?.sensitive ?? false) };
   if (validUuid(actorId)) payload.updated_by = actorId;
   return payload;
 }
 
 async function listRecords(search: string | null, status: string | null, sectionKey: string | null, category: string | null) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   let query = supabase.from('system_setting_records').select(recordColumns).order('updated_at', { ascending: false }).limit(120);
   if (sectionKey) query = query.eq('section_key', sectionKey);
   if (category && category !== 'all') query = query.eq('category', category);
   if (status && recordStatuses.includes(status)) query = query.eq('status', status);
-  const q = cleanSearch(search);
-  if (q) query = query.or(`title.ilike.%${q}%,body.ilike.%${q}%,section_key.ilike.%${q}%,category.ilike.%${q}%`);
-  const { data, error } = await query;
-  if (error) return { ok: false as const, status: 500, error: error.message };
-  return { ok: true as const, data: data ?? [] };
+  const q = cleanSearch(search); if (q) query = query.or(`title.ilike.%${q}%,body.ilike.%${q}%,section_key.ilike.%${q}%,category.ilike.%${q}%`);
+  const { data, error } = await query; if (error) return { ok: false as const, status: 500, error: error.message }; return { ok: true as const, data: data ?? [] };
 }
 async function listAudit(search: string | null) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   let query = supabase.from('audit_logs').select(auditColumns).order('created_at', { ascending: false }).limit(150);
-  const q = cleanSearch(search);
-  if (q) query = query.or(`actor_role.ilike.%${q}%,action.ilike.%${q}%,object_type.ilike.%${q}%`);
-  const { data, error } = await query;
-  if (error) return { ok: false as const, status: 500, error: error.message };
-  return { ok: true as const, data: data ?? [] };
+  const q = cleanSearch(search); if (q) query = query.or(`actor_role.ilike.%${q}%,action.ilike.%${q}%,object_type.ilike.%${q}%`);
+  const { data, error } = await query; if (error) return { ok: false as const, status: 500, error: error.message }; return { ok: true as const, data: data ?? [] };
 }
 async function listBackup(search: string | null) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   const q = cleanSearch(search);
   let jobsQuery = supabase.from('backup_jobs').select(backupJobColumns).order('created_at', { ascending: false }).limit(80);
   let schedulesQuery = supabase.from('backup_schedules').select(backupScheduleColumns).order('updated_at', { ascending: false }).limit(80);
-  if (q) {
-    jobsQuery = jobsQuery.or(`module.ilike.%${q}%,status.ilike.%${q}%`);
-    schedulesQuery = schedulesQuery.or(`module.ilike.%${q}%,frequency.ilike.%${q}%,timezone.ilike.%${q}%`);
-  }
+  if (q) { jobsQuery = jobsQuery.or(`module.ilike.%${q}%,status.ilike.%${q}%`); schedulesQuery = schedulesQuery.or(`module.ilike.%${q}%,frequency.ilike.%${q}%,timezone.ilike.%${q}%`); }
   const [{ data: jobs, error: jobsError }, { data: schedules, error: schedulesError }] = await Promise.all([jobsQuery, schedulesQuery]);
-  if (jobsError) return { ok: false as const, status: 500, error: jobsError.message };
-  if (schedulesError) return { ok: false as const, status: 500, error: schedulesError.message };
-  return { ok: true as const, data: { jobs: jobs ?? [], schedules: schedules ?? [] } };
+  if (jobsError) return { ok: false as const, status: 500, error: jobsError.message }; if (schedulesError) return { ok: false as const, status: 500, error: schedulesError.message }; return { ok: true as const, data: { jobs: jobs ?? [], schedules: schedules ?? [] } };
 }
 async function listHealth(search: string | null) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   const q = cleanSearch(search);
   let modulesQuery = supabase.from('app_modules').select(moduleColumns).order('updated_at', { ascending: false }).limit(100);
   let eventsQuery = supabase.from('module_health_events').select(healthColumns).order('created_at', { ascending: false }).limit(100);
-  if (q) {
-    modulesQuery = modulesQuery.or(`module_key.ilike.%${q}%,name.ilike.%${q}%,health_status.ilike.%${q}%`);
-    eventsQuery = eventsQuery.or(`module_key.ilike.%${q}%,check_name.ilike.%${q}%,status.ilike.%${q}%,message.ilike.%${q}%`);
-  }
+  if (q) { modulesQuery = modulesQuery.or(`module_key.ilike.%${q}%,name.ilike.%${q}%,health_status.ilike.%${q}%`); eventsQuery = eventsQuery.or(`module_key.ilike.%${q}%,check_name.ilike.%${q}%,status.ilike.%${q}%,message.ilike.%${q}%`); }
   const [{ data: modules, error: modulesError }, { data: events, error: eventsError }] = await Promise.all([modulesQuery, eventsQuery]);
-  if (modulesError) return { ok: false as const, status: 500, error: modulesError.message };
-  if (eventsError) return { ok: false as const, status: 500, error: eventsError.message };
-  return { ok: true as const, data: { modules: modules ?? [], events: events ?? [] } };
+  if (modulesError) return { ok: false as const, status: 500, error: modulesError.message }; if (eventsError) return { ok: false as const, status: 500, error: eventsError.message }; return { ok: true as const, data: { modules: modules ?? [], events: events ?? [] } };
 }
 async function listRbac(search: string | null) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
-  let query = supabase.from('profiles').select(profileColumns).order('updated_at', { ascending: false }).limit(120);
-  const q = cleanSearch(search);
-  if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role.ilike.%${q}%,password_status.ilike.%${q}%`);
-  const { data, error } = await query;
-  if (error) return { ok: false as const, status: 500, error: error.message };
-  return { ok: true as const, data: data ?? [] };
+  const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  let query = supabase.from('profiles').select(profileColumns).order('updated_at', { ascending: false }).limit(160);
+  const q = cleanSearch(search); if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,username.ilike.%${q}%,mobile_phone.ilike.%${q}%,whatsapp_phone.ilike.%${q}%,role.ilike.%${q}%,profile_status.ilike.%${q}%,review_status.ilike.%${q}%`);
+  const { data, error } = await query; if (error) return { ok: false as const, status: 500, error: error.message }; return { ok: true as const, data: data ?? [] };
 }
 async function listVersions(search: string | null, status: string | null, sectionKey: string | null) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   let query = supabase.from('system_setting_versions').select(versionColumns).order('created_at', { ascending: false }).limit(100);
-  if (sectionKey) query = query.eq('section_key', sectionKey);
-  if (status && versionStatuses.includes(status)) query = query.eq('status', status);
-  const q = cleanSearch(search);
-  if (q) query = query.or(`section_key.ilike.%${q}%,status.ilike.%${q}%`);
-  const { data, error } = await query;
-  if (error) return { ok: false as const, status: 500, error: error.message };
-  return { ok: true as const, data: data ?? [] };
+  if (sectionKey) query = query.eq('section_key', sectionKey); if (status && versionStatuses.includes(status)) query = query.eq('status', status);
+  const q = cleanSearch(search); if (q) query = query.or(`section_key.ilike.%${q}%,status.ilike.%${q}%`);
+  const { data, error } = await query; if (error) return { ok: false as const, status: 500, error: error.message }; return { ok: true as const, data: data ?? [] };
 }
 
 export async function GET(request: Request) {
-  const { response } = requireAdmin(request, 'read:*');
-  if (response) return response;
-  const url = new URL(request.url);
-  const mode = url.searchParams.get('mode') || 'all';
-  const sectionKey = url.searchParams.get('section_key');
-  const category = url.searchParams.get('category');
-  const status = url.searchParams.get('status');
-  const search = url.searchParams.get('search');
-
-  if (mode === 'records') {
-    const records = await listRecords(search, status, sectionKey, category);
-    if (!records.ok) return jsonError(records.error, records.status);
-    return NextResponse.json({ ok: true, records: records.data });
-  }
-  if (mode === 'audit') {
-    const audit = await listAudit(search);
-    if (!audit.ok) return jsonError(audit.error, audit.status);
-    return NextResponse.json({ ok: true, audit: audit.data });
-  }
-  if (mode === 'backup') {
-    const backup = await listBackup(search);
-    if (!backup.ok) return jsonError(backup.error, backup.status);
-    return NextResponse.json({ ok: true, backup: backup.data });
-  }
-  if (mode === 'health') {
-    const health = await listHealth(search);
-    if (!health.ok) return jsonError(health.error, health.status);
-    return NextResponse.json({ ok: true, health: health.data });
-  }
-  if (mode === 'rbac') {
-    const rbac = await listRbac(search);
-    if (!rbac.ok) return jsonError(rbac.error, rbac.status);
-    return NextResponse.json({ ok: true, rbac: rbac.data });
-  }
-  if (mode === 'versions') {
-    const versions = await listVersions(search, status, sectionKey);
-    if (!versions.ok) return jsonError(versions.error, versions.status);
-    return NextResponse.json({ ok: true, versions: versions.data });
-  }
-
+  const { response } = requireAdmin(request, 'read:*'); if (response) return response;
+  const url = new URL(request.url); const mode = url.searchParams.get('mode') || 'all'; const sectionKey = url.searchParams.get('section_key'); const category = url.searchParams.get('category'); const status = url.searchParams.get('status'); const search = url.searchParams.get('search');
+  if (mode === 'records') { const records = await listRecords(search, status, sectionKey, category); if (!records.ok) return jsonError(records.error, records.status); return NextResponse.json({ ok: true, records: records.data }); }
+  if (mode === 'audit') { const audit = await listAudit(search); if (!audit.ok) return jsonError(audit.error, audit.status); return NextResponse.json({ ok: true, audit: audit.data }); }
+  if (mode === 'backup') { const backup = await listBackup(search); if (!backup.ok) return jsonError(backup.error, backup.status); return NextResponse.json({ ok: true, backup: backup.data }); }
+  if (mode === 'health') { const health = await listHealth(search); if (!health.ok) return jsonError(health.error, health.status); return NextResponse.json({ ok: true, health: health.data }); }
+  if (mode === 'rbac') { const rbac = await listRbac(search); if (!rbac.ok) return jsonError(rbac.error, rbac.status); return NextResponse.json({ ok: true, rbac: rbac.data }); }
+  if (mode === 'versions') { const versions = await listVersions(search, status, sectionKey); if (!versions.ok) return jsonError(versions.error, versions.status); return NextResponse.json({ ok: true, versions: versions.data }); }
   const [records, audit, backup, health, rbac, versions] = await Promise.all([listRecords(search, null, sectionKey, category), listAudit(search), listBackup(search), listHealth(search), listRbac(search), listVersions(search, null, sectionKey)]);
   for (const result of [records, audit, backup, health, rbac, versions]) if (!result.ok) return jsonError(result.error, result.status);
   return NextResponse.json({ ok: true, records: records.data, audit: audit.data, backup: backup.data, health: health.data, rbac: rbac.data, versions: versions.data });
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as Payload;
-  const action = String(body.action || '');
-  const { context, response } = requireAdmin(request, 'write:settings');
-  if (response) return response;
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return jsonError('Supabase server client is not configured.', 503);
-  if (action === 'create_record') {
-    const payload = buildRecordPayload(body, context?.actorId);
-    if (validUuid(context?.actorId)) payload.created_by = context?.actorId;
-    const { data, error } = await supabase.from('system_setting_records').insert(payload).select(recordColumns).single();
-    if (error) return jsonError(error.message, 500);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create', object_type: 'system_setting_record', object_id: data.record_id, after_data: data });
-    return NextResponse.json({ ok: true, record: data });
-  }
+  const body = (await request.json().catch(() => ({}))) as Payload; const action = String(body.action || ''); const { context, response } = requireAdmin(request, 'write:settings'); if (response) return response; const supabase = createSupabaseAdminClient(); if (!supabase) return jsonError('Supabase server client is not configured.', 503);
+  if (action === 'create_record') { const payload = buildRecordPayload(body, context?.actorId); if (validUuid(context?.actorId)) payload.created_by = context?.actorId; const { data, error } = await supabase.from('system_setting_records').insert(payload).select(recordColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create', object_type: 'system_setting_record', object_id: data.record_id, after_data: data }); return NextResponse.json({ ok: true, record: data }); }
   return jsonError('Unsupported action.', 400);
 }
 
 export async function PATCH(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as Payload;
-  const action = String(body.action || '');
-  const { context, response } = requireAdmin(request, 'write:settings');
-  if (response) return response;
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return jsonError('Supabase server client is not configured.', 503);
-
-  if (action === 'update_record') {
-    const recordId = String(body.record_id || '');
-    if (!validUuid(recordId)) return jsonError('A valid record_id is required.');
-    const payload = buildRecordPayload(body, context?.actorId);
-    const { data: before } = await supabase.from('system_setting_records').select(recordColumns).eq('record_id', recordId).maybeSingle();
-    const { data, error } = await supabase.from('system_setting_records').update(payload).eq('record_id', recordId).select(recordColumns).single();
-    if (error) return jsonError(error.message, 500);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'update', object_type: 'system_setting_record', object_id: recordId, before_data: before ?? {}, after_data: data });
-    return NextResponse.json({ ok: true, record: data });
-  }
-  if (action === 'save_version') {
-    const recordId = String(body.record_id || '');
-    const sectionKey = cleanText(body.section_key, 'general');
-    const status = versionStatuses.includes(String(body.status)) ? String(body.status) : 'approved';
-    const { data: existing, error: versionError } = await supabase.from('system_setting_versions').select('version_no').eq('section_key', sectionKey).order('version_no', { ascending: false }).limit(1);
-    if (versionError) return jsonError(versionError.message, 500);
-    const versionNo = Number(existing?.[0]?.version_no || 0) + 1;
-    const snapshot = safeJson(body.snapshot_json, { section_key: sectionKey, status, created_at: new Date().toISOString(), secrets_stored_here: false });
-    const { data, error } = await supabase.from('system_setting_versions').insert({ record_id: validUuid(recordId) ? recordId : null, section_key: sectionKey, version_no: versionNo, status, snapshot_json: snapshot, published_by: validUuid(context?.actorId) ? context?.actorId : null }).select(versionColumns).single();
-    if (error) return jsonError(error.message, 500);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'save_version', object_type: 'system_setting_version', object_id: data.version_id, after_data: data });
-    return NextResponse.json({ ok: true, version: data });
-  }
+  const body = (await request.json().catch(() => ({}))) as Payload; const action = String(body.action || ''); const { context, response } = requireAdmin(request, 'write:settings'); if (response) return response; const supabase = createSupabaseAdminClient(); if (!supabase) return jsonError('Supabase server client is not configured.', 503);
+  if (action === 'update_record') { const recordId = String(body.record_id || ''); if (!validUuid(recordId)) return jsonError('A valid record_id is required.'); const payload = buildRecordPayload(body, context?.actorId); const { data: before } = await supabase.from('system_setting_records').select(recordColumns).eq('record_id', recordId).maybeSingle(); const { data, error } = await supabase.from('system_setting_records').update(payload).eq('record_id', recordId).select(recordColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'update', object_type: 'system_setting_record', object_id: recordId, before_data: before ?? {}, after_data: data }); return NextResponse.json({ ok: true, record: data }); }
+  if (action === 'save_version') { const recordId = String(body.record_id || ''); const sectionKey = cleanText(body.section_key, 'general'); const status = versionStatuses.includes(String(body.status)) ? String(body.status) : 'approved'; const { data: existing, error: versionError } = await supabase.from('system_setting_versions').select('version_no').eq('section_key', sectionKey).order('version_no', { ascending: false }).limit(1); if (versionError) return jsonError(versionError.message, 500); const versionNo = Number(existing?.[0]?.version_no || 0) + 1; const snapshot = safeJson(body.snapshot_json, { section_key: sectionKey, status, created_at: new Date().toISOString(), secrets_stored_here: false }); const { data, error } = await supabase.from('system_setting_versions').insert({ record_id: validUuid(recordId) ? recordId : null, section_key: sectionKey, version_no: versionNo, status, snapshot_json: snapshot, published_by: validUuid(context?.actorId) ? context?.actorId : null }).select(versionColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'save_version', object_type: 'system_setting_version', object_id: data.version_id, after_data: data }); return NextResponse.json({ ok: true, version: data }); }
   return jsonError('Unsupported action.', 400);
 }
