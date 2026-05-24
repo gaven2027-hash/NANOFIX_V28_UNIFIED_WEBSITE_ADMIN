@@ -14,8 +14,11 @@ export type CustomerCenterSectionKey =
   | 'customer-binding'
   | 'pending-binding-review'
   | 'customer-registration-login'
+  | 'customer-registration-methods'
   | 'email-mobile-whatsapp-otp'
   | 'force-password-reset'
+  | 'admin-direct-password-reset'
+  | 'email-whatsapp-password-reset-links'
   | 'disable-freeze-blacklist'
   | 'delete-soft-delete-archive'
   | 'pdpa-access-correction-requests';
@@ -25,14 +28,14 @@ export type CustomerCenterSectionConfig = {
   href: string;
   title: string;
   zh: string;
-  tab: 'customers' | 'records' | 'linked' | 'binding' | 'pdpa' | 'versions';
+  tab: 'customers' | 'records' | 'linked' | 'binding' | 'pdpa' | 'versions' | 'auth';
   category: string;
   helper: string;
 };
 
 export const customerCenterSections: CustomerCenterSectionConfig[] = [
   { key: 'customers', href: '/customer-center/customers', title: 'Customers', zh: '客户', tab: 'customers', category: 'customer', helper: 'Create, search, filter and edit real customer records.' },
-  { key: 'customer-profiles', href: '/customer-center/customer-profiles', title: 'Customer Profiles', zh: '客户档案', tab: 'customers', category: 'profile', helper: 'Manage customer identity, phone, WhatsApp, email, profile binding and status.' },
+  { key: 'customer-profiles', href: '/customer-center/customer-profiles', title: 'Customer Profiles', zh: '客户档案', tab: 'customers', category: 'profile', helper: 'Manage customer identity, username, phone, WhatsApp, email, profile binding and status.' },
   { key: 'customer-360', href: '/customer-center/customer-360', title: 'Customer 360', zh: '客户全景', tab: 'linked', category: 'customer_360', helper: 'Review customer-linked leads, service requests, jobs, quotes, invoices, payments and warranties.' },
   { key: 'customer-portal-management', href: '/customer-center/customer-portal-management', title: 'Customer Portal Management', zh: '客户门户管理', tab: 'records', category: 'portal', helper: 'Manage customer portal visibility rules, login status and customer-only data access notes.' },
   { key: 'repair-tracking', href: '/customer-center/repair-tracking', title: 'Repair Tracking', zh: '维修进度追踪', tab: 'linked', category: 'repair_tracking', helper: 'Review repair tracking records linked to customers and service requests.' },
@@ -45,9 +48,12 @@ export const customerCenterSections: CustomerCenterSectionConfig[] = [
   { key: 'linked-warranties', href: '/customer-center/linked-warranties', title: 'Linked Warranties', zh: '关联保修', tab: 'linked', category: 'warranties', helper: 'Search customer-linked warranty records and claims.' },
   { key: 'customer-binding', href: '/customer-center/customer-binding', title: 'Customer Binding', zh: '客户绑定', tab: 'binding', category: 'binding', helper: 'Review customer binding suggestions and approve/reject binding records.' },
   { key: 'pending-binding-review', href: '/customer-center/pending-binding-review', title: 'Pending Binding Review', zh: '待绑定审核', tab: 'binding', category: 'binding_review', helper: 'Review pending customer-service request matching suggestions.' },
-  { key: 'customer-registration-login', href: '/customer-center/customer-registration-login', title: 'Customer Registration / Login', zh: '客户注册/登录', tab: 'records', category: 'login', helper: 'Manage customer registration, login and portal access policy notes.' },
-  { key: 'email-mobile-whatsapp-otp', href: '/customer-center/email-mobile-whatsapp-otp', title: 'Email / Mobile / WhatsApp OTP', zh: '邮箱/手机/WhatsApp OTP', tab: 'records', category: 'otp', helper: 'Review OTP policy and verification settings for email, mobile and WhatsApp.' },
-  { key: 'force-password-reset', href: '/customer-center/force-password-reset', title: 'Force Password Reset', zh: '强制重置密码', tab: 'records', category: 'password_reset', helper: 'Manage password reset policy records. Plain passwords must never be visible.' },
+  { key: 'customer-registration-login', href: '/customer-center/customer-registration-login', title: 'Customer Registration / Login', zh: '客户注册/登录', tab: 'auth', category: 'login', helper: 'Manage customer registration/login methods: username, email, mobile phone and WhatsApp.' },
+  { key: 'customer-registration-methods', href: '/customer-center/customer-registration-methods', title: 'Customer Registration Methods', zh: '客户注册方式', tab: 'auth', category: 'registration_methods', helper: 'Support three registration methods: username with email verification, email registration, and mobile/WhatsApp verification.' },
+  { key: 'email-mobile-whatsapp-otp', href: '/customer-center/email-mobile-whatsapp-otp', title: 'Email / Mobile / WhatsApp OTP', zh: '邮箱/手机/WhatsApp OTP', tab: 'auth', category: 'otp', helper: 'Review and operate OTP/verification actions for email, mobile and WhatsApp.' },
+  { key: 'force-password-reset', href: '/customer-center/force-password-reset', title: 'Force Password Reset', zh: '强制重置密码', tab: 'auth', category: 'password_reset', helper: 'Manage password reset policy records. Plain passwords must never be visible.' },
+  { key: 'admin-direct-password-reset', href: '/customer-center/admin-direct-password-reset', title: 'Admin Direct Password Reset', zh: '总管理员直接重置密码', tab: 'auth', category: 'direct_password_reset', helper: 'Super Admin can directly reset a selected customer password without email/WhatsApp delivery. Plain passwords are not stored.' },
+  { key: 'email-whatsapp-password-reset-links', href: '/customer-center/email-whatsapp-password-reset-links', title: 'Email / WhatsApp Reset Links', zh: '邮件/WhatsApp 重置链接', tab: 'auth', category: 'reset_links', helper: 'Send email reset links or create WhatsApp reset action queue for customer password updates.' },
   { key: 'disable-freeze-blacklist', href: '/customer-center/disable-freeze-blacklist', title: 'Disable / Freeze / Blacklist', zh: '禁用/冻结/拉黑', tab: 'records', category: 'account_control', helper: 'Manage account control records for disabled, frozen or blacklisted customers.' },
   { key: 'delete-soft-delete-archive', href: '/customer-center/delete-soft-delete-archive', title: 'Delete / Soft Delete / Archive', zh: '删除/软删除/归档', tab: 'records', category: 'archive', helper: 'Manage soft delete/archive policy records with audit trail.' },
   { key: 'pdpa-access-correction-requests', href: '/customer-center/pdpa-access-correction-requests', title: 'PDPA Access / Correction Requests', zh: 'PDPA 访问/更正请求', tab: 'pdpa', category: 'pdpa', helper: 'Review PDPA access, correction, deletion and privacy requests.' }
