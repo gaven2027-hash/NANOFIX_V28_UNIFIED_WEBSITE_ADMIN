@@ -9,9 +9,9 @@ type Payload = Record<string, unknown>;
 
 const jobColumns = 'job_id,service_request_id,quotation_id,engineer_id,scheduled_at,status,completion_notes,notes,eta_json,created_at,updated_at';
 const inspectionColumns = 'inspection_id,service_request_id,engineer_id,scheduled_at,checklist_json,photo_paths,status,created_at';
-const checklistColumns = 'checklist_id,job_id,engineer_id,checklist_json,status,submitted_at,created_at';
-const photoColumns = 'photo_id,job_id,engineer_id,photo_type,file_path,caption,metadata,status,created_at';
-const signatureColumns = 'signature_id,job_id,customer_id,engineer_id,signature_path,signed_name,status,signed_at,created_at';
+const checklistColumns = 'checklist_id,job_id,engineer_id,checklist_json,required_items_completed,completed_at,created_at';
+const photoColumns = 'photo_id,job_id,storage_path,photo_type,uploaded_by,created_at';
+const signatureColumns = 'signature_id,job_id,customer_id,storage_path,signed_at,created_at';
 const warrantyColumns = 'warranty_id,job_id,customer_id,coverage,starts_on,ends_on,status,created_at';
 const profileColumns = 'profile_id,email,full_name,role,is_active,password_status,created_at,updated_at';
 const versionColumns = 'version_id,engineer_id,job_id,section_key,entity_type,entity_id,version_no,status,snapshot_json,published_by,published_at,created_at';
@@ -68,16 +68,39 @@ async function listInspections(search: string | null, status: string | null, eng
   return { ok: true as const, data: data ?? [] };
 }
 
-async function listFieldTable(table: 'job_checklists' | 'job_photos' | 'customer_signatures', columns: string, search: string | null, status: string | null, engineerId: string | null, jobId: string | null) {
+async function listChecklists(search: string | null, engineerId: string | null, jobId: string | null) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
-  let query = supabase.from(table).select(columns).order('created_at', { ascending: false }).limit(150);
+  let query = supabase.from('job_checklists').select(checklistColumns).order('created_at', { ascending: false }).limit(150);
   if (validUuid(engineerId)) query = query.eq('engineer_id', engineerId);
   if (validUuid(jobId)) query = query.eq('job_id', jobId);
-  if (status) query = query.eq('status', status);
+  const { data, error } = await query;
+  if (error) return { ok: false as const, status: 500, error: error.message };
+  const q = cleanSearch(search).toLowerCase();
+  const rows = q ? (data ?? []).filter((row) => JSON.stringify(row).toLowerCase().includes(q)) : data ?? [];
+  return { ok: true as const, data: rows };
+}
+
+async function listPhotos(search: string | null, engineerId: string | null, jobId: string | null) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  let query = supabase.from('job_photos').select(photoColumns).order('created_at', { ascending: false }).limit(150);
+  if (validUuid(engineerId)) query = query.eq('uploaded_by', engineerId);
+  if (validUuid(jobId)) query = query.eq('job_id', jobId);
   const q = cleanSearch(search);
-  if (q && table === 'job_photos') query = query.or(`photo_type.ilike.%${q}%,caption.ilike.%${q}%,status.ilike.%${q}%`);
-  if (q && table === 'customer_signatures') query = query.or(`signed_name.ilike.%${q}%,status.ilike.%${q}%`);
+  if (q) query = query.or(`photo_type.ilike.%${q}%,storage_path.ilike.%${q}%`);
+  const { data, error } = await query;
+  if (error) return { ok: false as const, status: 500, error: error.message };
+  return { ok: true as const, data: data ?? [] };
+}
+
+async function listSignatures(search: string | null, jobId: string | null) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
+  let query = supabase.from('customer_signatures').select(signatureColumns).order('created_at', { ascending: false }).limit(150);
+  if (validUuid(jobId)) query = query.eq('job_id', jobId);
+  const q = cleanSearch(search);
+  if (q) query = query.or(`storage_path.ilike.%${q}%`);
   const { data, error } = await query;
   if (error) return { ok: false as const, status: 500, error: error.message };
   return { ok: true as const, data: data ?? [] };
@@ -154,17 +177,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, inspections: inspections.data });
   }
   if (mode === 'checklists') {
-    const checklists = await listFieldTable('job_checklists', checklistColumns, search, status, engineerId, jobId);
+    const checklists = await listChecklists(search, engineerId, jobId);
     if (!checklists.ok) return jsonError(checklists.error, checklists.status);
     return NextResponse.json({ ok: true, checklists: checklists.data });
   }
   if (mode === 'photos') {
-    const photos = await listFieldTable('job_photos', photoColumns, search, status, engineerId, jobId);
+    const photos = await listPhotos(search, engineerId, jobId);
     if (!photos.ok) return jsonError(photos.error, photos.status);
     return NextResponse.json({ ok: true, photos: photos.data });
   }
   if (mode === 'signatures') {
-    const signatures = await listFieldTable('customer_signatures', signatureColumns, search, status, engineerId, jobId);
+    const signatures = await listSignatures(search, jobId);
     if (!signatures.ok) return jsonError(signatures.error, signatures.status);
     return NextResponse.json({ ok: true, signatures: signatures.data });
   }
@@ -182,9 +205,9 @@ export async function GET(request: Request) {
   const [jobs, inspections, checklists, photos, signatures, warranties, engineers, versions] = await Promise.all([
     listJobs(search, null, engineerId, jobId),
     listInspections(search, null, engineerId),
-    listFieldTable('job_checklists', checklistColumns, search, null, engineerId, jobId),
-    listFieldTable('job_photos', photoColumns, search, null, engineerId, jobId),
-    listFieldTable('customer_signatures', signatureColumns, search, null, engineerId, jobId),
+    listChecklists(search, engineerId, jobId),
+    listPhotos(search, engineerId, jobId),
+    listSignatures(search, jobId),
     listWarranties(search, null, jobId),
     listEngineers(search),
     listVersions(search, null, sectionKey, engineerId, jobId)
