@@ -30,12 +30,25 @@ function statusTone(status: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray
   const s = String(status || '').toLowerCase();
   if (/(active|approved|paid|completed|healthy|published|linked|success)/i.test(s)) return 'green';
   if (/(pending|draft|scheduled|sent|open|degraded|review|assigned)/i.test(s)) return 'amber';
-  if (/(failed|cancelled|overdue|disabled|rejected|expired|critical|unpaid)/i.test(s)) return 'red';
+  if (/(failed|cancelled|overdue|disabled|rejected|expired|critical|unpaid|blacklisted|frozen)/i.test(s)) return 'red';
   return 'blue';
 }
 
 function pickRowKey(row: Row, index: number) {
-  return String(row.lead_id || row.service_request_id || row.inspection_id || row.quotation_id || row.invoice_id || row.draft_id || row.module_key || row.audit_id || row.message_id || row.search_log_id || index);
+  return String(row.profile_id || row.lead_id || row.service_request_id || row.inspection_id || row.quotation_id || row.invoice_id || row.draft_id || row.module_key || row.audit_id || row.message_id || row.search_log_id || index);
+}
+
+function rowActionHref(row: Row) {
+  if (row.profile_id) return `/system-settings/auth-management?profile_id=${encodeURIComponent(String(row.profile_id))}`;
+  if (row.lead_id) return `/service-operations/leads?lead_id=${encodeURIComponent(String(row.lead_id))}`;
+  if (row.service_request_id && !row.inspection_id && !row.quotation_id) return `/service-operations/service-requests?service_request_id=${encodeURIComponent(String(row.service_request_id))}`;
+  if (row.inspection_id) return `/service-operations/inspections?inspection_id=${encodeURIComponent(String(row.inspection_id))}`;
+  if (row.quotation_id) return `/service-operations/quotations?quotation_id=${encodeURIComponent(String(row.quotation_id))}`;
+  if (row.invoice_id) return `/service-operations/invoices?invoice_id=${encodeURIComponent(String(row.invoice_id))}`;
+  if (row.module_key) return `/system-settings/health-checks?module_key=${encodeURIComponent(String(row.module_key))}`;
+  if (row.draft_id) return `/ai-intelligence/ai-draft-review?draft_id=${encodeURIComponent(String(row.draft_id))}`;
+  if (row.message_id) return `/social-media/messages-inbox?message_id=${encodeURIComponent(String(row.message_id))}`;
+  return '';
 }
 
 function ShortcutTabs({ activeSection }: { activeSection?: DashboardSectionConfig | null }) {
@@ -55,21 +68,30 @@ function DetailTable({ rows }: { rows: Row[] }) {
   const keys = rows[0] ? Object.keys(rows[0]).slice(0, 8) : [];
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200">
-      <table className="min-w-[980px] w-full text-left text-sm">
+      <table className="min-w-[1080px] w-full text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr>{keys.length ? keys.map((key) => <th key={key} className="p-3">{key}</th>) : <th className="p-3">Records</th>}</tr>
+          <tr>
+            {keys.length ? keys.map((key) => <th key={key} className="p-3">{key}</th>) : <th className="p-3">Records</th>}
+            <th className="p-3">Open / 打开</th>
+          </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {rows.map((row, index) => (
-            <tr key={pickRowKey(row, index)} className="bg-white hover:bg-blue-50/50">
-              {keys.map((key) => (
-                <td key={key} className="max-w-64 truncate p-3 text-slate-700">
-                  {key.includes('status') || key.includes('priority') || key.includes('risk') ? <Badge tone={statusTone(row[key])}>{formatValue(row[key])}</Badge> : formatValue(row[key])}
+          {rows.map((row, index) => {
+            const href = rowActionHref(row);
+            return (
+              <tr key={pickRowKey(row, index)} className="bg-white hover:bg-blue-50/50">
+                {keys.map((key) => (
+                  <td key={key} className="max-w-64 truncate p-3 text-slate-700">
+                    {key.includes('status') || key.includes('priority') || key.includes('risk') || key.includes('role') ? <Badge tone={statusTone(row[key])}>{formatValue(row[key])}</Badge> : formatValue(row[key])}
+                  </td>
+                ))}
+                <td className="p-3">
+                  {href ? <Link href={href} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open Detail / 打开详情</Link> : <span className="text-xs font-bold text-slate-400">No link / 无链接</span>}
                 </td>
-              ))}
-            </tr>
-          ))}
-          {!rows.length ? <tr><td className="p-6 text-center text-sm font-bold text-slate-500">No records. / 暂无记录。</td></tr> : null}
+              </tr>
+            );
+          })}
+          {!rows.length ? <tr><td colSpan={Math.max(1, keys.length + 1)} className="p-6 text-center text-sm font-bold text-slate-500">No records. / 暂无记录。</td></tr> : null}
         </tbody>
       </table>
     </div>
@@ -147,7 +169,7 @@ export function DashboardWorkspace({ section }: { section?: DashboardSectionConf
       </div>
 
       <div className="mt-6">
-        <SectionCard title="Dashboard Detail Records / 仪表盘明细记录" subtitle={`Current detail: ${activeDetail}. Numbers above are clickable and open matching records. / 当前明细：${activeDetail}，上方数字可点击查看对应记录。`}>
+        <SectionCard title="Dashboard Detail Records / 仪表盘明细记录" subtitle={`Current detail: ${activeDetail}. Click Open Detail to jump to the matching operation page. / 当前明细：${activeDetail}，点击打开详情可进入对应操作页。`}>
           {loading ? <div className="rounded-2xl bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">Loading... / 加载中...</div> : <DetailTable rows={rows} />}
         </SectionCard>
       </div>
