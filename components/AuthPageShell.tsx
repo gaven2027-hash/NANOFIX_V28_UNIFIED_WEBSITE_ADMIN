@@ -1,4 +1,6 @@
-export function AuthPageShell({ children }: { children: React.ReactNode }) {
+import type { ReactNode } from 'react';
+
+export function AuthPageShell({ children }: { children: ReactNode }) {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-6">
       <img src="/assets/images/team_on_site_premium.webp" alt="NANOFIX team background" className="absolute inset-0 h-full w-full object-cover" />
