@@ -4,18 +4,30 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { menu } from '@/data/adminData';
+import { menu, type MenuItem } from '@/data/adminData';
+import { operationModules } from '@/lib/nanofix/operationsConfig';
 import { TopSearch } from './TopSearch';
+
+const serviceOperationsMenu: MenuItem = {
+  order: '2',
+  href: '/service-operations',
+  title: 'Service & Order Operations',
+  zh: '业务订单处理',
+  badge: operationModules.length,
+  children: operationModules.map((module) => ({ href: module.route, title: module.title, zh: module.zh }))
+};
+
+const adminMenu = menu.map((item) => (item.href.split('#')[0] === '/service-operations' ? serviceOperationsMenu : item));
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(menu.map((item) => [item.href, true]))
+    Object.fromEntries(adminMenu.map((item) => [item.href, true]))
   );
 
   return (
     <nav className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
-      {menu.map((item) => {
+      {adminMenu.map((item) => {
         const routeHref = item.href.split('#')[0] || '/dashboard';
         const active = pathname === routeHref || pathname.startsWith(`${routeHref}/`);
         const isOpen = openSections[item.href] ?? true;
@@ -49,17 +61,24 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             </div>
             {isOpen && item.children.length > 0 ? (
               <div className="grid gap-1 px-3 pb-3 pt-2">
-                {item.children.map((child) => (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    onClick={onNavigate}
-                    className="group rounded-xl py-2 pl-12 pr-3 text-[14px] font-bold leading-5 text-blue-100 transition hover:bg-white/10 hover:text-white"
-                  >
-                    <span className="block">{child.title}</span>
-                    <span className="block text-[12px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
-                  </Link>
-                ))}
+                {item.children.map((child) => {
+                  const childRoute = child.href.split('#')[0] || child.href;
+                  const childActive = pathname === childRoute;
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={onNavigate}
+                      className={clsx(
+                        'group rounded-xl py-2 pl-12 pr-3 text-[14px] font-bold leading-5 transition hover:bg-white/10 hover:text-white',
+                        childActive ? 'bg-white/12 text-white ring-1 ring-white/10' : 'text-blue-100'
+                      )}
+                    >
+                      <span className="block">{child.title}</span>
+                      <span className="block text-[12px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
+                    </Link>
+                  );
+                })}
               </div>
             ) : null}
           </section>
