@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
+import { AccountCreatePanel } from './AccountCreatePanel';
 
 type Row = Record<string, unknown>;
 
@@ -141,9 +142,19 @@ export function AccountManagementWorkspace() {
     await load();
   }
 
+  function onCreated(profile: Row) {
+    setSelected(profile);
+    setRole('all');
+    setQuickFilter('all');
+    void load();
+  }
+
   return (
     <div>
       <AccountSummary rows={rows} onFilter={applySummaryFilter} />
+      <div className="mb-5">
+        <AccountCreatePanel onCreated={onCreated} />
+      </div>
       {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
       <SectionCard title="Auth Management / 认证与账号管理" subtitle="Review and manage member, engineer and administrator accounts. Plain passwords are never visible. / 审核和管理会员、工程师与管理员账号，绝不显示明文密码。">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
@@ -167,14 +178,15 @@ export function AccountManagementWorkspace() {
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <SectionCard title="Accounts / 账号列表" subtitle="Click a row to view details and operate. / 点击账号查看详情并操作。">
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="min-w-[1180px] w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Review</th><th className="p-3">Account</th><th className="p-3">Role</th><th className="p-3">Name</th><th className="p-3">Username</th><th className="p-3">Email</th><th className="p-3">Mobile / WhatsApp</th><th className="p-3">Created</th><th className="p-3">Action</th></tr></thead>
+            <table className="min-w-[1280px] w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Review</th><th className="p-3">Account</th><th className="p-3">Role</th><th className="p-3">Requested</th><th className="p-3">Name</th><th className="p-3">Username</th><th className="p-3">Email</th><th className="p-3">Mobile / WhatsApp</th><th className="p-3">Created</th><th className="p-3">Action</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((row) => (
                   <tr key={String(row.profile_id)} className={`${selected?.profile_id === row.profile_id ? 'bg-blue-50' : 'hover:bg-blue-50/50'}`}>
                     <td className="p-3"><Badge tone={statusTone(row.review_status)}>{formatValue(row.review_status)}</Badge></td>
                     <td className="p-3"><Badge tone={statusTone(row.profile_status || (row.is_active ? 'active' : 'disabled'))}>{formatValue(row.profile_status || (row.is_active ? 'active' : 'disabled'))}</Badge></td>
                     <td className="p-3 font-black text-slate-800">{formatValue(row.role)}</td>
+                    <td className="p-3 text-slate-600">{formatValue(row.requested_role)}</td>
                     <td className="p-3 text-slate-700">{formatValue(row.full_name)}</td>
                     <td className="p-3 text-slate-600">{formatValue(row.username)}</td>
                     <td className="p-3 text-slate-600">{formatValue(row.email)}</td>
@@ -183,7 +195,7 @@ export function AccountManagementWorkspace() {
                     <td className="p-3"><button type="button" onClick={() => setSelected(row)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open / 打开</button></td>
                   </tr>
                 ))}
-                {!filtered.length ? <tr><td colSpan={9} className="p-6 text-center text-sm font-bold text-slate-500">{loading ? 'Loading...' : 'No accounts found. / 暂无账号。'}</td></tr> : null}
+                {!filtered.length ? <tr><td colSpan={10} className="p-6 text-center text-sm font-bold text-slate-500">{loading ? 'Loading...' : 'No accounts found. / 暂无账号。'}</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -196,16 +208,18 @@ export function AccountManagementWorkspace() {
               <div className="grid gap-3 text-sm">
                 <div><span className={labelClass}>Profile ID</span><div className="break-all rounded-2xl bg-slate-50 p-3 font-mono text-xs text-slate-600">{formatValue(selected.profile_id)}</div></div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div><span className={labelClass}>Role / 角色</span><select className={inputClass} value={String(selected.role || 'customer')} onChange={(event) => setSelected((current) => current ? { ...current, role: event.target.value } : current)}>{roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+                  <div><span className={labelClass}>Role / 最终角色</span><select className={inputClass} value={String(selected.role || 'customer')} onChange={(event) => setSelected((current) => current ? { ...current, role: event.target.value } : current)}>{roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+                  <div><span className={labelClass}>Requested / 申请角色</span><input className={inputClass} value={String(selected.requested_role || '—')} readOnly /></div>
                   <div><span className={labelClass}>Review / 审核</span><select className={inputClass} value={String(selected.review_status || 'pending_review')} onChange={(event) => setSelected((current) => current ? { ...current, review_status: event.target.value } : current)}>{reviewStatuses.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
                   <div><span className={labelClass}>Account / 账号状态</span><select className={inputClass} value={String(selected.profile_status || 'active')} onChange={(event) => setSelected((current) => current ? { ...current, profile_status: event.target.value } : current)}>{profileStatuses.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
                   <div><span className={labelClass}>Reset Required / 需重设</span><select className={inputClass} value={String(Boolean(selected.password_reset_required))} onChange={(event) => setSelected((current) => current ? { ...current, password_reset_required: event.target.value === 'true' } : current)}><option value="false">false</option><option value="true">true</option></select></div>
+                  <div><span className={labelClass}>Registration Source / 注册来源</span><input className={inputClass} value={String(selected.registration_source || '—')} readOnly /></div>
                 </div>
                 <label><span className={labelClass}>Admin Note / 管理备注</span><textarea className={`${inputClass} min-h-24`} value={String(selected.account_admin_note || '')} onChange={(event) => setSelected((current) => current ? { ...current, account_admin_note: event.target.value } : current)} /></label>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button disabled={saving} onClick={() => updateAccount(selected, selected)} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60">Save / 保存</button>
-                <button disabled={saving} onClick={() => updateAccount(selected, { review_status: 'approved', profile_status: 'active' })} className="rounded-2xl bg-green-50 px-4 py-2 text-sm font-black text-green-700 ring-1 ring-green-100">Approve / 通过</button>
+                <button disabled={saving} onClick={() => updateAccount(selected, { role: selected.role || selected.requested_role || 'customer', review_status: 'approved', profile_status: 'active' })} className="rounded-2xl bg-green-50 px-4 py-2 text-sm font-black text-green-700 ring-1 ring-green-100">Approve / 通过</button>
                 <button disabled={saving} onClick={() => updateAccount(selected, { profile_status: 'disabled' })} className="rounded-2xl bg-amber-50 px-4 py-2 text-sm font-black text-amber-700 ring-1 ring-amber-100">Disable / 停用</button>
                 <button disabled={saving} onClick={() => updateAccount(selected, { profile_status: 'frozen' })} className="rounded-2xl bg-amber-50 px-4 py-2 text-sm font-black text-amber-700 ring-1 ring-amber-100">Freeze / 冻结</button>
                 <button disabled={saving} onClick={() => updateAccount(selected, { profile_status: 'blacklisted' })} className="rounded-2xl bg-red-50 px-4 py-2 text-sm font-black text-red-700 ring-1 ring-red-100">Blacklist / 拉黑</button>
