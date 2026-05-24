@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { AdminShell } from '@/components/AdminShell';
 import { PageHeader } from '@/components/PageHeader';
-import { PortalAdminManagement } from '@/components/PortalAdminManagement';
+import { EngineerPortalWorkspace } from '@/components/EngineerPortalWorkspace';
 
 export default function Page() {
   return (
@@ -10,9 +10,9 @@ export default function Page() {
       <PageHeader
         eyebrow="工程师门户管理"
         title="Engineer Portal"
-        description="Admin-side engineer portal management. The standalone engineer workspace is available at /portal/engineer. / 总后台内的工程师门户管理页，独立工程师工作台在 /portal/engineer。"
+        description="Admin-side engineer portal management connected to real jobs, inspections, checklists, photos, signatures and warranty-linked field records. / 管理员侧工程师门户管理，已连接真实工单、查验、清单、照片、签名和保修关联现场记录。"
       />
-      <PortalAdminManagement type="engineer" />
+      <EngineerPortalWorkspace />
     </AdminShell>
   );
 }
