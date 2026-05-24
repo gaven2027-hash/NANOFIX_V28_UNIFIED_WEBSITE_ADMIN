@@ -4,6 +4,19 @@ import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@/lib/supabase/browser';
 
+function setAdminAccessCookie(accessToken: string, expiresIn?: number) {
+  if (typeof document === 'undefined') return;
+  const maxAge = Math.max(60, Math.min(Number(expiresIn || 3600), 3600));
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `nanofix_admin_access_token=${encodeURIComponent(accessToken)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
+}
+
+function clearAdminAccessCookie() {
+  if (typeof document === 'undefined') return;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `nanofix_admin_access_token=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
+
 function LoginFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -18,11 +31,12 @@ function LoginFormInner() {
     event.preventDefault();
     setLoading(true);
     setMessage('');
+    clearAdminAccessCookie();
 
     try {
       const supabase = createBrowserClient();
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error || !data.user) {
+      if (error || !data.user || !data.session?.access_token) {
         setMessage(error?.message ?? 'Login failed. / 登录失败。');
         return;
       }
@@ -35,15 +49,19 @@ function LoginFormInner() {
 
       if (profileError || !profile?.is_active) {
         await supabase.auth.signOut();
+        clearAdminAccessCookie();
         setMessage('This account is inactive or missing a role profile. / 此账号未启用或缺少角色档案。');
         return;
       }
+
+      setAdminAccessCookie(data.session.access_token, data.session.expires_in);
 
       const requestedNext = searchParams.get('next');
       const defaultPath = profile.role === 'customer' ? '/customer-portal' : profile.role === 'engineer' ? '/engineer-portal' : '/dashboard';
       router.replace(requestedNext && requestedNext.startsWith('/') ? requestedNext : defaultPath);
       router.refresh();
     } catch {
+      clearAdminAccessCookie();
       setMessage('Supabase login is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY. / 请检查 Supabase 环境变量。');
     } finally {
       setLoading(false);
