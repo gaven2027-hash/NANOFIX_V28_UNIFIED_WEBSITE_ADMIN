@@ -14,19 +14,21 @@ const backupJobColumns = 'backup_id,module,schedule_cron,encrypted_file_path,sig
 const backupScheduleColumns = 'module,frequency,exact_run_time,timezone,weekdays,day_of_month,custom_cron,retention_days,enabled,next_run_at,updated_by,updated_at';
 const healthColumns = 'health_event_id,module_key,check_name,status,message,latency_ms,metadata,created_at';
 const moduleColumns = 'module_key,name,category,owner_role,criticality,health_status,enabled,metadata,updated_at';
-const profileColumns = 'profile_id,auth_user_id,email,full_name,role,is_active,password_status,username,mobile_phone,whatsapp_phone,username_verified,mobile_verified,whatsapp_verified,email_verified,password_reset_required,profile_status,review_status,reviewed_by,reviewed_at,account_admin_note,last_admin_password_reset_at,last_password_changed_at,created_at,updated_at';
+const profileColumns = 'profile_id,auth_user_id,email,full_name,role,requested_role,approved_role,registration_source,invited_by,invited_at,is_active,password_status,username,mobile_phone,whatsapp_phone,username_verified,mobile_verified,whatsapp_verified,email_verified,password_reset_required,profile_status,review_status,reviewed_by,reviewed_at,account_admin_note,last_admin_password_reset_at,last_password_changed_at,created_at,updated_at';
 
 const recordStatuses = ['draft', 'active', 'pending_review', 'approved', 'archived', 'disabled', 'failed', 'healthy', 'degraded'];
 const versionStatuses = ['draft', 'approved', 'published', 'archived', 'cancelled'];
 const profileStatuses = ['active', 'disabled', 'frozen', 'blacklisted', 'archived'];
 const reviewStatuses = ['pending_review', 'approved', 'rejected'];
 const roles = ['super_admin', 'admin', 'engineer', 'customer'];
+const creatableRoles = ['admin', 'engineer', 'customer'];
 
 function jsonError(message: string, status = 400) { return NextResponse.json({ ok: false, error: message }, { status }); }
 function cleanText(value: unknown, fallback = '') { return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback; }
 function cleanSearch(value: string | null) { return (value || '').replace(/[,%()]/g, ' ').trim().slice(0, 120); }
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
 function safeJson(value: unknown, fallback: Payload | unknown[] = {}) { if (!value) return fallback; if (typeof value === 'object') return value; if (typeof value === 'string') { try { return JSON.parse(value); } catch { return fallback; } } return fallback; }
+function validEmail(value: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
 function buildRecordPayload(body: Payload, actorId?: string) {
   const section = getSystemSettingsSection(cleanText(body.section_key));
   const status = recordStatuses.includes(String(body.status)) ? String(body.status) : 'draft';
@@ -41,7 +43,8 @@ function buildProfilePatch(body: Payload, actorId?: string) {
   const patch: Payload = { updated_at: new Date().toISOString() };
   if (review) { patch.review_status = review; patch.reviewed_by = validUuid(actorId) ? actorId : null; patch.reviewed_at = new Date().toISOString(); }
   if (profileStatus) { patch.profile_status = profileStatus; patch.is_active = profileStatus === 'active'; }
-  if (role) patch.role = role;
+  if (role) { patch.role = role; patch.approved_role = role; }
+  if ('requested_role' in body && creatableRoles.includes(String(body.requested_role))) patch.requested_role = String(body.requested_role);
   if ('account_admin_note' in body) patch.account_admin_note = cleanText(body.account_admin_note);
   if ('username' in body) patch.username = cleanText(body.username) || null;
   if ('mobile_phone' in body) patch.mobile_phone = cleanText(body.mobile_phone) || null;
@@ -52,6 +55,38 @@ function buildProfilePatch(body: Payload, actorId?: string) {
   if ('whatsapp_verified' in body) patch.whatsapp_verified = Boolean(body.whatsapp_verified);
   if ('password_reset_required' in body) patch.password_reset_required = Boolean(body.password_reset_required);
   return patch;
+}
+function buildProfileCreatePayload(body: Payload, actorId?: string) {
+  const email = cleanText(body.email).toLowerCase();
+  const role = creatableRoles.includes(String(body.role)) ? String(body.role) : 'customer';
+  const review = reviewStatuses.includes(String(body.review_status)) ? String(body.review_status) : 'approved';
+  const status = profileStatuses.includes(String(body.profile_status)) ? String(body.profile_status) : 'active';
+  const active = status === 'active' && review === 'approved';
+  return {
+    email,
+    full_name: cleanText(body.full_name, email.split('@')[0]),
+    username: cleanText(body.username) || null,
+    mobile_phone: cleanText(body.mobile_phone) || null,
+    whatsapp_phone: cleanText(body.whatsapp_phone) || null,
+    role,
+    requested_role: role,
+    approved_role: review === 'approved' ? role : null,
+    registration_source: Boolean(body.send_invite) ? 'admin_invited' : 'admin_created',
+    invited_by: validUuid(actorId) ? actorId : null,
+    invited_at: Boolean(body.send_invite) ? new Date().toISOString() : null,
+    is_active: active,
+    profile_status: active ? 'active' : status,
+    review_status: review,
+    reviewed_by: review === 'approved' && validUuid(actorId) ? actorId : null,
+    reviewed_at: review === 'approved' ? new Date().toISOString() : null,
+    password_status: 'not_set',
+    email_verified: false,
+    username_verified: Boolean(body.username_verified),
+    mobile_verified: Boolean(body.mobile_verified),
+    whatsapp_verified: Boolean(body.whatsapp_verified),
+    password_reset_required: true,
+    account_admin_note: cleanText(body.account_admin_note)
+  };
 }
 
 async function listRecords(search: string | null, status: string | null, sectionKey: string | null, category: string | null) {
@@ -81,8 +116,8 @@ async function listHealth(search: string | null) {
 }
 async function listRbac(search: string | null) {
   const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
-  let query = supabase.from('profiles').select(profileColumns).order('updated_at', { ascending: false }).limit(160);
-  const q = cleanSearch(search); if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,username.ilike.%${q}%,mobile_phone.ilike.%${q}%,whatsapp_phone.ilike.%${q}%,role.ilike.%${q}%,profile_status.ilike.%${q}%,review_status.ilike.%${q}%`);
+  let query = supabase.from('profiles').select(profileColumns).order('updated_at', { ascending: false }).limit(180);
+  const q = cleanSearch(search); if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,username.ilike.%${q}%,mobile_phone.ilike.%${q}%,whatsapp_phone.ilike.%${q}%,role.ilike.%${q}%,requested_role.ilike.%${q}%,profile_status.ilike.%${q}%,review_status.ilike.%${q}%`);
   const { data, error } = await query; if (error) return { ok: false as const, status: 500, error: error.message }; return { ok: true as const, data: data ?? [] };
 }
 async function listVersions(search: string | null, status: string | null, sectionKey: string | null) {
@@ -108,6 +143,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Payload; const action = String(body.action || ''); const { context, response } = requireAdmin(request, 'write:settings'); if (response) return response; const supabase = createSupabaseAdminClient(); if (!supabase) return jsonError('Supabase server client is not configured.', 503);
+  if (action === 'create_profile') { const payload = buildProfileCreatePayload(body, context?.actorId); if (!validEmail(payload.email)) return jsonError('A valid email is required. / 必须填写有效邮箱。'); const { data: duplicate } = await supabase.from('profiles').select('profile_id,email').ilike('email', payload.email).limit(1).maybeSingle(); if (duplicate) return jsonError('This email already has a profile. / 该邮箱已存在账号档案。', 409); const { data, error } = await supabase.from('profiles').insert(payload).select(profileColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create_profile', object_type: 'profile', object_id: data.profile_id, after_data: { profile_id: data.profile_id, email: data.email, role: data.role, review_status: data.review_status, profile_status: data.profile_status } }); return NextResponse.json({ ok: true, profile: data }); }
   if (action === 'create_record') { const payload = buildRecordPayload(body, context?.actorId); if (validUuid(context?.actorId)) payload.created_by = context?.actorId; const { data, error } = await supabase.from('system_setting_records').insert(payload).select(recordColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create', object_type: 'system_setting_record', object_id: data.record_id, after_data: data }); return NextResponse.json({ ok: true, record: data }); }
   return jsonError('Unsupported action.', 400);
 }
