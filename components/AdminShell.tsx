@@ -9,6 +9,7 @@ import { operationModules } from '@/lib/nanofix/operationsConfig';
 import { websiteSections } from '@/lib/nanofix/websiteManagementConfig';
 import { socialMediaSections } from '@/lib/nanofix/socialMediaConfig';
 import { aiIntelligenceSections } from '@/lib/nanofix/aiIntelligenceConfig';
+import { customerCenterSections } from '@/lib/nanofix/customerCenterConfig';
 import { TopSearch } from './TopSearch';
 
 const serviceOperationsMenu: MenuItem = {
@@ -47,6 +48,15 @@ const aiIntelligenceMenu: MenuItem = {
   children: aiIntelligenceSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
 };
 
+const customerCenterMenu: MenuItem = {
+  order: '6',
+  href: '/customer-center',
+  title: 'Customer Center',
+  zh: '客户相关',
+  badge: customerCenterSections.length,
+  children: customerCenterSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
+};
+
 const globalSearchMenu: MenuItem = {
   order: 'Top',
   href: '/dashboard#global-search',
@@ -62,6 +72,7 @@ const adminMenu = menu.map((item) => {
   if (route === '/website-management') return websiteManagementMenu;
   if (route === '/social-media') return socialMediaMenu;
   if (route === '/ai-intelligence') return aiIntelligenceMenu;
+  if (route === '/customer-center') return customerCenterMenu;
   if (item.href === '/dashboard#global-search') return globalSearchMenu;
   return item;
 });
