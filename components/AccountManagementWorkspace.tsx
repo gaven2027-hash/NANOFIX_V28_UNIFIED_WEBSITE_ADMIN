@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
 
@@ -36,7 +37,7 @@ function todayString(dateValue: unknown) {
   return d.toISOString().slice(0, 10);
 }
 
-function AccountSummary({ rows }: { rows: Row[] }) {
+function AccountSummary({ rows, onFilter }: { rows: Row[]; onFilter: (filter: AccountFilter | 'pending_review' | 'blocked') => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const stats = useMemo(() => {
     const customersToday = rows.filter((r) => r.role === 'customer' && todayString(r.created_at) === today).length;
@@ -54,20 +55,24 @@ function AccountSummary({ rows }: { rows: Row[] }) {
   return (
     <div className="mb-5 grid gap-4 md:grid-cols-4">
       {stats.map(([title, zh, count, key]) => (
-        <div key={key} className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+        <button key={key} type="button" onClick={() => onFilter(key as AccountFilter | 'pending_review' | 'blocked')} className="rounded-3xl bg-white p-5 text-left shadow-soft ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-activeBlue">
           <div className="text-sm font-black text-slate-600">{title}</div>
           <div className="text-xs font-semibold text-slate-500">{zh}</div>
           <div className="mt-4 text-4xl font-black text-slate-950">{count}</div>
-        </div>
+          <div className="mt-2 text-xs font-black text-activeBlue">Click to filter / 点击筛选</div>
+        </button>
       ))}
     </div>
   );
 }
 
 export function AccountManagementWorkspace() {
+  const searchParams = useSearchParams();
+  const profileIdFromUrl = searchParams.get('profile_id');
   const [rows, setRows] = useState<Row[]>([]);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<AccountFilter>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'pending_review' | 'blocked'>('all');
   const [selected, setSelected] = useState<Row | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,12 +90,37 @@ export function AccountManagementWorkspace() {
       setMessage(json.error || 'Load failed. / 加载失败。');
       return;
     }
-    setRows(json.rbac || []);
+    const nextRows = json.rbac || [];
+    setRows(nextRows);
+    if (profileIdFromUrl) {
+      const match = nextRows.find((row: Row) => String(row.profile_id) === profileIdFromUrl);
+      if (match) {
+        setSelected(match);
+        setRole('all');
+        setQuickFilter('all');
+        setMessage('Opened account from dashboard detail link. / 已从仪表盘明细链接打开账号。');
+      }
+    }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [profileIdFromUrl]);
 
-  const filtered = useMemo(() => rows.filter((row) => role === 'all' || row.role === role), [rows, role]);
+  const filtered = useMemo(() => rows.filter((row) => {
+    if (role !== 'all' && row.role !== role) return false;
+    if (quickFilter === 'pending_review' && row.review_status !== 'pending_review') return false;
+    if (quickFilter === 'blocked' && !['disabled', 'frozen', 'blacklisted', 'archived'].includes(String(row.profile_status))) return false;
+    return true;
+  }), [rows, role, quickFilter]);
+
+  function applySummaryFilter(filter: AccountFilter | 'pending_review' | 'blocked') {
+    if (filter === 'pending_review' || filter === 'blocked') {
+      setRole('all');
+      setQuickFilter(filter);
+      return;
+    }
+    setRole(filter);
+    setQuickFilter('all');
+  }
 
   async function updateAccount(row: Row, patch: Row) {
     setSaving(true);
@@ -113,10 +143,10 @@ export function AccountManagementWorkspace() {
 
   return (
     <div>
-      <AccountSummary rows={rows} />
+      <AccountSummary rows={rows} onFilter={applySummaryFilter} />
       {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
       <SectionCard title="Auth Management / 认证与账号管理" subtitle="Review and manage member, engineer and administrator accounts. Plain passwords are never visible. / 审核和管理会员、工程师与管理员账号，绝不显示明文密码。">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
           <input className={inputClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, email, username, mobile, WhatsApp... / 搜索账号" />
           <select className={inputClass} value={role} onChange={(event) => setRole(event.target.value as AccountFilter)}>
             <option value="all">All roles / 全部角色</option>
@@ -124,6 +154,11 @@ export function AccountManagementWorkspace() {
             <option value="engineer">Engineers / 工程师</option>
             <option value="admin">Admins / 管理员</option>
             <option value="super_admin">Super Admin / 总管理员</option>
+          </select>
+          <select className={inputClass} value={quickFilter} onChange={(event) => setQuickFilter(event.target.value as 'all' | 'pending_review' | 'blocked')}>
+            <option value="all">All statuses / 全部状态</option>
+            <option value="pending_review">Pending review / 待审核</option>
+            <option value="blocked">Disabled/Frozen/Blacklisted / 停用冻结拉黑</option>
           </select>
           <button type="button" onClick={load} className="rounded-2xl bg-slate-900 px-5 py-2 text-sm font-black text-white hover:bg-slate-700">Search / 搜索</button>
         </div>
@@ -133,14 +168,10 @@ export function AccountManagementWorkspace() {
         <SectionCard title="Accounts / 账号列表" subtitle="Click a row to view details and operate. / 点击账号查看详情并操作。">
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="min-w-[1180px] w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="p-3">Review</th><th className="p-3">Account</th><th className="p-3">Role</th><th className="p-3">Name</th><th className="p-3">Username</th><th className="p-3">Email</th><th className="p-3">Mobile / WhatsApp</th><th className="p-3">Created</th><th className="p-3">Action</th>
-                </tr>
-              </thead>
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Review</th><th className="p-3">Account</th><th className="p-3">Role</th><th className="p-3">Name</th><th className="p-3">Username</th><th className="p-3">Email</th><th className="p-3">Mobile / WhatsApp</th><th className="p-3">Created</th><th className="p-3">Action</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((row) => (
-                  <tr key={String(row.profile_id)} className="hover:bg-blue-50/50">
+                  <tr key={String(row.profile_id)} className={`${selected?.profile_id === row.profile_id ? 'bg-blue-50' : 'hover:bg-blue-50/50'}`}>
                     <td className="p-3"><Badge tone={statusTone(row.review_status)}>{formatValue(row.review_status)}</Badge></td>
                     <td className="p-3"><Badge tone={statusTone(row.profile_status || (row.is_active ? 'active' : 'disabled'))}>{formatValue(row.profile_status || (row.is_active ? 'active' : 'disabled'))}</Badge></td>
                     <td className="p-3 font-black text-slate-800">{formatValue(row.role)}</td>
@@ -159,9 +190,7 @@ export function AccountManagementWorkspace() {
         </SectionCard>
 
         <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div><div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Account Detail / 账号详情</div><h3 className="mt-1 text-xl font-black text-slate-950">{selected ? formatValue(selected.email || selected.username || selected.full_name) : 'Select an account'}</h3></div>
-          </div>
+          <div className="mb-4 flex items-start justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Account Detail / 账号详情</div><h3 className="mt-1 text-xl font-black text-slate-950">{selected ? formatValue(selected.email || selected.username || selected.full_name) : 'Select an account'}</h3></div></div>
           {selected ? (
             <div className="space-y-4">
               <div className="grid gap-3 text-sm">
@@ -178,6 +207,7 @@ export function AccountManagementWorkspace() {
                 <button disabled={saving} onClick={() => updateAccount(selected, selected)} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60">Save / 保存</button>
                 <button disabled={saving} onClick={() => updateAccount(selected, { review_status: 'approved', profile_status: 'active' })} className="rounded-2xl bg-green-50 px-4 py-2 text-sm font-black text-green-700 ring-1 ring-green-100">Approve / 通过</button>
                 <button disabled={saving} onClick={() => updateAccount(selected, { profile_status: 'disabled' })} className="rounded-2xl bg-amber-50 px-4 py-2 text-sm font-black text-amber-700 ring-1 ring-amber-100">Disable / 停用</button>
+                <button disabled={saving} onClick={() => updateAccount(selected, { profile_status: 'frozen' })} className="rounded-2xl bg-amber-50 px-4 py-2 text-sm font-black text-amber-700 ring-1 ring-amber-100">Freeze / 冻结</button>
                 <button disabled={saving} onClick={() => updateAccount(selected, { profile_status: 'blacklisted' })} className="rounded-2xl bg-red-50 px-4 py-2 text-sm font-black text-red-700 ring-1 ring-red-100">Blacklist / 拉黑</button>
               </div>
             </div>
