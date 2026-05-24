@@ -27,6 +27,7 @@ const config = {
     "text-activeBlue",
     "border-activeBlue",
     "focus:border-activeBlue",
+    "hover:bg-blue-700",
     "shadow-soft"
   ],
   theme: {
