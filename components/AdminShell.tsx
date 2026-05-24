@@ -42,13 +42,13 @@ const adminMenu = menu.map((item) => {
   return item;
 });
 
-const SIDEBAR_SCROLL_KEY = 'nanofix_admin_sidebar_scroll_top_v2';
+const SIDEBAR_SCROLL_KEY = 'nanofix_admin_sidebar_scroll_top_v3';
 
 function LogoMark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
-  const boxClass = size === 'sm' ? 'h-11 w-11 rounded-xl' : 'h-14 w-14 rounded-2xl';
+  const boxClass = size === 'sm' ? 'h-12 w-12 rounded-xl' : 'h-16 w-16 rounded-2xl';
   return (
-    <div className={clsx('flex shrink-0 items-center justify-center overflow-hidden bg-white p-1.5 shadow-lg shadow-slate-950/25', boxClass)}>
-      <img src="/nanofix-logo.svg" alt="NANOFIX logo" className="block h-auto max-h-full w-auto max-w-full object-contain" />
+    <div className={clsx('flex shrink-0 items-center justify-center bg-white p-1.5 shadow-lg shadow-slate-950/25', boxClass)}>
+      <img src="/nanofix-logo.svg" alt="NANOFIX logo" className="block max-h-full max-w-full object-contain" style={{ width: 'auto', height: 'auto', aspectRatio: 'auto' }} />
     </div>
   );
 }
@@ -63,11 +63,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement | null>(null);
   const activeChildRef = useRef<HTMLAnchorElement | null>(null);
+  const clickedScrollRef = useRef<number | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => Object.fromEntries(adminMenu.map((item) => [item.href, item.href !== '/dashboard/global-search'])));
 
   function saveScrollPosition() {
     if (typeof window === 'undefined' || !navRef.current) return;
-    window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(navRef.current.scrollTop));
+    const top = navRef.current.scrollTop;
+    clickedScrollRef.current = top;
+    window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(top));
   }
 
   function handleNavigate() {
@@ -80,16 +83,16 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     const saved = Number(window.sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
     window.requestAnimationFrame(() => {
       if (!navRef.current) return;
-      if (Number.isFinite(saved) && saved > 0) {
-        navRef.current.scrollTop = saved;
-        return;
-      }
-      activeChildRef.current?.scrollIntoView({ block: 'nearest' });
+      if (Number.isFinite(saved) && saved > 0) navRef.current.scrollTop = saved;
+      window.requestAnimationFrame(() => activeChildRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
     });
   }, [pathname]);
 
   return (
-    <nav ref={navRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-5 text-white" onScroll={saveScrollPosition}>
+    <nav ref={navRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-5 text-white" onScroll={() => {
+      if (!navRef.current || clickedScrollRef.current === navRef.current.scrollTop) return;
+      window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(navRef.current.scrollTop));
+    }}>
       {adminMenu.map((item) => {
         const active = routeIsActive(pathname, item.href) || item.children.some((child) => routeIsActive(pathname, child.href));
         const isOpen = openSections[item.href] ?? item.href !== '/dashboard/global-search';
