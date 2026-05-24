@@ -1,10 +1,10 @@
 {
   "name": "nanofix-v28-cg-gp-super-stable",
-  "version": "28.1.0-cg-gp-fusion",
+  "version": "28.1.1-operable-admin",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "bash tools/safe-next-build.sh",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "prepare:legacy": "node tools/extract-legacy-html.mjs && node tools/repair-google-maps.mjs && node tools/generate-legacy-content.mjs",
@@ -31,7 +31,7 @@
     "quality:gate": "npm run validate:predeploy && npm run build:ci && npm run verify && npm run test:e2e:smoke",
     "validate:ci": "npm run quality:gate",
     "audit:prod": "npm audit --omit=dev",
-    "build:ci": "npm run build",
+    "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
     "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run validate:package && npm run audit:v28 && npm run validate:platform",
@@ -64,5 +64,5 @@
   "overrides": {
     "postcss": "8.5.10"
   },
-  "description": "NANOFIX V28 fusion package: CG stable public website foundation plus GP complete admin, portals, Supabase bridge, CI and production hardening."
+  "description": "NANOFIX V28.1.1 operable admin package: real admin modules, portals, Supabase bridge, CI and production hardening."
 }
