@@ -20,10 +20,22 @@ const config = {
     "scale-110",
     "rotate-180",
     "overflow-hidden",
-    "overflow-visible"
+    "overflow-visible",
+    "bg-adminBg",
+    "bg-sidebar",
+    "bg-activeBlue",
+    "border-activeBlue",
+    "text-activeBlue",
+    "hover:bg-blue-700"
   ],
   theme: {
-    extend: {}
+    extend: {
+      colors: {
+        adminBg: "#F4F7FC",
+        sidebar: "#1E293B",
+        activeBlue: "#2563EB"
+      }
+    }
   },
   plugins: []
 };
