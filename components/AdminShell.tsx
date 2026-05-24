@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { menu, type MenuItem } from '@/data/adminData';
+import { dashboardSections } from '@/lib/nanofix/dashboardConfig';
 import { operationModules } from '@/lib/nanofix/operationsConfig';
 import { websiteSections } from '@/lib/nanofix/websiteManagementConfig';
 import { socialMediaSections } from '@/lib/nanofix/socialMediaConfig';
@@ -14,6 +15,24 @@ import { systemSettingsSections } from '@/lib/nanofix/systemSettingsConfig';
 import { customerPortalSections } from '@/lib/nanofix/customerPortalConfig';
 import { engineerPortalSections } from '@/lib/nanofix/engineerPortalConfig';
 import { TopSearch } from './TopSearch';
+
+const globalSearchMenu: MenuItem = {
+  order: 'Top',
+  href: '/dashboard/global-search',
+  title: 'Top Fixed Global Search',
+  zh: '顶部固定全局搜索',
+  badge: 'All',
+  children: []
+};
+
+const dashboardMenu: MenuItem = {
+  order: '1',
+  href: '/dashboard',
+  title: 'Dashboard, Analytics & Alerts',
+  zh: '数据分析、预警、待处理事项',
+  badge: dashboardSections.length,
+  children: dashboardSections.filter((section) => section.key !== 'global-search').map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
+};
 
 const serviceOperationsMenu: MenuItem = {
   order: '2',
@@ -87,17 +106,10 @@ const engineerPortalMenu: MenuItem = {
   children: engineerPortalSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
 };
 
-const globalSearchMenu: MenuItem = {
-  order: 'Top',
-  href: '/dashboard#global-search',
-  title: 'Top Fixed Global Search',
-  zh: '顶部固定全局搜索',
-  badge: 'All',
-  children: []
-};
-
 const adminMenu = menu.map((item) => {
   const route = item.href.split('#')[0];
+  if (item.href === '/dashboard#global-search') return globalSearchMenu;
+  if (route === '/dashboard') return dashboardMenu;
   if (route === '/service-operations') return serviceOperationsMenu;
   if (route === '/website-management') return websiteManagementMenu;
   if (route === '/social-media') return socialMediaMenu;
@@ -106,31 +118,52 @@ const adminMenu = menu.map((item) => {
   if (route === '/system-settings') return systemSettingsMenu;
   if (route === '/customer-portal') return customerPortalMenu;
   if (route === '/engineer-portal') return engineerPortalMenu;
-  if (item.href === '/dashboard#global-search') return globalSearchMenu;
   return item;
 });
 
+const SIDEBAR_SCROLL_KEY = 'nanofix_admin_sidebar_scroll_top';
+
 function LogoMark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
-  const boxClass = size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl';
+  const boxClass = size === 'sm' ? 'h-11 w-11 rounded-xl' : 'h-14 w-14 rounded-2xl';
   return (
-    <div className={clsx('flex shrink-0 items-center justify-center bg-white p-1 shadow-lg shadow-slate-950/25', boxClass)}>
-      <img src="/nanofix-logo.svg" alt="NANOFIX logo" className="h-full w-full object-contain" />
+    <div className={clsx('flex shrink-0 items-center justify-center overflow-hidden bg-white p-1.5 shadow-lg shadow-slate-950/25', boxClass)}>
+      <img src="/nanofix-logo.svg" alt="NANOFIX logo" className="max-h-full max-w-full object-contain" />
     </div>
   );
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(adminMenu.map((item) => [item.href, item.href !== '/dashboard#global-search']))
+    Object.fromEntries(adminMenu.map((item) => [item.href, item.href !== '/dashboard/global-search']))
   );
 
+  function saveScrollPosition() {
+    if (typeof window === 'undefined' || !navRef.current) return;
+    window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(navRef.current.scrollTop));
+  }
+
+  function handleNavigate() {
+    saveScrollPosition();
+    onNavigate?.();
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = Number(window.sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
+    if (!Number.isFinite(saved) || !navRef.current) return;
+    window.requestAnimationFrame(() => {
+      if (navRef.current) navRef.current.scrollTop = saved;
+    });
+  }, [pathname]);
+
   return (
-    <nav className="flex-1 space-y-3 overflow-y-auto px-4 py-5 text-white">
+    <nav ref={navRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-5 text-white">
       {adminMenu.map((item) => {
         const routeHref = item.href.split('#')[0] || '/dashboard';
         const active = pathname === routeHref || pathname.startsWith(`${routeHref}/`);
-        const isOpen = openSections[item.href] ?? item.href !== '/dashboard#global-search';
+        const isOpen = openSections[item.href] ?? item.href !== '/dashboard/global-search';
         return (
           <section
             key={item.href}
@@ -140,7 +173,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <div className={clsx('flex items-stretch gap-2 p-2 transition', active ? 'bg-activeBlue text-white shadow-lg shadow-blue-950/20' : 'text-slate-100')}>
-              <Link href={item.href} onClick={onNavigate} className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2">
+              <Link href={item.href} onClick={handleNavigate} className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2">
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-[13px] font-black text-white">{item.order}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[16px] font-extrabold leading-5 tracking-[-0.01em] text-white">{item.title}</span>
@@ -151,7 +184,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               {item.children.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setOpenSections((current) => ({ ...current, [item.href]: !isOpen }))}
+                  onClick={() => {
+                    saveScrollPosition();
+                    setOpenSections((current) => ({ ...current, [item.href]: !isOpen }));
+                  }}
                   aria-expanded={isOpen}
                   aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.title}`}
                   className="my-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[13px] font-black text-white transition hover:bg-white/20"
@@ -170,7 +206,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     <Link
                       key={child.href}
                       href={child.href}
-                      onClick={onNavigate}
+                      onClick={handleNavigate}
                       className={clsx(
                         'group rounded-xl py-2 pl-12 pr-3 text-[14px] font-bold leading-5 transition hover:bg-white/10 hover:text-white',
                         childActive ? 'bg-white/15 text-white ring-1 ring-white/10' : 'text-blue-100'
@@ -192,7 +228,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 function BrandBlock() {
   return (
-    <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
+    <div className="flex h-24 items-center gap-3 border-b border-white/10 px-6">
       <LogoMark />
       <div>
         <div className="text-xl font-black tracking-wide text-white">NANOFIX</div>
