@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
+import { websiteSections, type WebsiteSectionConfig } from '@/lib/nanofix/websiteManagementConfig';
 
 type Row = Record<string, unknown>;
 type Tab = 'pages' | 'blocks' | 'publish';
@@ -42,6 +43,35 @@ function parseJsonInput(value: string) {
   }
 }
 
+function sectionDefaultJson(section?: WebsiteSectionConfig | null) {
+  if (!section) return {};
+  return {
+    section_key: section.key,
+    title: section.title,
+    title_zh: section.zh,
+    helper: section.helper,
+    editable_from_admin: true,
+    notes: 'This CMS block is editable from NANOFIX Website Management. Public website wiring can read this block by route_path + block_key.'
+  };
+}
+
+function SectionShortcutTabs({ activeSection }: { activeSection?: WebsiteSectionConfig | null }) {
+  return (
+    <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {websiteSections.map((section) => (
+        <Link
+          key={section.key}
+          href={section.href}
+          className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${activeSection?.key === section.key ? 'border-activeBlue bg-blue-50 text-activeBlue shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-activeBlue hover:text-activeBlue'}`}
+        >
+          <span className="block">{section.title}</span>
+          <span className="block text-xs font-semibold text-slate-500">{section.zh}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function PortalTabs({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const tabs: Array<[Tab, string, string]> = [
     ['pages', 'Pages & SEO', '页面与 SEO'],
@@ -65,17 +95,17 @@ function PortalTabs({ active, onChange }: { active: Tab; onChange: (tab: Tab) =>
   );
 }
 
-function PageEditor({ row, onSaved, onClose }: { row: Row | null; onSaved: () => void; onClose: () => void }) {
-  const [form, setForm] = useState<Row>(row || { route_path: '/', title: '', description: '', status: 'draft', metadata: {} });
-  const [metadata, setMetadata] = useState(safeJsonString(row?.metadata));
+function PageEditor({ row, onSaved, onClose, section }: { row: Row | null; onSaved: () => void; onClose: () => void; section?: WebsiteSectionConfig | null }) {
+  const [form, setForm] = useState<Row>(row || { route_path: section?.defaultRoutePath || '/', title: section?.title || '', description: section?.helper || '', status: 'draft', metadata: sectionDefaultJson(section) });
+  const [metadata, setMetadata] = useState(safeJsonString(row?.metadata || sectionDefaultJson(section)));
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(row || { route_path: '/', title: '', description: '', status: 'draft', metadata: {} });
-    setMetadata(safeJsonString(row?.metadata));
+    setForm(row || { route_path: section?.defaultRoutePath || '/', title: section?.title || '', description: section?.helper || '', status: 'draft', metadata: sectionDefaultJson(section) });
+    setMetadata(safeJsonString(row?.metadata || sectionDefaultJson(section)));
     setMessage('');
-  }, [row]);
+  }, [row, section]);
 
   async function save() {
     const parsed = parseJsonInput(metadata);
@@ -106,7 +136,7 @@ function PageEditor({ row, onSaved, onClose }: { row: Row | null; onSaved: () =>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">{row ? 'Edit Page' : 'New Page'}</div>
-          <h3 className="mt-1 text-xl font-black text-slate-950">{row ? formatValue(row.title) : 'Create Website Page'}</h3>
+          <h3 className="mt-1 text-xl font-black text-slate-950">{row ? formatValue(row.title) : `Create ${section?.title || 'Website Page'}`}</h3>
         </div>
         <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-200">Close / 关闭</button>
       </div>
@@ -140,17 +170,19 @@ function PageEditor({ row, onSaved, onClose }: { row: Row | null; onSaved: () =>
   );
 }
 
-function BlockEditor({ row, routePath, onSaved, onClose }: { row: Row | null; routePath: string; onSaved: () => void; onClose: () => void }) {
-  const [form, setForm] = useState<Row>(row || { route_path: routePath || '/', locale: 'en', block_key: 'main', content_type: 'section', status: 'draft', content_json: {} });
-  const [contentJson, setContentJson] = useState(safeJsonString(row?.content_json));
+function BlockEditor({ row, routePath, onSaved, onClose, section }: { row: Row | null; routePath: string; onSaved: () => void; onClose: () => void; section?: WebsiteSectionConfig | null }) {
+  const defaultBlockKey = section?.key || 'main';
+  const defaultContentType = section?.blockType || 'section';
+  const [form, setForm] = useState<Row>(row || { route_path: routePath || section?.defaultRoutePath || '/', locale: 'en', block_key: defaultBlockKey, content_type: defaultContentType, status: 'draft', content_json: sectionDefaultJson(section) });
+  const [contentJson, setContentJson] = useState(safeJsonString(row?.content_json || sectionDefaultJson(section)));
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(row || { route_path: routePath || '/', locale: 'en', block_key: 'main', content_type: 'section', status: 'draft', content_json: {} });
-    setContentJson(safeJsonString(row?.content_json));
+    setForm(row || { route_path: routePath || section?.defaultRoutePath || '/', locale: 'en', block_key: defaultBlockKey, content_type: defaultContentType, status: 'draft', content_json: sectionDefaultJson(section) });
+    setContentJson(safeJsonString(row?.content_json || sectionDefaultJson(section)));
     setMessage('');
-  }, [row, routePath]);
+  }, [row, routePath, section, defaultBlockKey, defaultContentType]);
 
   async function save() {
     const parsed = parseJsonInput(contentJson);
@@ -181,7 +213,7 @@ function BlockEditor({ row, routePath, onSaved, onClose }: { row: Row | null; ro
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">{row ? 'Edit Block' : 'New Block'}</div>
-          <h3 className="mt-1 text-xl font-black text-slate-950">{row ? formatValue(row.block_key) : 'Create Content Block'}</h3>
+          <h3 className="mt-1 text-xl font-black text-slate-950">{row ? formatValue(row.block_key) : `Create ${section?.title || 'Content Block'}`}</h3>
         </div>
         <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-200">Close / 关闭</button>
       </div>
@@ -221,14 +253,14 @@ function BlockEditor({ row, routePath, onSaved, onClose }: { row: Row | null; ro
   );
 }
 
-export function WebsiteManagementWorkspace() {
-  const [activeTab, setActiveTab] = useState<Tab>('pages');
+export function WebsiteManagementWorkspace({ section }: { section?: WebsiteSectionConfig | null }) {
+  const [activeTab, setActiveTab] = useState<Tab>((section?.tab === 'publish' ? 'publish' : section?.tab === 'blocks' ? 'blocks' : 'pages'));
   const [pages, setPages] = useState<Row[]>([]);
   const [blocks, setBlocks] = useState<Row[]>([]);
   const [versions, setVersions] = useState<Row[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(section?.key || '');
   const [status, setStatus] = useState('');
-  const [routePath, setRoutePath] = useState('');
+  const [routePath, setRoutePath] = useState(section?.defaultRoutePath || '');
   const [selectedPage, setSelectedPage] = useState<Row | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<Row | null>(null);
   const [creatingPage, setCreatingPage] = useState(false);
@@ -236,13 +268,24 @@ export function WebsiteManagementWorkspace() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const selectedRoute = useMemo(() => routePath || String(selectedPage?.route_path || selectedBlock?.route_path || ''), [routePath, selectedPage, selectedBlock]);
+  useEffect(() => {
+    setActiveTab(section?.tab === 'publish' ? 'publish' : section?.tab === 'blocks' ? 'blocks' : 'pages');
+    setSearch(section?.key || '');
+    setRoutePath(section?.defaultRoutePath || '');
+    setSelectedPage(null);
+    setSelectedBlock(null);
+    setCreatingPage(false);
+    setCreatingBlock(false);
+  }, [section]);
+
+  const selectedRoute = useMemo(() => routePath || String(selectedPage?.route_path || selectedBlock?.route_path || section?.defaultRoutePath || ''), [routePath, selectedPage, selectedBlock, section]);
 
   async function loadAll() {
     setLoading(true);
     setMessage('');
     const params = new URLSearchParams({ mode: 'all' });
     if (search) params.set('search', search);
+    if (status) params.set('status', status);
     if (selectedRoute) params.set('route_path', selectedRoute);
     const response = await fetch(`/api/admin/website-management?${params.toString()}`, { cache: 'no-store' });
     const json = await response.json().catch(() => ({}));
@@ -259,7 +302,7 @@ export function WebsiteManagementWorkspace() {
   useEffect(() => {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [section]);
 
   async function publishRoute() {
     const target = selectedRoute || '/';
@@ -280,6 +323,14 @@ export function WebsiteManagementWorkspace() {
 
   return (
     <div>
+      <SectionShortcutTabs activeSection={section} />
+      {section ? (
+        <div className="mb-5 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+          <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Website Management Section / 网站后台二级栏目</div>
+          <h3 className="mt-1 text-2xl font-black text-slate-950">{section.title} / {section.zh}</h3>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{section.helper}</p>
+        </div>
+      ) : null}
       <PortalTabs active={activeTab} onChange={setActiveTab} />
       {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
 
@@ -320,7 +371,7 @@ export function WebsiteManagementWorkspace() {
               </table>
             </div>
           </SectionCard>
-          <PageEditor row={creatingPage ? null : selectedPage} onSaved={loadAll} onClose={() => { setSelectedPage(null); setCreatingPage(false); }} />
+          <PageEditor row={creatingPage ? null : selectedPage} section={section} onSaved={loadAll} onClose={() => { setSelectedPage(null); setCreatingPage(false); }} />
         </div>
       ) : null}
 
@@ -349,7 +400,7 @@ export function WebsiteManagementWorkspace() {
               </table>
             </div>
           </SectionCard>
-          <BlockEditor row={creatingBlock ? null : selectedBlock} routePath={selectedRoute || '/'} onSaved={loadAll} onClose={() => { setSelectedBlock(null); setCreatingBlock(false); }} />
+          <BlockEditor row={creatingBlock ? null : selectedBlock} section={section} routePath={selectedRoute || '/'} onSaved={loadAll} onClose={() => { setSelectedBlock(null); setCreatingBlock(false); }} />
         </div>
       ) : null}
 
