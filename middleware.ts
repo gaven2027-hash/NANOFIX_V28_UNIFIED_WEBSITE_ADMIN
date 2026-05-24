@@ -28,6 +28,7 @@ const adminRoutes = [
   "/system-settings"
 ];
 
+const loginRoutes = ["/login"];
 const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests"];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
 const engineerRoutes = ["/engineer-portal", "/api/portal/engineer"];
@@ -38,6 +39,10 @@ const customerRoles: NanofixRole[] = ["customer", ...adminRoles];
 
 function startsWithAny(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function isLoginPath(pathname: string) {
+  return startsWithAny(pathname, loginRoutes);
 }
 
 function isProtectedPath(pathname: string) {
@@ -152,7 +157,6 @@ async function fetchProfileActor(authUserId: string, email?: string): Promise<Ve
     }
   }
 
-  // Compatibility bridge for older website packages that used admin_profiles before profiles became canonical.
   const adminParams = new URLSearchParams({
     select: "admin_id,auth_user_id,email,role,status",
     auth_user_id: `eq.${authUserId}`,
@@ -180,7 +184,6 @@ async function actorFromSupabaseSession(request: NextRequest): Promise<VerifiedA
 }
 
 function actorFromInternalSecret(request: NextRequest): VerifiedActor | null {
-  // Disabled by default. Intended only for controlled server-to-server maintenance, CI health checks and migration windows.
   if (process.env.NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED !== "true") return null;
   const expected = process.env.NANOFIX_ADMIN_API_TOKEN;
   const provided = readBearerToken(request) || request.cookies.get("nanofix_admin_session")?.value || "";
@@ -239,20 +242,20 @@ function redirectByRole(request: NextRequest, role: NanofixRole) {
 }
 
 function refreshSupabaseCookies(request: NextRequest) {
-  // Keep middleware stateless for Vercel/Next build stability.
-  // Supabase session refresh is handled by the login/client flow; middleware only verifies existing sessions.
   return NextResponse.next({ request });
 }
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const loginPath = isLoginPath(pathname);
   const protectedPath = isProtectedPath(pathname);
   const isProtectedApi = startsWithAny(pathname, [...apiAdminRoutes, ...customerRoutes.filter((r) => r.startsWith("/api")), ...engineerRoutes.filter((r) => r.startsWith("/api"))]);
 
-  if (!protectedPath && pathname !== "/login") return NextResponse.next();
+  if (!protectedPath && !loginPath) return NextResponse.next();
 
   const actor = (await actorFromSupabaseSession(request)) ?? actorFromInternalSecret(request) ?? actorFromLocalPreview();
 
-  if (pathname === "/login") {
+  if (loginPath) {
     if (!actor) return refreshSupabaseCookies(request);
     return redirectByRole(request, actor.role);
   }
@@ -272,7 +275,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/login",
+    "/login/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
     "/service-operations/:path*",
