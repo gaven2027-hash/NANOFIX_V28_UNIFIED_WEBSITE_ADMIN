@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { menu, type MenuItem } from '@/data/adminData';
 import { operationModules } from '@/lib/nanofix/operationsConfig';
+import { websiteSections } from '@/lib/nanofix/websiteManagementConfig';
 import { TopSearch } from './TopSearch';
 
 const serviceOperationsMenu: MenuItem = {
@@ -15,6 +16,15 @@ const serviceOperationsMenu: MenuItem = {
   zh: '业务订单处理',
   badge: operationModules.length,
   children: operationModules.map((module) => ({ href: module.route, title: module.title, zh: module.zh }))
+};
+
+const websiteManagementMenu: MenuItem = {
+  order: '3',
+  href: '/website-management',
+  title: 'Website Management',
+  zh: '网站后台管理',
+  badge: websiteSections.length,
+  children: websiteSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
 };
 
 const globalSearchMenu: MenuItem = {
@@ -29,18 +39,16 @@ const globalSearchMenu: MenuItem = {
 const adminMenu = menu.map((item) => {
   const route = item.href.split('#')[0];
   if (route === '/service-operations') return serviceOperationsMenu;
+  if (route === '/website-management') return websiteManagementMenu;
   if (item.href === '/dashboard#global-search') return globalSearchMenu;
   return item;
 });
 
 function LogoMark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   const boxClass = size === 'sm' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl';
-  const textClass = size === 'sm' ? 'text-[12px]' : 'text-[14px]';
   return (
     <div className={clsx('flex shrink-0 items-center justify-center bg-white p-1 shadow-lg shadow-slate-950/25', boxClass)}>
-      <div className="grid h-full w-full place-items-center rounded-[inherit] bg-gradient-to-br from-orange-500 via-amber-400 to-blue-600 text-white">
-        <span className={clsx('font-black tracking-[-0.08em]', textClass)}>NF</span>
-      </div>
+      <img src="/nanofix-logo.svg" alt="NANOFIX logo" className="h-full w-full object-contain" />
     </div>
   );
 }
