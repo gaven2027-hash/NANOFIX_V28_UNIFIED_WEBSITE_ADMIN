@@ -1,15 +1,18 @@
 export const dynamic = 'force-dynamic';
 
-import { Customer360 } from '@/components/Customer360';
-import { CustomerPortalDataLoop } from '@/components/PortalDataLoop';
-import { CustomerPortalAnchors, PortalShell } from '@/components/PortalShell';
+import { AdminShell } from '@/components/AdminShell';
+import { PageHeader } from '@/components/PageHeader';
+import { PortalAdminManagement } from '@/components/PortalAdminManagement';
 
 export default function Page() {
   return (
-    <PortalShell type="customer">
-      <CustomerPortalDataLoop />
-      <Customer360 />
-      <CustomerPortalAnchors />
-    </PortalShell>
+    <AdminShell>
+      <PageHeader
+        eyebrow="客户门户管理"
+        title="Customer Portal"
+        description="Admin-side customer portal management. The standalone customer portal is available at /portal/customer. / 总后台内的客户门户管理页，独立客户门户在 /portal/customer。"
+      />
+      <PortalAdminManagement type="customer" />
+    </AdminShell>
   );
 }
