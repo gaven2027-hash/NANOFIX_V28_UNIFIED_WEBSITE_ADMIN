@@ -2,15 +2,17 @@ export const dynamic = 'force-dynamic';
 
 import { AdminShell } from '@/components/AdminShell';
 import { PageHeader } from '@/components/PageHeader';
-import { WorkflowBoard } from '@/components/WorkflowBoard';
-import { StatusMachineTable } from '@/components/StatusMachineTable';
-import { MenuAnchorSections } from '@/components/MenuAnchorSections';
+import { ServiceOperationsWorkspace } from '@/components/ServiceOperationsWorkspace';
 
 export default function Page() {
   return (
     <AdminShell>
-      <PageHeader eyebrow="业务订单处理" title="Service & Order Operations" description="Manage lead, request, inspection, quote, job, payment and warranty. / 管理线索、报修、查验、报价、工单、付款和保修。" />
-      <><><WorkflowBoard /><div className="mt-6"><StatusMachineTable /></div></><MenuAnchorSections route="/service-operations" /></>
+      <PageHeader
+        eyebrow="业务订单处理"
+        title="Service & Order Operations"
+        description="Operable Dispatch Board linked to Supabase records: Lead → Inspection → Quotation → Work Execution → Finance → Warranty. / 可操作真实业务看板，连接 Supabase 业务数据。"
+      />
+      <ServiceOperationsWorkspace mode="board" />
     </AdminShell>
   );
 }
