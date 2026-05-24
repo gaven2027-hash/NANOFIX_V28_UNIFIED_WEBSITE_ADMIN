@@ -15,6 +15,10 @@ function cleanSearch(input: string) {
   return input.replace(/[,%()]/g, ' ').trim().slice(0, 120);
 }
 
+function payloadSource(body: Payload): Payload {
+  return body.data && typeof body.data === 'object' && !Array.isArray(body.data) ? (body.data as Payload) : body;
+}
+
 function normalizeValue(value: unknown, type?: string) {
   if (value === undefined || value === null || value === '') return null;
   if (type === 'number') {
@@ -117,7 +121,7 @@ export async function POST(request: Request) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return jsonError('Supabase server client is not configured.', 503);
 
-  const payload = buildInsertPayload(moduleKey, body.data as Payload || body);
+  const payload = buildInsertPayload(moduleKey, payloadSource(body));
   if (!payload) return jsonError('Invalid payload.');
 
   for (const field of config.formFields) {
@@ -172,7 +176,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true, result: data, config: getPublicModuleConfig(config) });
   }
 
-  const payload = buildInsertPayload(moduleKey, body.data as Payload || body);
+  const payload = buildInsertPayload(moduleKey, payloadSource(body));
   if (!payload || !Object.keys(payload).length) return jsonError('No editable fields supplied.');
 
   const { data: before } = await supabase
