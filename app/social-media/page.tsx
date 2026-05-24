@@ -2,14 +2,17 @@ export const dynamic = 'force-dynamic';
 
 import { AdminShell } from '@/components/AdminShell';
 import { PageHeader } from '@/components/PageHeader';
-import { SocialPreview } from '@/components/SocialPreview';
-import { MenuAnchorSections } from '@/components/MenuAnchorSections';
+import { SocialMediaManagementWorkspace } from '@/components/SocialMediaManagementWorkspace';
 
 export default function Page() {
   return (
     <AdminShell>
-      <PageHeader eyebrow="社媒管理" title="Social Media Management" description="Manage social inbox, AI replies and multi-platform content review. / 管理社媒收件箱、AI 回复和多平台内容审核。" />
-      <><SocialPreview /><MenuAnchorSections route="/social-media" /></>
+      <PageHeader
+        eyebrow="社媒管理"
+        title="Social Media Management"
+        description="Operable social media backend connected to Supabase records, inbox messages, AI drafts and publish versions. / 已连接 Supabase 真实数据的社媒后台：记录、消息、AI 草稿和发布版本。"
+      />
+      <SocialMediaManagementWorkspace />
     </AdminShell>
   );
 }
