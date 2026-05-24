@@ -42,7 +42,7 @@ const adminMenu = menu.map((item) => {
   return item;
 });
 
-const SIDEBAR_SCROLL_KEY = 'nanofix_admin_sidebar_scroll_top_v3';
+const SIDEBAR_SCROLL_KEY = 'nanofix_admin_sidebar_scroll_top_v4';
 
 function LogoMark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   const boxClass = size === 'sm' ? 'h-12 w-12 rounded-xl' : 'h-16 w-16 rounded-2xl';
@@ -59,12 +59,16 @@ function routeIsActive(pathname: string, href: string) {
   return pathname === routeHref || pathname.startsWith(`${routeHref}/`);
 }
 
+function sectionIsActive(pathname: string, item: MenuItem) {
+  return routeIsActive(pathname, item.href) || item.children.some((child) => routeIsActive(pathname, child.href));
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement | null>(null);
   const activeChildRef = useRef<HTMLAnchorElement | null>(null);
   const clickedScrollRef = useRef<number | null>(null);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => Object.fromEntries(adminMenu.map((item) => [item.href, item.href !== '/dashboard/global-search'])));
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => Object.fromEntries(adminMenu.map((item) => [item.href, false])));
 
   function saveScrollPosition() {
     if (typeof window === 'undefined' || !navRef.current) return;
@@ -77,6 +81,16 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     saveScrollPosition();
     onNavigate?.();
   }
+
+  useEffect(() => {
+    setOpenSections((current) => {
+      const next = { ...current };
+      for (const item of adminMenu) {
+        if (sectionIsActive(pathname, item)) next[item.href] = true;
+      }
+      return next;
+    });
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -94,8 +108,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(navRef.current.scrollTop));
     }}>
       {adminMenu.map((item) => {
-        const active = routeIsActive(pathname, item.href) || item.children.some((child) => routeIsActive(pathname, child.href));
-        const isOpen = openSections[item.href] ?? item.href !== '/dashboard/global-search';
+        const active = sectionIsActive(pathname, item);
+        const isOpen = openSections[item.href] ?? false;
         return (
           <section key={item.href} className={clsx('overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition', active ? 'ring-1 ring-blue-300/50' : 'hover:bg-white/[0.07]')}>
             <div className={clsx('flex items-stretch gap-2 p-2 transition', active ? 'bg-activeBlue text-white shadow-lg shadow-blue-950/20' : 'text-slate-100')}>
