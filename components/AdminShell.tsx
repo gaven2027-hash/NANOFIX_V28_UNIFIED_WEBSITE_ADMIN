@@ -12,6 +12,7 @@ import { aiIntelligenceSections } from '@/lib/nanofix/aiIntelligenceConfig';
 import { customerCenterSections } from '@/lib/nanofix/customerCenterConfig';
 import { systemSettingsSections } from '@/lib/nanofix/systemSettingsConfig';
 import { customerPortalSections } from '@/lib/nanofix/customerPortalConfig';
+import { engineerPortalSections } from '@/lib/nanofix/engineerPortalConfig';
 import { TopSearch } from './TopSearch';
 
 const serviceOperationsMenu: MenuItem = {
@@ -77,6 +78,15 @@ const customerPortalMenu: MenuItem = {
   children: customerPortalSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
 };
 
+const engineerPortalMenu: MenuItem = {
+  order: 'P2',
+  href: '/engineer-portal',
+  title: 'Engineer Portal',
+  zh: '工程师端入口',
+  badge: engineerPortalSections.length,
+  children: engineerPortalSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
+};
+
 const globalSearchMenu: MenuItem = {
   order: 'Top',
   href: '/dashboard#global-search',
@@ -95,6 +105,7 @@ const adminMenu = menu.map((item) => {
   if (route === '/customer-center') return customerCenterMenu;
   if (route === '/system-settings') return systemSettingsMenu;
   if (route === '/customer-portal') return customerPortalMenu;
+  if (route === '/engineer-portal') return engineerPortalMenu;
   if (item.href === '/dashboard#global-search') return globalSearchMenu;
   return item;
 });
