@@ -5,20 +5,30 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
 const customerLinks = [
-  { href: '/customer-portal#my-repair-requests', title: 'My Repair Requests', zh: '我的报修' },
-  { href: '/customer-portal#my-quotations', title: 'My Quotations', zh: '我的报价' },
-  { href: '/customer-portal#my-invoices', title: 'My Invoices & Payments', zh: '我的发票与付款' },
-  { href: '/customer-portal#my-warranties', title: 'My Warranty', zh: '我的保修' },
-  { href: '/customer-portal#my-profile', title: 'My Profile', zh: '我的资料' }
+  { href: '/portal/customer#my-repair-requests', title: 'My Repair Requests', zh: '我的报修' },
+  { href: '/portal/customer#my-quotations', title: 'My Quotations', zh: '我的报价' },
+  { href: '/portal/customer#my-invoices', title: 'My Invoices & Payments', zh: '我的发票与付款' },
+  { href: '/portal/customer#my-warranties', title: 'My Warranty', zh: '我的保修' },
+  { href: '/portal/customer#my-profile', title: 'My Profile', zh: '我的资料' }
 ];
 
 const engineerLinks = [
-  { href: '/engineer-portal#assigned-jobs', title: 'Assigned Jobs', zh: '已分配工单' },
-  { href: '/engineer-portal#inspection-checklist', title: 'Inspection Checklist', zh: '查验清单' },
-  { href: '/engineer-portal#upload-photos', title: 'Upload Photos', zh: '上传照片' },
-  { href: '/engineer-portal#job-notes', title: 'Job Notes', zh: '工单记录' },
-  { href: '/engineer-portal#completion-report', title: 'Completion Report', zh: '完工报告' }
+  { href: '/portal/engineer#assigned-jobs', title: 'Assigned Jobs', zh: '已分配工单' },
+  { href: '/portal/engineer#inspection-checklist', title: 'Inspection Checklist', zh: '查验清单' },
+  { href: '/portal/engineer#upload-photos', title: 'Upload Photos', zh: '上传照片' },
+  { href: '/portal/engineer#job-notes', title: 'Job Notes', zh: '工单记录' },
+  { href: '/portal/engineer#completion-report', title: 'Completion Report', zh: '完工报告' }
 ];
+
+function PortalLogoMark() {
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25">
+      <div className="grid h-full w-full place-items-center rounded-[inherit] bg-gradient-to-br from-orange-500 via-amber-400 to-blue-600 text-white">
+        <span className="text-[14px] font-black tracking-[-0.08em]">NF</span>
+      </div>
+    </div>
+  );
+}
 
 export function PortalShell({ type, children }: { type: 'customer' | 'engineer'; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,12 +43,10 @@ export function PortalShell({ type, children }: { type: 'customer' | 'engineer';
     <div className="min-h-screen bg-adminBg text-slate-900">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col bg-sidebar text-white shadow-2xl lg:flex">
         <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25">
-            <img src="/nanofix-logo.png" alt="NANOFIX logo PNG" className="h-full w-full object-contain" />
-          </div>
+          <PortalLogoMark />
           <div>
-            <div className="text-xl font-black tracking-wide">NANOFIX</div>
-            <div className="text-[13px] text-slate-300">{type === 'customer' ? 'Client Portal' : 'Engineer Portal'}</div>
+            <div className="text-xl font-black tracking-wide text-white">NANOFIX</div>
+            <div className="text-[13px] font-semibold text-slate-300">{type === 'customer' ? 'Client Portal' : 'Engineer Portal'}</div>
           </div>
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
@@ -59,8 +67,8 @@ export function PortalShell({ type, children }: { type: 'customer' | 'engineer';
             );
           })}
         </nav>
-        <div className="border-t border-white/10 p-4 text-xs text-slate-300">
-          Admin menus are hidden in portal mode. / 门户模式不显示总后台菜单。
+        <div className="border-t border-white/10 p-4 text-xs font-semibold text-slate-300">
+          Standalone portal mode. / 独立门户模式。
         </div>
       </aside>
       <div className="lg:pl-72">
