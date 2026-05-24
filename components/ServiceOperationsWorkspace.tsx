@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
 import { boardLanes, operationModules, type OperationModuleKey } from '@/lib/nanofix/operationsConfig';
 
+type BadgeTone = 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan';
 type Row = Record<string, unknown>;
 type PublicModuleConfig = {
   key: OperationModuleKey;
@@ -49,7 +51,7 @@ function pickTitle(row: Row, config: PublicModuleConfig) {
   return candidates.map((key) => row[key]).find(Boolean) || row[config.primaryKey] || 'Record';
 }
 
-function toneForStatus(status: string) {
+function toneForStatus(status: string): BadgeTone {
   if (/(new|pending|draft|scheduled|assigned)/i.test(status)) return 'amber';
   if (/(completed|paid|active|accepted|succeeded|confirmed|approved|converted)/i.test(status)) return 'green';
   if (/(cancelled|void|failed|lost|rejected|expired|no_show)/i.test(status)) return 'red';
@@ -184,6 +186,8 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
 }
 
 function ModuleWorkspace({ moduleKey }: { moduleKey: OperationModuleKey }) {
+  const searchParams = useSearchParams();
+  const openId = searchParams.get('open');
   const [rows, setRows] = useState<Row[]>([]);
   const [config, setConfig] = useState<PublicModuleConfig | null>(null);
   const [search, setSearch] = useState('');
@@ -206,14 +210,23 @@ function ModuleWorkspace({ moduleKey }: { moduleKey: OperationModuleKey }) {
       setError(json.error || 'Load failed. / 加载失败。');
       return;
     }
-    setRows(json.rows || []);
-    setConfig(json.config);
+    const nextRows = (json.rows || []) as Row[];
+    const nextConfig = json.config as PublicModuleConfig;
+    setRows(nextRows);
+    setConfig(nextConfig);
+    if (openId) {
+      const target = nextRows.find((row) => String(row[nextConfig.primaryKey]) === openId);
+      if (target) {
+        setSelected(target);
+        setCreating(false);
+      }
+    }
   }
 
   useEffect(() => {
     void loadRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleKey]);
+  }, [moduleKey, openId]);
 
   const visibleColumns = useMemo(() => config?.summaryFields || [], [config]);
 
@@ -283,6 +296,7 @@ function BoardWorkspace() {
 
   useEffect(() => {
     void loadBoard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
