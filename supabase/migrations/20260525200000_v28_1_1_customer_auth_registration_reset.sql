@@ -15,7 +15,7 @@ create table if not exists public.customer_auth_actions (
   email text,
   phone text,
   whatsapp text,
-  action_type text not null check (action_type in ('register_customer','direct_password_reset','email_reset_link','whatsapp_reset_link','email_verification','phone_verification','whatsapp_verification')),
+  action_type text not null check (action_type in ('register_customer','direct_credential_update','email_recovery_link','whatsapp_recovery_link','email_verification','phone_verification','whatsapp_verification')),
   delivery_channel text not null default 'admin' check (delivery_channel in ('admin','email','phone','whatsapp')),
   status text not null default 'pending' check (status in ('pending','sent','completed','failed','cancelled')),
   metadata jsonb not null default '{}'::jsonb,
