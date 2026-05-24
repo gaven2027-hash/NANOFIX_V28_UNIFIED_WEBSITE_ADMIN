@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'NANOFIX Admin Login | NANOFIX 后台登录',
-  description: 'Secure NANOFIX backend login with browser favicon logo, Supabase Auth and role-based access control.',
+  title: 'NANOFIX Secure Login | NANOFIX 安全登录',
+  description: 'Secure NANOFIX login for Admin, Customer and Engineer portals.',
   robots: { index: false, follow: false },
   icons: {
     icon: [
@@ -20,13 +20,18 @@ import { LoginForm } from './LoginForm';
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-adminBg p-6">
-      <section className="w-full max-w-md rounded-3xl bg-white p-8 shadow-soft ring-1 ring-slate-200">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-white p-1 shadow-soft ring-1 ring-slate-200">
-          <img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-6">
+      <img
+        src="/assets/images/team_on_site_premium.webp"
+        alt="NANOFIX team background"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-slate-950/55" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950/55 via-slate-950/25 to-blue-950/40" />
+      <section className="relative z-10 w-full max-w-md rounded-3xl bg-white/95 p-8 shadow-2xl shadow-slate-950/30 ring-1 ring-white/70 backdrop-blur-md">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-white p-1.5 shadow-soft ring-1 ring-slate-200">
+          <img src="/nanofix-logo.svg" alt="NANOFIX logo" className="block h-auto max-h-full w-auto max-w-full object-contain" />
         </div>
-        <h1 className="mt-5 text-center text-2xl font-black text-slate-950">NANOFIX Admin Login</h1>
-        <p className="mt-2 text-center text-sm text-slate-500">后台登录页面显示 NANOFIX LOGO，并接入 Supabase Auth、角色权限和路由保护。</p>
         <LoginForm />
       </section>
     </main>
