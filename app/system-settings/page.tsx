@@ -2,15 +2,17 @@ export const dynamic = 'force-dynamic';
 
 import { AdminShell } from '@/components/AdminShell';
 import { PageHeader } from '@/components/PageHeader';
-import { RbacTable } from '@/components/RbacTable';
-import { BackupCenter } from '@/components/BackupCenter';
-import { MenuAnchorSections } from '@/components/MenuAnchorSections';
+import { SystemSettingsWorkspace } from '@/components/SystemSettingsWorkspace';
 
 export default function Page() {
   return (
     <AdminShell>
-      <PageHeader eyebrow="网站与系统设置" title="Website & System Settings" description="Manage brand, APIs, search, QR, backup, roles and audit logs. / 管理品牌、接口、搜索、二维码、备份、角色和审计日志。" />
-      <><><BackupCenter /><div className="mt-6"><RbacTable /></div></><MenuAnchorSections route="/system-settings" /></>
+      <PageHeader
+        eyebrow="网站与系统设置"
+        title="Website & System Settings"
+        description="Operable settings backend connected to Supabase setting records, backups, RBAC summaries, audit logs, health checks and version snapshots. / 已连接 Supabase 真实设置记录、备份、权限、审计、健康检查和版本快照。"
+      />
+      <SystemSettingsWorkspace />
     </AdminShell>
   );
 }
