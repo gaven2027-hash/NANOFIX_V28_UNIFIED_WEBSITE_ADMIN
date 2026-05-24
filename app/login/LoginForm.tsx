@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@/lib/supabase/browser';
 
@@ -13,7 +14,8 @@ const copyByContext = {
     welcome: 'Welcome to NANOFIX Command Center.',
     welcomeZh: '欢迎使用 NANOFIX 总后台管理系统。',
     note: 'Manage customers, jobs, quotations, invoices, warranties, engineers and system operations from one secure workspace.',
-    noteZh: '统一管理客户、工单、报价、发票、保修、工程师和系统运营。'
+    noteZh: '统一管理客户、工单、报价、发票、保修、工程师和系统运营。',
+    registerHref: '/register/admin'
   },
   customer: {
     title: 'Premium Member Portal Login',
@@ -21,7 +23,8 @@ const copyByContext = {
     welcome: 'Welcome to the NANOFIX Premium Member Portal.',
     welcomeZh: '欢迎使用 NANOFIX 高级会员管理系统。',
     note: 'Submit repair requests, track progress and review quotations, invoices, payments and warranty records conveniently.',
-    noteZh: '便捷提交报修，实时追踪维修进度，并查看报价、发票、付款和保修记录。'
+    noteZh: '便捷提交报修，实时追踪维修进度，并查看报价、发票、付款和保修记录。',
+    registerHref: '/register/member'
   },
   engineer: {
     title: 'Engineer Management System Login',
@@ -29,7 +32,8 @@ const copyByContext = {
     welcome: 'Welcome to NANOFIX Engineer Portal.',
     welcomeZh: '欢迎使用 NANOFIX 工程师管理系统。',
     note: 'Review assigned jobs, inspection tasks, field photos, job notes, completion status and customer sign-off records.',
-    noteZh: '查看已分配工单、查验任务、现场照片、工单记录、完工状态和客户签名。'
+    noteZh: '查看已分配工单、查验任务、现场照片、工单记录、完工状态和客户签名。',
+    registerHref: '/register/engineer'
   }
 } as const;
 
@@ -46,14 +50,15 @@ function clearAdminAccessCookie() {
   document.cookie = `nanofix_admin_access_token=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
-function getLoginContext(nextPath: string | null, explicitRole: string | null): LoginContext {
+function getLoginContext(nextPath: string | null, explicitRole: string | null, forcedContext?: LoginContext): LoginContext {
+  if (forcedContext) return forcedContext;
   const text = `${nextPath || ''} ${explicitRole || ''}`.toLowerCase();
-  if (text.includes('customer')) return 'customer';
+  if (text.includes('customer') || text.includes('member')) return 'customer';
   if (text.includes('engineer')) return 'engineer';
   return 'admin';
 }
 
-function LoginFormInner() {
+function LoginFormInner({ forcedContext }: { forcedContext?: LoginContext }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -62,7 +67,7 @@ function LoginFormInner() {
   const [message, setMessage] = useState('');
 
   const requestedNext = searchParams.get('next');
-  const context = getLoginContext(requestedNext, searchParams.get('role'));
+  const context = getLoginContext(requestedNext, searchParams.get('role'), forcedContext);
   const copy = copyByContext[context];
   const setupWarning = useMemo(() => searchParams.get('setup') === 'supabase_env_missing', [searchParams]);
 
@@ -82,14 +87,15 @@ function LoginFormInner() {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role,is_active')
+        .select('role,is_active,review_status,profile_status')
         .eq('auth_user_id', data.user.id)
         .maybeSingle();
 
       if (profileError || !profile?.is_active) {
         await supabase.auth.signOut();
         clearAdminAccessCookie();
-        setMessage('This account is inactive or missing a role profile. / 此账号未启用或缺少角色档案。');
+        const reviewText = profile?.review_status === 'pending_review' ? 'Your registration is pending Super Admin review. / 您的注册申请正在等待总管理员审核。' : 'This account is inactive or missing a role profile. / 此账号未启用或缺少角色档案。';
+        setMessage(reviewText);
         return;
       }
 
@@ -142,15 +148,18 @@ function LoginFormInner() {
         <button className="w-full rounded-2xl bg-activeBlue px-4 py-3 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>
           {loading ? 'Signing in... / 登录中...' : 'Sign In / 登录'}
         </button>
+        <p className="text-center text-xs font-semibold leading-5 text-slate-500">
+          Need an account? / 还没有账号？ <Link className="font-black text-activeBlue" href={copy.registerHref}>Register / 注册申请</Link>
+        </p>
       </form>
     </>
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ forcedContext }: { forcedContext?: LoginContext }) {
   return (
     <Suspense fallback={<div className="mt-6 rounded-2xl bg-adminBg px-4 py-3 text-sm font-semibold text-slate-600">Loading login form...</div>}>
-      <LoginFormInner />
+      <LoginFormInner forcedContext={forcedContext} />
     </Suspense>
   );
 }
