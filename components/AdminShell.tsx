@@ -7,6 +7,7 @@ import clsx from 'clsx';
 import { menu, type MenuItem } from '@/data/adminData';
 import { operationModules } from '@/lib/nanofix/operationsConfig';
 import { websiteSections } from '@/lib/nanofix/websiteManagementConfig';
+import { socialMediaSections } from '@/lib/nanofix/socialMediaConfig';
 import { TopSearch } from './TopSearch';
 
 const serviceOperationsMenu: MenuItem = {
@@ -27,6 +28,15 @@ const websiteManagementMenu: MenuItem = {
   children: websiteSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
 };
 
+const socialMediaMenu: MenuItem = {
+  order: '4',
+  href: '/social-media',
+  title: 'Social Media Management',
+  zh: '社媒管理',
+  badge: socialMediaSections.length,
+  children: socialMediaSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh }))
+};
+
 const globalSearchMenu: MenuItem = {
   order: 'Top',
   href: '/dashboard#global-search',
@@ -40,6 +50,7 @@ const adminMenu = menu.map((item) => {
   const route = item.href.split('#')[0];
   if (route === '/service-operations') return serviceOperationsMenu;
   if (route === '/website-management') return websiteManagementMenu;
+  if (route === '/social-media') return socialMediaMenu;
   if (item.href === '/dashboard#global-search') return globalSearchMenu;
   return item;
 });
