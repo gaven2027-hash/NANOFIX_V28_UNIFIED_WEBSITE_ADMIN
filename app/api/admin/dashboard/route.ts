@@ -36,17 +36,20 @@ function filterRows(rows: Row[], search: string) {
   return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
 }
 
-function statusTone(status: unknown) {
-  const value = String(status || '').toLowerCase();
-  if (/(active|approved|paid|completed|healthy|published|linked)/.test(value)) return 'green';
-  if (/(pending|draft|scheduled|sent|open|degraded|review)/.test(value)) return 'amber';
-  if (/(failed|cancelled|overdue|disabled|rejected|expired|critical)/.test(value)) return 'red';
-  return 'blue';
+function singaporeDayStartIso() {
+  const now = new Date();
+  const sgOffsetMs = 8 * 60 * 60 * 1000;
+  const sgNow = new Date(now.getTime() + sgOffsetMs);
+  const startUtcMs = Date.UTC(sgNow.getUTCFullYear(), sgNow.getUTCMonth(), sgNow.getUTCDate()) - sgOffsetMs;
+  return new Date(startUtcMs).toISOString();
 }
 
 async function getDashboardData(search: string) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) throw new Error('Supabase server client is not configured.');
+
+  const todayStart = singaporeDayStartIso();
+  const profileColumns = 'profile_id,auth_user_id,email,full_name,role,is_active,password_status,username,mobile_phone,whatsapp_phone,profile_status,review_status,created_at,updated_at';
 
   const [
     leads,
@@ -59,7 +62,11 @@ async function getDashboardData(search: string) {
     intake,
     socialMessages,
     searchLogs,
-    auditLogs
+    auditLogs,
+    newMembers,
+    newEngineers,
+    pendingAccounts,
+    blockedAccounts
   ] = await Promise.all([
     safeList('new_leads', supabase.from('leads').select('lead_id,customer_id,name,phone,email,source_platform,status,priority,created_at,updated_at').in('status', ['new', 'open', 'pending']).order('created_at', { ascending: false }).limit(120)),
     safeList('pending_binding', supabase.from('customer_binding_suggestions').select('suggestion_id,service_request_id,customer_id,match_score,match_reasons,status,created_at,updated_at').in('status', ['suggested', 'pending']).order('created_at', { ascending: false }).limit(120)),
@@ -71,7 +78,11 @@ async function getDashboardData(search: string) {
     safeList('intake', supabase.from('service_requests').select('service_request_id,customer_id,contact_name,phone,email,issue_type,address_text,status,priority,source_platform,created_at,updated_at').order('created_at', { ascending: false }).limit(120)),
     safeList('channel_alerts', supabase.from('social_messages').select('message_id,lead_id,customer_id,channel,direction,body,risk_level,created_at').order('created_at', { ascending: false }).limit(120)),
     safeList('global_search', supabase.from('search_logs').select('search_log_id,actor_id,query,filters,result_count,created_at').order('created_at', { ascending: false }).limit(120)),
-    safeList('audit', supabase.from('audit_logs').select('audit_id,actor_id,actor_role,action,object_type,object_id,created_at').order('created_at', { ascending: false }).limit(120))
+    safeList('audit', supabase.from('audit_logs').select('audit_id,actor_id,actor_role,action,object_type,object_id,created_at').order('created_at', { ascending: false }).limit(120)),
+    safeList('new_members', supabase.from('profiles').select(profileColumns).eq('role', 'customer').gte('created_at', todayStart).order('created_at', { ascending: false }).limit(120)),
+    safeList('new_engineers', supabase.from('profiles').select(profileColumns).eq('role', 'engineer').gte('created_at', todayStart).order('created_at', { ascending: false }).limit(120)),
+    safeList('pending_accounts', supabase.from('profiles').select(profileColumns).eq('review_status', 'pending_review').order('created_at', { ascending: false }).limit(120)),
+    safeList('blocked_accounts', supabase.from('profiles').select(profileColumns).in('profile_status', ['disabled', 'frozen', 'blacklisted', 'archived']).order('updated_at', { ascending: false }).limit(120))
   ]);
 
   const filtered = {
@@ -85,7 +96,11 @@ async function getDashboardData(search: string) {
     intake: filterRows(intake.rows, search),
     channel_alerts: filterRows(socialMessages.rows, search),
     global_search: filterRows(searchLogs.rows, search),
-    audit: filterRows(auditLogs.rows, search)
+    audit: filterRows(auditLogs.rows, search),
+    new_members: filterRows(newMembers.rows, search),
+    new_engineers: filterRows(newEngineers.rows, search),
+    pending_accounts: filterRows(pendingAccounts.rows, search),
+    blocked_accounts: filterRows(blockedAccounts.rows, search)
   };
 
   const unpaidAmount = unpaidInvoices.rows.reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
@@ -93,6 +108,10 @@ async function getDashboardData(search: string) {
   const healthPercent = modules.rows.length ? Math.max(0, Math.round(((modules.rows.length - degradedModules.length) / modules.rows.length) * 100)) : 100;
 
   const kpis = [
+    { key: 'new_members', label: 'New Members Today', zh: '今日新增会员', value: filtered.new_members.length, trend: 'today', tone: 'green' },
+    { key: 'new_engineers', label: 'New Engineers Today', zh: '今日新增工程师', value: filtered.new_engineers.length, trend: 'today', tone: 'green' },
+    { key: 'pending_accounts', label: 'Pending Account Review', zh: '待审核账号', value: filtered.pending_accounts.length, trend: 'review', tone: 'amber' },
+    { key: 'blocked_accounts', label: 'Disabled / Blocked Accounts', zh: '停用/冻结/拉黑账号', value: filtered.blocked_accounts.length, trend: 'control', tone: 'red' },
     { key: 'new_leads', label: 'New Leads', zh: '新线索', value: filtered.new_leads.length, trend: '+ live', tone: 'blue' },
     { key: 'pending_inspections', label: 'Pending Inspection', zh: '待查验', value: filtered.pending_inspections.length, trend: 'urgent', tone: 'amber' },
     { key: 'pending_quotes', label: 'Pending Quotes', zh: '待报价', value: filtered.pending_quotes.length, trend: 'open', tone: 'cyan' },
@@ -101,13 +120,20 @@ async function getDashboardData(search: string) {
     { key: 'module_health', label: 'Module Health', zh: '模块健康', value: `${healthPercent}%`, rawValue: healthPercent, trend: `${degradedModules.length} degraded`, tone: degradedModules.length ? 'amber' : 'green' }
   ];
 
-  const tasks = [...filtered.new_leads, ...filtered.pending_binding, ...filtered.pending_inspections, ...filtered.pending_quotes, ...filtered.unpaid_invoices].slice(0, 120);
-  const notifications = [...filtered.channel_alerts, ...filtered.ai_handoff, ...filtered.audit].slice(0, 120);
+  const tasks = [
+    ...filtered.pending_accounts,
+    ...filtered.new_leads,
+    ...filtered.pending_binding,
+    ...filtered.pending_inspections,
+    ...filtered.pending_quotes,
+    ...filtered.unpaid_invoices
+  ].slice(0, 160);
+  const notifications = [...filtered.blocked_accounts, ...filtered.channel_alerts, ...filtered.ai_handoff, ...filtered.audit].slice(0, 160);
 
   return {
     kpis,
     details: { ...filtered, tasks, notifications, reports: tasks, summary: tasks },
-    errors: [leads, pendingBinding, pendingInspections, pendingQuotes, unpaidInvoices, aiHandoff, modules, intake, socialMessages, searchLogs, auditLogs].filter((item) => item.error).map((item) => ({ label: item.label, error: item.error }))
+    errors: [leads, pendingBinding, pendingInspections, pendingQuotes, unpaidInvoices, aiHandoff, modules, intake, socialMessages, searchLogs, auditLogs, newMembers, newEngineers, pendingAccounts, blockedAccounts].filter((item) => item.error).map((item) => ({ label: item.label, error: item.error }))
   };
 }
 
