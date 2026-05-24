@@ -14,6 +14,7 @@ export type SystemSettingsSectionKey =
   | 'restore-logs'
   | 'permissions-rbac'
   | 'roles'
+  | 'auth-management'
   | 'audit-logs'
   | 'pdpa-privacy-settings'
   | 'retention-rules'
@@ -26,7 +27,7 @@ export type SystemSettingsSectionConfig = {
   href: string;
   title: string;
   zh: string;
-  tab: 'records' | 'audit' | 'health' | 'backup' | 'rbac' | 'versions';
+  tab: 'records' | 'audit' | 'health' | 'backup' | 'rbac' | 'auth' | 'versions';
   category: string;
   sensitive: boolean;
   helper: string;
@@ -48,6 +49,7 @@ export const systemSettingsSections: SystemSettingsSectionConfig[] = [
   { key: 'restore-logs', href: '/system-settings/restore-logs', title: 'Restore Logs', zh: '恢复日志', tab: 'backup', category: 'restore', sensitive: true, helper: 'Review restore logs and recovery operation records.' },
   { key: 'permissions-rbac', href: '/system-settings/permissions-rbac', title: 'Permissions / RBAC', zh: '权限/RBAC', tab: 'rbac', category: 'rbac', sensitive: true, helper: 'Review roles, permissions, access scopes and admin-only policy records.' },
   { key: 'roles', href: '/system-settings/roles', title: 'Roles', zh: '角色', tab: 'rbac', category: 'roles', sensitive: true, helper: 'Manage role notes and allowed permission groups. Do not expose raw auth tokens.' },
+  { key: 'auth-management', href: '/system-settings/auth-management', title: 'Auth Management', zh: '认证与密码管理', tab: 'auth', category: 'auth', sensitive: true, helper: 'Manage username/email/mobile/WhatsApp registration settings, admin password reset, reset links and OTP logs.' },
   { key: 'audit-logs', href: '/system-settings/audit-logs', title: 'Audit Logs', zh: '审计日志', tab: 'audit', category: 'audit', sensitive: true, helper: 'Search system audit logs by actor, object, action and time.' },
   { key: 'pdpa-privacy-settings', href: '/system-settings/pdpa-privacy-settings', title: 'PDPA / Privacy Settings', zh: 'PDPA/隐私设置', tab: 'records', category: 'privacy', sensitive: true, helper: 'Manage PDPA/privacy policy settings and customer data handling notes.' },
   { key: 'retention-rules', href: '/system-settings/retention-rules', title: 'Retention Rules', zh: '数据保留规则', tab: 'records', category: 'retention', sensitive: true, helper: 'Manage data retention rules, archive notes and deletion/soft-delete policy records.' },
