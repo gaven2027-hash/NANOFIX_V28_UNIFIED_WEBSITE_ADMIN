@@ -20,15 +20,23 @@ const bindingStatuses = ['pending', 'linked', 'unlinked'];
 const versionStatuses = ['draft', 'approved', 'published', 'archived', 'cancelled'];
 const pdpaStatuses = ['open', 'verifying', 'completed', 'rejected'];
 
-const linkedTables: Record<string, { table: string; columns: string; customerField: string; orderField: string }> = {
-  leads: { table: 'leads', columns: 'lead_id,customer_id,name,phone,email,address,source_platform,status,priority,created_at,updated_at', customerField: 'customer_id', orderField: 'created_at' },
-  service_requests: { table: 'service_requests', columns: 'service_request_id,customer_id,contact_name,phone,email,issue_type,address_text,status,priority,created_at,updated_at', customerField: 'customer_id', orderField: 'created_at' },
-  jobs: { table: 'jobs', columns: 'job_id,service_request_id,quotation_id,engineer_id,scheduled_at,status,completion_notes,created_at,updated_at', customerField: 'service_request_id', orderField: 'created_at' },
-  quotations: { table: 'quotations', columns: 'quotation_id,customer_id,service_request_id,version,total_amount,currency,valid_until,status,created_at,updated_at', customerField: 'customer_id', orderField: 'created_at' },
-  invoices: { table: 'invoices', columns: 'invoice_id,invoice_no,customer_id,job_id,total_amount,currency,due_date,status,created_at', customerField: 'customer_id', orderField: 'created_at' },
-  payments: { table: 'payments', columns: 'payment_id,invoice_id,customer_id,gateway,transaction_id,amount,currency,status,reconciled_at,created_at', customerField: 'customer_id', orderField: 'created_at' },
-  receipts: { table: 'receipts', columns: 'receipt_id,receipt_no,payment_id,invoice_id,status,issued_at,created_at', customerField: 'invoice_id', orderField: 'created_at' },
-  warranties: { table: 'warranties', columns: 'warranty_id,job_id,customer_id,coverage,starts_on,ends_on,status,created_at', customerField: 'customer_id', orderField: 'created_at' }
+type LinkedTableConfig = {
+  table: string;
+  columns: string;
+  customerField: string;
+  orderField: string;
+  searchFields: string[];
+};
+
+const linkedTables: Record<string, LinkedTableConfig> = {
+  leads: { table: 'leads', columns: 'lead_id,customer_id,name,phone,email,address,source_platform,status,priority,created_at,updated_at', customerField: 'customer_id', orderField: 'created_at', searchFields: ['name', 'phone', 'email', 'address', 'source_platform', 'status', 'priority'] },
+  service_requests: { table: 'service_requests', columns: 'service_request_id,customer_id,contact_name,phone,email,issue_type,address_text,status,priority,created_at,updated_at', customerField: 'customer_id', orderField: 'created_at', searchFields: ['contact_name', 'phone', 'email', 'issue_type', 'address_text', 'status', 'priority'] },
+  jobs: { table: 'jobs', columns: 'job_id,service_request_id,quotation_id,engineer_id,scheduled_at,status,completion_notes,created_at,updated_at', customerField: 'service_request_id', orderField: 'created_at', searchFields: ['status', 'completion_notes'] },
+  quotations: { table: 'quotations', columns: 'quotation_id,customer_id,service_request_id,version,total_amount,currency,valid_until,status,created_at,updated_at', customerField: 'customer_id', orderField: 'created_at', searchFields: ['currency', 'status'] },
+  invoices: { table: 'invoices', columns: 'invoice_id,invoice_no,customer_id,job_id,total_amount,currency,due_date,status,created_at', customerField: 'customer_id', orderField: 'created_at', searchFields: ['invoice_no', 'currency', 'status'] },
+  payments: { table: 'payments', columns: 'payment_id,invoice_id,customer_id,gateway,transaction_id,amount,currency,status,reconciled_at,created_at', customerField: 'customer_id', orderField: 'created_at', searchFields: ['gateway', 'transaction_id', 'currency', 'status'] },
+  receipts: { table: 'receipts', columns: 'receipt_id,receipt_no,payment_id,invoice_id,status,issued_at,created_at', customerField: 'invoice_id', orderField: 'created_at', searchFields: ['receipt_no', 'status'] },
+  warranties: { table: 'warranties', columns: 'warranty_id,job_id,customer_id,coverage,starts_on,ends_on,status,created_at', customerField: 'customer_id', orderField: 'created_at', searchFields: ['coverage', 'status'] }
 };
 
 function jsonError(message: string, status = 400) {
@@ -60,6 +68,10 @@ function toArray(value: unknown) {
   if (Array.isArray(value)) return value.map(String);
   if (typeof value === 'string') return value.split(',').map((v) => v.trim()).filter(Boolean);
   return [];
+}
+
+function buildTextSearch(fields: string[], query: string) {
+  return fields.map((field) => `${field}.ilike.%${query}%`).join(',');
 }
 
 function buildCustomerPayload(body: Payload) {
@@ -129,6 +141,8 @@ async function listBinding(search: string | null, status: string | null, custome
   let query = supabase.from('customer_binding_suggestions').select(bindingColumns).order('updated_at', { ascending: false }).limit(120);
   if (validUuid(customerId)) query = query.eq('customer_id', customerId);
   if (status && ['suggested', 'approved', 'rejected'].includes(status)) query = query.eq('status', status);
+  const q = cleanSearch(search);
+  if (q) query = query.or(`status.ilike.%${q}%`);
   const { data, error } = await query;
   if (error) return { ok: false as const, status: 500, error: error.message };
   return { ok: true as const, data: data ?? [] };
@@ -155,7 +169,7 @@ async function listLinked(category: string | null, customerId: string | null, se
   let query = supabase.from(config.table).select(config.columns).order(config.orderField, { ascending: false }).limit(120);
   if (validUuid(customerId) && ['leads', 'service_requests', 'quotations', 'invoices', 'payments', 'warranties'].includes(safeCategory)) query = query.eq('customer_id', customerId);
   const q = cleanSearch(search);
-  if (q && ['leads', 'service_requests'].includes(safeCategory)) query = query.or(`name.ilike.%${q}%,contact_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%,issue_type.ilike.%${q}%`);
+  if (q && config.searchFields.length) query = query.or(buildTextSearch(config.searchFields, q));
   const { data, error } = await query;
   if (error) return { ok: false as const, status: 500, error: error.message };
   return { ok: true as const, data: data ?? [], category: safeCategory };
