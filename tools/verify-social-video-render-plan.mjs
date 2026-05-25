@@ -11,6 +11,7 @@ const requiredFiles = [
   'app/api/admin/social-media/render-jobs/route.ts',
   'app/api/system/social-video-render-worker/route.ts',
   'components/SocialVideoRenderJobsWorkspace.tsx',
+  'components/SocialRenderedOutputReviewPanel.tsx',
   'components/SocialMultiPlatformPreviewWorkspace.tsx',
   'docs/NANOFIX_V28_1_3_SOCIAL_VIDEO_RENDERER_CONTRACT.md',
   'supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql'
@@ -28,6 +29,7 @@ if (!failures.length) {
   const api = read('app/api/admin/social-media/render-jobs/route.ts');
   const worker = read('app/api/system/social-video-render-worker/route.ts');
   const workspace = read('components/SocialVideoRenderJobsWorkspace.tsx');
+  const reviewPanel = read('components/SocialRenderedOutputReviewPanel.tsx');
   const previewWorkspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
   const migration = read('supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql');
 
@@ -89,9 +91,17 @@ if (!failures.length) {
     'buildSocialVideoRenderPlan',
     'generate_render_plan',
     'generate_social_video_render_plan',
+    'approve_rendered_output',
+    'request_render_revision',
+    'approve_social_video_rendered_output',
+    'request_social_video_render_revision',
+    'hasRenderableOutput',
+    'renderer_contract_valid === true',
+    'Only rendered jobs with a valid renderer contract and output video reference can be approved',
     'output_json',
     'render_plan',
     'render_plan_generated_at',
+    'rendered_output_review',
     'ai_auto_publish_allowed: false',
     'admin_review_required: true'
   ];
@@ -127,9 +137,11 @@ if (!failures.length) {
   }
 
   const workspaceNeedles = [
+    'SocialRenderedOutputReviewPanel',
     'Generate Render Plan',
     'generateRenderPlan',
     'getRenderPlan',
+    'getRendererContractStatus',
     'warnings',
     'timeline',
     'plan_status',
@@ -137,6 +149,21 @@ if (!failures.length) {
   ];
   for (const needle of workspaceNeedles) {
     if (!workspace.includes(needle)) failures.push(`Render jobs workspace missing: ${needle}`);
+  }
+
+  const reviewNeedles = [
+    'Rendered Output Review',
+    'Approve Rendered Output',
+    'Request Revision',
+    'approve_rendered_output',
+    'request_render_revision',
+    'renderer_contract_valid',
+    'output_video_url',
+    'output_storage_path',
+    'Approval is enabled only when status is rendered'
+  ];
+  for (const needle of reviewNeedles) {
+    if (!reviewPanel.includes(needle)) failures.push(`Rendered output review panel missing: ${needle}`);
   }
 
   if (!previewWorkspace.includes('Create Video Render Job') || !previewWorkspace.includes('/api/admin/social-media/render-jobs')) {
@@ -155,4 +182,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX social video render plan verification passed.');
-console.log('Checked render plan builder, renderer contract, API action, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
+console.log('Checked render plan builder, renderer contract, API action, rendered output review, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
