@@ -16,9 +16,11 @@ import { customerPortalSections } from '@/lib/nanofix/customerPortalConfig';
 import { engineerPortalSections } from '@/lib/nanofix/engineerPortalConfig';
 import { TopSearch } from './TopSearch';
 
-const globalSearchMenu: MenuItem = { order: 'Top', href: '/dashboard/global-search', title: 'Top Fixed Global Search', zh: '顶部固定全局搜索', badge: 'All', children: [] };
+const sidebarOperationModules = operationModules.filter((module) => module.key !== 'receipts');
+
+const globalSearchMenu: MenuItem = { order: 'Top', href: '/dashboard#global-search', title: 'Top Fixed Global Search', zh: '顶部固定全局搜索', badge: 'All', children: [] };
 const dashboardMenu: MenuItem = { order: '1', href: '/dashboard', title: 'Dashboard, Analytics & Alerts', zh: '数据分析、预警、待处理事项', badge: dashboardSections.length, children: dashboardSections.filter((section) => section.key !== 'global-search').map((section) => ({ href: section.href, title: section.title, zh: section.zh })) };
-const serviceOperationsMenu: MenuItem = { order: '2', href: '/service-operations', title: 'Service & Order Operations', zh: '业务订单处理', badge: operationModules.length, children: operationModules.map((module) => ({ href: module.route, title: module.title, zh: module.zh })) };
+const serviceOperationsMenu: MenuItem = { order: '2', href: '/service-operations', title: 'Service & Order Operations', zh: '业务订单处理', badge: sidebarOperationModules.length, children: sidebarOperationModules.map((module) => ({ href: module.route, title: module.title, zh: module.zh })) };
 const websiteManagementMenu: MenuItem = { order: '3', href: '/website-management', title: 'Website Management', zh: '网站后台管理', badge: websiteSections.length, children: websiteSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh })) };
 const socialMediaMenu: MenuItem = { order: '4', href: '/social-media', title: 'Social Media Management', zh: '社媒管理', badge: socialMediaSections.length, children: socialMediaSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh })) };
 const aiIntelligenceMenu: MenuItem = { order: '5', href: '/ai-intelligence', title: 'AI Intelligence Center', zh: 'AI 智能中心', badge: aiIntelligenceSections.length, children: aiIntelligenceSections.map((section) => ({ href: section.href, title: section.title, zh: section.zh })) };
