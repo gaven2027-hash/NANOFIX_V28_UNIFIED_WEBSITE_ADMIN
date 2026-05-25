@@ -28,6 +28,11 @@ function getReview(row: Row | null) {
   return output.rendered_output_review && typeof output.rendered_output_review === 'object' ? output.rendered_output_review as Row : null;
 }
 
+function getScheduleHandoff(row: Row | null) {
+  const output = getOutput(row);
+  return output.schedule_snapshot_handoff && typeof output.schedule_snapshot_handoff === 'object' ? output.schedule_snapshot_handoff as Row : null;
+}
+
 function outputReference(result: Row | null) {
   return String(result?.output_video_url || result?.output_storage_path || '');
 }
@@ -38,9 +43,16 @@ function canApprove(row: Row | null) {
   return row?.render_status === 'rendered' && output.renderer_contract_valid === true && !!outputReference(result);
 }
 
+function canCreateScheduleSnapshot(row: Row | null) {
+  const output = getOutput(row);
+  const result = getRendererResult(row);
+  const review = getReview(row);
+  return row?.render_status === 'approved' && output.renderer_contract_valid === true && review?.status === 'approved' && !!outputReference(result);
+}
+
 function tone(value: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan' {
   const text = String(value || '');
-  if (/true|approved|rendered|valid/i.test(text)) return 'green';
+  if (/true|approved|rendered|valid|scheduled/i.test(text)) return 'green';
   if (/false|failed|revision|invalid/i.test(text)) return 'red';
   if (/pending|draft|review/i.test(text)) return 'amber';
   return 'blue';
@@ -48,11 +60,14 @@ function tone(value: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cy
 
 export function SocialRenderedOutputReviewPanel({ row, onUpdated }: { row: Row | null; onUpdated: (row: Row, message: string) => void | Promise<void> }) {
   const [reviewNotes, setReviewNotes] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
   const [saving, setSaving] = useState(false);
   const output = getOutput(row);
   const result = getRendererResult(row);
   const review = getReview(row);
+  const handoff = getScheduleHandoff(row);
   const approvedReady = canApprove(row);
+  const scheduleReady = canCreateScheduleSnapshot(row);
 
   async function act(action: 'approve_rendered_output' | 'request_render_revision') {
     if (!row?.render_job_id) return;
@@ -69,6 +84,23 @@ export function SocialRenderedOutputReviewPanel({ row, onUpdated }: { row: Row |
       return;
     }
     await onUpdated(json.row, action === 'approve_rendered_output' ? 'Rendered output approved. / 渲染结果已批准。' : 'Revision requested. / 已要求返工。');
+  }
+
+  async function createScheduleSnapshot() {
+    if (!row?.render_job_id) return;
+    setSaving(true);
+    const response = await fetch('/api/admin/social-media/render-jobs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ render_job_id: row.render_job_id, action: 'create_rendered_output_schedule_snapshot', scheduled_at: scheduledAt })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      await onUpdated(row, json.error || 'Schedule snapshot handoff failed. / 排期快照交接失败。');
+      return;
+    }
+    await onUpdated(json.row, `Schedule snapshot created: v${json.version?.version_no || '—'} / 已创建排期快照。`);
   }
 
   if (!row) return null;
@@ -107,12 +139,27 @@ export function SocialRenderedOutputReviewPanel({ row, onUpdated }: { row: Row |
         </div>
       ) : null}
 
+      {handoff ? (
+        <div className="mt-4 rounded-2xl bg-emerald-50 p-3 ring-1 ring-emerald-100">
+          <div className={labelClass}>Schedule Snapshot Handoff / 排期快照交接</div>
+          <div className="text-sm font-black text-emerald-900">{formatValue(handoff.status)} · v{formatValue(handoff.version_no)}</div>
+          <div className="mt-1 text-xs font-semibold text-emerald-800">Scheduled at: {formatValue(handoff.scheduled_at)} · Version ID: {formatValue(handoff.version_id)}</div>
+        </div>
+      ) : null}
+
       <label className="mt-4 block"><span className={labelClass}>Review Notes / 审核备注</span><textarea className={`${inputClass} min-h-24`} value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} placeholder="Approve note or revision request..." /></label>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" disabled={saving || !approvedReady} onClick={() => void act('approve_rendered_output')} className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60">Approve Rendered Output / 批准渲染结果</button>
         <button type="button" disabled={saving || !result} onClick={() => void act('request_render_revision')} className="rounded-2xl bg-amber-500 px-4 py-2 text-sm font-black text-white hover:bg-amber-600 disabled:opacity-60">Request Revision / 要求返工</button>
       </div>
       {!approvedReady ? <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200">Approval is enabled only when status is rendered, renderer contract is valid, and a real output video URL/storage path exists. / 只有 rendered + contract valid + 有真实输出视频引用时才能批准。</div> : null}
+
+      <div className="mt-4 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+        <label><span className={labelClass}>Schedule Time / 排期时间</span><input className={inputClass} type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} /></label>
+        <button type="button" disabled={saving || !scheduleReady} onClick={createScheduleSnapshot} className="mt-3 rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60">Create Schedule Snapshot / 创建排期快照</button>
+        {!scheduleReady ? <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200">Schedule snapshot is enabled only after approved rendered output with valid renderer contract and real video output reference. / 只有批准后的有效渲染结果才能创建排期快照。</div> : null}
+        <div className="mt-2 text-xs font-bold text-slate-500">This creates a scheduled snapshot only. It does not publish or call platform APIs. / 这里只创建排期快照，不发布、不调用平台 API。</div>
+      </div>
     </div>
   );
 }
