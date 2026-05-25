@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Badge } from './Badge';
+import { WebsiteRealIframePreviewPanel } from './WebsiteRealIframePreviewPanel';
 
 type Props = {
   routePath: string;
@@ -85,21 +86,24 @@ export function WebsiteSamePositionPreviewPanel(props: Props) {
   const ctaGridClass = device === 'desktop' ? 'md:grid-cols-[1fr_220px]' : 'grid-cols-1';
 
   const shell = (children: React.ReactNode) => (
-    <section className="rounded-3xl bg-white p-4 shadow-soft ring-1 ring-slate-200">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="blue">Same-position preview</Badge>
-          <Badge tone="cyan">{frame.labelZh}</Badge>
-          <Badge tone="green">{props.visualAssetType}</Badge>
+    <div className="space-y-5">
+      <section className="rounded-3xl bg-white p-4 shadow-soft ring-1 ring-slate-200">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="blue">Same-position preview</Badge>
+            <Badge tone="cyan">{frame.labelZh}</Badge>
+            <Badge tone="green">{props.visualAssetType}</Badge>
+          </div>
+          <DeviceSwitcher device={device} setDevice={setDevice} />
         </div>
-        <DeviceSwitcher device={device} setDevice={setDevice} />
-      </div>
-      <div className="mb-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
-        {frame.chrome} · {props.routePath}#{props.blockKey} · Preview before publish / 发布前预览
-      </div>
-      <div className={`mx-auto transition-all duration-300 ${frame.widthClass}`}>{children}</div>
-      <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{props.providerLabel} · {props.providerNote}</div>
-    </section>
+        <div className="mb-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+          {frame.chrome} · {props.routePath}#{props.blockKey} · Preview before publish / 发布前预览
+        </div>
+        <div className={`mx-auto transition-all duration-300 ${frame.widthClass}`}>{children}</div>
+        <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{props.providerLabel} · {props.providerNote}</div>
+      </section>
+      <WebsiteRealIframePreviewPanel routePath={props.routePath} blockKey={props.blockKey} />
+    </div>
   );
 
   if (props.contentType === 'hero') {
