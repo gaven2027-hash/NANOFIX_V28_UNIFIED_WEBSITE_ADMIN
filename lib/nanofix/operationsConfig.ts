@@ -260,17 +260,20 @@ export const operationModules: OperationModuleConfig[] = [
     primaryKey: 'warranty_id',
     route: '/service-operations/warranties',
     permission: 'write:operations',
-    columns: ['warranty_id', 'job_id', 'customer_id', 'coverage', 'starts_on', 'ends_on', 'status', 'created_at'],
+    columns: ['warranty_id', 'receipt_id', 'payment_id', 'invoice_id', 'job_id', 'customer_id', 'coverage', 'starts_on', 'ends_on', 'status', 'source_json', 'created_at'],
     searchFields: ['coverage', 'status'],
     statusOptions: ['active', 'expiring', 'expired', 'claim_opened', 'claim_approved', 'claim_rejected', 'resolved'],
     formFields: [
+      { name: 'receipt_id', label: 'Receipt ID / 收据ID', type: 'uuid' },
+      { name: 'payment_id', label: 'Payment ID / 付款ID', type: 'uuid' },
+      { name: 'invoice_id', label: 'Invoice ID / 发票ID', type: 'uuid' },
       { name: 'job_id', label: 'Job ID / 工单ID', type: 'uuid' },
       { name: 'customer_id', label: 'Customer ID / 客户ID', type: 'uuid' },
       { name: 'coverage', label: 'Coverage / 保修范围', type: 'textarea' },
       { name: 'starts_on', label: 'Starts On / 开始日期', type: 'date' },
       { name: 'ends_on', label: 'Ends On / 结束日期', type: 'date' }
     ],
-    summaryFields: ['coverage', 'starts_on', 'ends_on', 'status', 'created_at'],
+    summaryFields: ['coverage', 'starts_on', 'ends_on', 'status', 'receipt_id', 'created_at'],
     boardLane: 'Warranty'
   }
 ];
