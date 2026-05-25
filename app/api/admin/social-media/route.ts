@@ -46,6 +46,29 @@ function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a
 function nullableUuid(value: unknown) { return validUuid(value) ? value : null; }
 function platform(value: unknown, fallback = 'general') { return text(value, fallback).toLowerCase().replace(/[^a-z0-9_ -]/g, '').replace(/\s+/g, '_').replace(/-/g, '_').slice(0, 80) || fallback; }
 function draftPlatform(value: unknown) { const p = platform(value, 'general'); return allowedDraftPlatforms.includes(p) ? p : 'general'; }
+function requiresFinalApprovalBeforeSchedule(status: string) { return ['scheduled', 'published'].includes(status); }
+function finalApprovalReadySnapshot(value: unknown) {
+  const snapshot = safeJson(value, {}) as Payload;
+  return snapshot.final_approval_completed_before_schedule === true
+    && snapshot.publish_ready_after_schedule === true
+    && snapshot.admin_review_required === true
+    && snapshot.ai_auto_publish_allowed === false;
+}
+function normalizedPublishSnapshot(value: unknown, p: string, status: string) {
+  const now = new Date().toISOString();
+  const snapshot = safeJson(value, { platform: p, status, source: 'manual social admin publish snapshot', created_at: now, ai_auto_publish_allowed: false }) as Payload;
+  return {
+    ...snapshot,
+    platform: snapshot.platform || p,
+    status: snapshot.status || status,
+    final_approval_completed_before_schedule: snapshot.final_approval_completed_before_schedule === true,
+    publish_ready_after_schedule: requiresFinalApprovalBeforeSchedule(status) ? true : snapshot.publish_ready_after_schedule === true,
+    platform_api_called: snapshot.platform_api_called === true ? true : false,
+    admin_review_required: true,
+    ai_auto_publish_allowed: false,
+    created_at: snapshot.created_at || now
+  };
+}
 
 function recordPayload(body: Payload, actorId?: string) {
   const section = getSocialMediaSection(text(body.section_key));
@@ -139,6 +162,20 @@ export async function PATCH(request: Request) {
   const supabase = createSupabaseAdminClient(); if (!supabase) return jsonError('Supabase server client is not configured.', 503);
   if (action === 'update_record') { const id = String(body.record_id || ''); if (!validUuid(id)) return jsonError('A valid record_id is required.'); const payload = recordPayload(body, context?.actorId); const { data: before } = await supabase.from('social_management_records').select(recordColumns).eq('record_id', id).maybeSingle(); const { data, error } = await supabase.from('social_management_records').update(payload).eq('record_id', id).select(recordColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'update', object_type: 'social_management_record', object_id: id, before_data: before ?? {}, after_data: data }); return NextResponse.json({ ok: true, record: data }); }
   if (action === 'update_draft') { const id = String(body.content_id || ''); if (!validUuid(id)) return jsonError('A valid content_id is required.'); const payload = draftPayload(body, context?.actorId); const { data: before } = await supabase.from('content_drafts').select(draftColumns).eq('content_id', id).maybeSingle(); const { data, error } = await supabase.from('content_drafts').update(payload).eq('content_id', id).select(draftColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'update', object_type: 'social_content_draft', object_id: id, before_data: before ?? {}, after_data: data }); return NextResponse.json({ ok: true, draft: data }); }
-  if (action === 'publish_snapshot') { const contentId = String(body.content_id || ''); const recordId = String(body.record_id || ''); const p = draftPlatform(body.platform || 'all'); const status = versionStatuses.includes(String(body.status)) ? String(body.status) : 'scheduled'; const { data: existing, error: versionError } = await supabase.from('social_publish_versions').select('version_no').eq('platform', p).order('version_no', { ascending: false }).limit(1); if (versionError) return jsonError(versionError.message, 500); const versionNo = Number(existing?.[0]?.version_no || 0) + 1; const snapshot = safeJson(body.snapshot_json, { platform: p, status, source: 'manual social admin publish snapshot', created_at: new Date().toISOString(), ai_auto_publish_allowed: false }); const { data, error } = await supabase.from('social_publish_versions').insert({ content_id: validUuid(contentId) ? contentId : null, record_id: validUuid(recordId) ? recordId : null, platform: p, version_no: versionNo, status, snapshot_json: snapshot, scheduled_at: body.scheduled_at || null, published_by: validUuid(context?.actorId) ? context?.actorId : null }).select(versionColumns).single(); if (error) return jsonError(error.message, 500); await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'publish_snapshot', object_type: 'social_publish_version', object_id: data.version_id, after_data: data }); return NextResponse.json({ ok: true, version: data }); }
+  if (action === 'publish_snapshot') {
+    const contentId = String(body.content_id || '');
+    const recordId = String(body.record_id || '');
+    const p = draftPlatform(body.platform || 'all');
+    const status = versionStatuses.includes(String(body.status)) ? String(body.status) : 'scheduled';
+    const snapshot = normalizedPublishSnapshot(body.snapshot_json, p, status);
+    if (requiresFinalApprovalBeforeSchedule(status) && !finalApprovalReadySnapshot(snapshot)) return jsonError('Scheduling/publishing requires final_approval_completed_before_schedule=true before creating the snapshot.', 409);
+    const { data: existing, error: versionError } = await supabase.from('social_publish_versions').select('version_no').eq('platform', p).order('version_no', { ascending: false }).limit(1);
+    if (versionError) return jsonError(versionError.message, 500);
+    const versionNo = Number(existing?.[0]?.version_no || 0) + 1;
+    const { data, error } = await supabase.from('social_publish_versions').insert({ content_id: validUuid(contentId) ? contentId : null, record_id: validUuid(recordId) ? recordId : null, platform: p, version_no: versionNo, status, snapshot_json: snapshot, scheduled_at: body.scheduled_at || null, published_by: validUuid(context?.actorId) ? context?.actorId : null }).select(versionColumns).single();
+    if (error) return jsonError(error.message, 500);
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'publish_snapshot_after_pre_schedule_final_approval', object_type: 'social_publish_version', object_id: data.version_id, after_data: data });
+    return NextResponse.json({ ok: true, version: data });
+  }
   return jsonError('Unsupported action.', 400);
 }
