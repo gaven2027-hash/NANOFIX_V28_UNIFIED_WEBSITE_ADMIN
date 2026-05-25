@@ -48,13 +48,14 @@ function normalizePlatform(value: unknown) {
 }
 
 function normalizeStatus(value: unknown, fallback = 'draft') {
-  const status = cleanText(value, fallback).toLowerCase();
-  return allowedStatuses.includes(status) ? status : fallback;
+  const safeFallback = allowedStatuses.includes(fallback) ? fallback : 'draft';
+  const status = cleanText(value, safeFallback).toLowerCase();
+  return allowedStatuses.includes(status) ? status : safeFallback;
 }
 
 function sanitizeSocialAccountData(data: Payload, actorId?: string, isCreate = false) {
   const now = new Date().toISOString();
-  const status = normalizeStatus(data.connection_status, isCreate ? 'draft' : undefined as unknown as string);
+  const status = normalizeStatus(data.connection_status, isCreate ? 'draft' : 'draft');
   const patch: Payload = {
     platform: normalizePlatform(data.platform),
     account_name: cleanText(data.account_name, '', 160),
