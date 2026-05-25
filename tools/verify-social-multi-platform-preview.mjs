@@ -24,6 +24,9 @@ const requiredPlatforms = [
   'forum',
   'google_business_profile',
   'linkedin',
+  'x_twitter',
+  'carousell_services',
+  'seedly_community',
   'whatsapp_channel',
   'telegram_channel',
   'website_blog'
@@ -38,6 +41,9 @@ const requiredPreviewLabels = [
   'Forum Preview',
   'Google Business Profile Preview',
   'LinkedIn Preview',
+  'X / Twitter Preview',
+  'Carousell Services Preview',
+  'Seedly Community Preview',
   'WhatsApp Channel Preview',
   'Telegram Channel Preview',
   'Website Blog Preview'
@@ -84,6 +90,9 @@ if (!failures.length) {
   const requiredConfigKeys = [
     'forum-preview',
     'linkedin-preview',
+    'x-twitter-preview',
+    'carousell-services-preview',
+    'seedly-community-preview',
     'whatsapp-channel-preview',
     'telegram-channel-preview',
     'website-blog-preview'
