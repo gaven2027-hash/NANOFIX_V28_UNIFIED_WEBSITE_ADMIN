@@ -17,6 +17,8 @@ type VerifiedActor = {
   authMode: "supabase" | "internal_secret" | "preview";
 };
 
+type PortalContext = "admin" | "customer" | "engineer";
+
 const adminRoutes = [
   "/admin",
   "/dashboard",
@@ -29,6 +31,18 @@ const adminRoutes = [
 ];
 
 const loginRoutes = ["/login"];
+const loginAliases: Record<string, PortalContext> = {
+  "/admin-login": "admin",
+  "/customer-login": "customer",
+  "/engineer-login": "engineer",
+  "/member-sign-up-login": "customer"
+};
+const registerAliases: Record<string, PortalContext> = {
+  "/admin-register": "admin",
+  "/customer-register": "customer",
+  "/member-register": "customer",
+  "/engineer-register": "engineer"
+};
 const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests"];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
 const engineerRoutes = ["/engineer-portal", "/api/portal/engineer"];
@@ -234,6 +248,14 @@ function redirectToLogin(request: NextRequest, reason?: string) {
   return NextResponse.redirect(loginUrl);
 }
 
+function redirectPortalAlias(request: NextRequest, pathname: "/login" | "/register", role: PortalContext) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  url.searchParams.set("role", role);
+  return NextResponse.redirect(url);
+}
+
 function redirectByRole(request: NextRequest, role: NanofixRole) {
   const url = request.nextUrl.clone();
   url.search = "";
@@ -247,6 +269,11 @@ function refreshSupabaseCookies(request: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const loginAliasRole = loginAliases[pathname];
+  if (loginAliasRole) return redirectPortalAlias(request, "/login", loginAliasRole);
+  const registerAliasRole = registerAliases[pathname];
+  if (registerAliasRole) return redirectPortalAlias(request, "/register", registerAliasRole);
+
   const loginPath = isLoginPath(pathname);
   const protectedPath = isProtectedPath(pathname);
   const isProtectedApi = startsWithAny(pathname, [...apiAdminRoutes, ...customerRoutes.filter((r) => r.startsWith("/api")), ...engineerRoutes.filter((r) => r.startsWith("/api"))]);
@@ -276,6 +303,14 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/login/:path*",
+    "/admin-login/:path*",
+    "/customer-login/:path*",
+    "/engineer-login/:path*",
+    "/member-sign-up-login/:path*",
+    "/admin-register/:path*",
+    "/customer-register/:path*",
+    "/member-register/:path*",
+    "/engineer-register/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
     "/service-operations/:path*",
