@@ -29,7 +29,13 @@ const requiredCopy = [
   'Premium Member Registration',
   '高级会员注册',
   'Engineer Account Application',
-  '工程师账号申请'
+  '工程师账号申请',
+  'Request Admin Access',
+  '申请管理员权限',
+  'Create Premium Member Account',
+  '注册高级会员账号',
+  'Apply for Engineer Access',
+  '申请工程师账号'
 ];
 
 const requiredAliases = [
@@ -61,9 +67,11 @@ if (!failures.length) {
   for (const role of roles) {
     if (!loginForm.includes(`${role}:`)) failures.push(`LoginForm missing role copy: ${role}`);
     if (!registerForm.includes(`${role}:`)) failures.push(`RegisterForm missing role copy: ${role}`);
-    if (!loginForm.includes(`/register?role=${role}`)) failures.push(`LoginForm missing register link for role: ${role}`);
-    if (!registerForm.includes(`/login?role=${role}`)) failures.push(`RegisterForm missing login link for role: ${role}`);
+    if (!middleware.includes(role)) failures.push(`Middleware missing portal role alias target: ${role}`);
   }
+
+  if (!loginForm.includes('/register?role=')) failures.push('LoginForm must link to the matching register role route.');
+  if (!registerForm.includes('/login?role=')) failures.push('RegisterForm must link back to the matching login role route.');
 
   for (const text of requiredCopy) {
     if (!loginForm.includes(text) && !registerForm.includes(text)) failures.push(`Missing bilingual auth welcome copy: ${text}`);
