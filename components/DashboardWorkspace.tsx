@@ -38,16 +38,23 @@ function pickRowKey(row: Row, index: number) {
   return String(row.profile_id || row.lead_id || row.service_request_id || row.inspection_id || row.quotation_id || row.invoice_id || row.draft_id || row.module_key || row.audit_id || row.message_id || row.search_log_id || index);
 }
 
+function openParam(value: unknown) {
+  return encodeURIComponent(String(value));
+}
+
 function rowActionHref(row: Row) {
-  if (row.profile_id) return `/system-settings/auth-management?profile_id=${encodeURIComponent(String(row.profile_id))}`;
-  if (row.lead_id) return `/service-operations/leads?lead_id=${encodeURIComponent(String(row.lead_id))}`;
-  if (row.service_request_id && !row.inspection_id && !row.quotation_id) return `/service-operations/service-requests?service_request_id=${encodeURIComponent(String(row.service_request_id))}`;
-  if (row.inspection_id) return `/service-operations/inspections?inspection_id=${encodeURIComponent(String(row.inspection_id))}`;
-  if (row.quotation_id) return `/service-operations/quotations?quotation_id=${encodeURIComponent(String(row.quotation_id))}`;
-  if (row.invoice_id) return `/service-operations/invoices?invoice_id=${encodeURIComponent(String(row.invoice_id))}`;
-  if (row.module_key) return `/system-settings/health-checks?module_key=${encodeURIComponent(String(row.module_key))}`;
-  if (row.draft_id) return `/ai-intelligence/ai-draft-review?draft_id=${encodeURIComponent(String(row.draft_id))}`;
-  if (row.message_id) return `/social-media/messages-inbox?message_id=${encodeURIComponent(String(row.message_id))}`;
+  if (row.profile_id) return `/system-settings/auth-management?profile_id=${openParam(row.profile_id)}`;
+  if (row.lead_id) return `/service-operations/leads?open=${openParam(row.lead_id)}`;
+  if (row.service_request_id && !row.inspection_id && !row.quotation_id) return `/service-operations/service-requests?open=${openParam(row.service_request_id)}`;
+  if (row.inspection_id) return `/service-operations/inspections?open=${openParam(row.inspection_id)}`;
+  if (row.quotation_id) return `/service-operations/quotations?open=${openParam(row.quotation_id)}`;
+  if (row.job_id) return `/service-operations/jobs?open=${openParam(row.job_id)}`;
+  if (row.invoice_id) return `/service-operations/invoices?open=${openParam(row.invoice_id)}`;
+  if (row.payment_id) return `/service-operations/payments?open=${openParam(row.payment_id)}`;
+  if (row.warranty_id) return `/service-operations/warranties?open=${openParam(row.warranty_id)}`;
+  if (row.module_key) return `/system-settings/health-checks?module_key=${openParam(row.module_key)}`;
+  if (row.draft_id) return `/ai-intelligence/ai-draft-review?draft_id=${openParam(row.draft_id)}`;
+  if (row.message_id) return `/social-media/messages-inbox?message_id=${openParam(row.message_id)}`;
   return '';
 }
 
