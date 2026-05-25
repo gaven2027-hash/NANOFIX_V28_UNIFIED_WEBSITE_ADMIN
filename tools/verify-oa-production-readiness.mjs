@@ -20,6 +20,7 @@ const requiredFiles = [
   'app/api/admin/social-accounts/route.ts',
   'app/api/admin/social-media/route.ts',
   'app/api/admin/social-media/material-upload/route.ts',
+  'app/api/admin/social-media/render-jobs/route.ts',
   'app/api/admin/website-social-links/route.ts',
   'app/api/admin/backups/jobs/route.ts',
   'app/api/system/module-health-worker/route.ts',
@@ -31,6 +32,7 @@ const requiredFiles = [
   'components/SocialMultiPlatformPreviewWorkspace.tsx',
   'components/SocialExpandedAccountsBindingWorkspace.tsx',
   'components/SocialMaterialPackBuilder.tsx',
+  'components/SocialVideoRenderJobsWorkspace.tsx',
   'components/SystemSettingsWorkspace.tsx',
   'tools/verify-social-multi-platform-preview.mjs',
   'docs/V28_1_2_SECURITY_HARDENING_SUMMARY.md',
@@ -40,7 +42,8 @@ const requiredFiles = [
   'supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql',
   'supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql',
   'supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql',
-  'supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql'
+  'supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql',
+  'supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql'
 ];
 
 for (const file of requiredFiles) {
@@ -58,14 +61,18 @@ if (!failures.length) {
   const fkIndexes = read('supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql');
   const fkIndexesB = read('supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql');
   const storageMigration = read('supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql');
+  const renderMigration = read('supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql');
   const socialApi = read('app/api/admin/social-media/route.ts');
   const socialUploadApi = read('app/api/admin/social-media/material-upload/route.ts');
+  const socialRenderApi = read('app/api/admin/social-media/render-jobs/route.ts');
   const socialAccountsApi = read('app/api/admin/social-accounts/route.ts');
   const socialPreviewBoard = read('components/SocialMultiPlatformPreviewBoard.tsx');
   const socialPreviewWorkspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
   const socialAccountsWorkspace = read('components/SocialExpandedAccountsBindingWorkspace.tsx');
   const materialBuilder = read('components/SocialMaterialPackBuilder.tsx');
+  const renderWorkspace = read('components/SocialVideoRenderJobsWorkspace.tsx');
   const socialConfig = read('lib/nanofix/socialMediaConfig.ts');
+  const socialPage = read('app/social-media/[section]/page.tsx');
   const env = read('.env.example');
   const vercel = read('vercel.json');
 
@@ -108,6 +115,20 @@ if (!failures.length) {
     [storageMigration, 'false', 'Social material storage bucket must be private.'],
     [storageMigration, 'nanofix_social_materials_admin_read', 'Social material storage must have admin read policy.'],
     [storageMigration, 'nanofix_social_materials_admin_insert', 'Social material storage must have admin insert policy.'],
+    [renderMigration, 'create table if not exists public.social_video_render_jobs', 'Render job queue table is required.'],
+    [renderMigration, 'enable row level security', 'Render job RLS is required.'],
+    [renderMigration, 'social_video_render_jobs_admin_all', 'Render job admin RLS policy is required.'],
+    [socialRenderApi, 'create_social_video_render_job', 'Render job API create audit log is required.'],
+    [socialRenderApi, 'update_social_video_render_job', 'Render job API update audit log is required.'],
+    [socialRenderApi, 'ai_auto_publish_allowed: false', 'Render job API must force AI auto publish off.'],
+    [socialRenderApi, 'admin_review_required: true', 'Render job API must force admin review on.'],
+    [renderWorkspace, 'Social Video Render Jobs', 'Render jobs workspace is required.'],
+    [renderWorkspace, 'Queue / 加入队列', 'Render jobs workspace must expose queue control.'],
+    [renderWorkspace, 'Approve / 批准', 'Render jobs workspace must expose approval control.'],
+    [socialPreviewWorkspace, 'Create Video Render Job', 'Multi-platform preview must create video render jobs from drafts.'],
+    [socialPreviewWorkspace, '/api/admin/social-media/render-jobs', 'Multi-platform preview must call render jobs API.'],
+    [socialPage, 'SocialVideoRenderJobsWorkspace', 'Social video render jobs route must render dedicated workspace.'],
+    [socialPage, "section.key === 'social-video-render-jobs'", 'Social video render jobs route key is required.'],
     [socialAccountsApi, 'x_twitter', 'Social account API must support X / Twitter binding.'],
     [socialAccountsApi, 'carousell_services', 'Social account API must support Carousell Services binding.'],
     [socialAccountsApi, 'seedly_community', 'Social account API must support Seedly Community binding.'],
@@ -140,6 +161,7 @@ if (!failures.length) {
     [socialPreviewBoard, 'Website Blog Preview', 'Website Blog preview window is required.'],
     [socialPreviewWorkspace, 'SocialMultiPlatformPreviewBoard', 'Social multi-platform preview workspace must render the board.'],
     [socialAccountsWorkspace, 'SocialExpandedAccountsBindingWorkspace', 'Expanded social account binding workspace is required.'],
+    [socialConfig, 'social-video-render-jobs', 'Social video render jobs route config is required.'],
     [socialConfig, 'forum-preview', 'Forum preview route config is required.'],
     [socialConfig, 'linkedin-preview', 'LinkedIn preview route config is required.'],
     [socialConfig, 'x-twitter-preview', 'X / Twitter preview route config is required.'],
@@ -182,4 +204,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX OA production readiness verification passed.');
-console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, structured source/reference video material uploads, multi-platform preview and FK performance index readiness.');
+console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, structured source/reference video material uploads, social video render job queue, multi-platform preview and FK performance index readiness.');
