@@ -24,6 +24,7 @@ const requiredFiles = [
   'app/api/admin/website-social-links/route.ts',
   'app/api/admin/backups/jobs/route.ts',
   'app/api/system/module-health-worker/route.ts',
+  'app/api/system/social-video-render-worker/route.ts',
   'components/RegistrationReviewWorkspace.tsx',
   'components/ServiceOperationsWorkspace.tsx',
   'components/WebsiteManagementWorkspace.tsx',
@@ -35,6 +36,7 @@ const requiredFiles = [
   'components/SocialVideoRenderJobsWorkspace.tsx',
   'components/SystemSettingsWorkspace.tsx',
   'tools/verify-social-multi-platform-preview.mjs',
+  'tools/verify-social-video-render-plan.mjs',
   'docs/V28_1_2_SECURITY_HARDENING_SUMMARY.md',
   'supabase/migrations/20260526004000_v28_1_2_field_work_rls_policies.sql',
   'supabase/migrations/20260526005000_v28_1_2_security_definer_access_hardening.sql',
@@ -65,6 +67,7 @@ if (!failures.length) {
   const socialApi = read('app/api/admin/social-media/route.ts');
   const socialUploadApi = read('app/api/admin/social-media/material-upload/route.ts');
   const socialRenderApi = read('app/api/admin/social-media/render-jobs/route.ts');
+  const socialRenderWorker = read('app/api/system/social-video-render-worker/route.ts');
   const socialAccountsApi = read('app/api/admin/social-accounts/route.ts');
   const socialPreviewBoard = read('components/SocialMultiPlatformPreviewBoard.tsx');
   const socialPreviewWorkspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
@@ -120,11 +123,24 @@ if (!failures.length) {
     [renderMigration, 'social_video_render_jobs_admin_all', 'Render job admin RLS policy is required.'],
     [socialRenderApi, 'create_social_video_render_job', 'Render job API create audit log is required.'],
     [socialRenderApi, 'update_social_video_render_job', 'Render job API update audit log is required.'],
+    [socialRenderApi, 'generate_render_plan', 'Render job API render-plan action is required.'],
+    [socialRenderApi, 'generate_social_video_render_plan', 'Render job API render-plan audit action is required.'],
     [socialRenderApi, 'ai_auto_publish_allowed: false', 'Render job API must force AI auto publish off.'],
     [socialRenderApi, 'admin_review_required: true', 'Render job API must force admin review on.'],
+    [socialRenderWorker, 'CRON_SECRET', 'Render worker must require CRON_SECRET or worker token.'],
+    [socialRenderWorker, 'NANOFIX_SYSTEM_WORKER_TOKEN', 'Render worker must support system worker token.'],
+    [socialRenderWorker, 'NANOFIX_VIDEO_RENDERER_ENDPOINT', 'Render worker must call external renderer only when configured.'],
+    [socialRenderWorker, 'Worker marked this job failed instead of fake-rendering a video', 'Render worker must not fake-render videos.'],
+    [socialRenderWorker, 'missing_render_plan', 'Render worker must fail queued jobs without render plans.'],
+    [socialRenderWorker, 'social_video_render_worker_started', 'Render worker must audit processing start.'],
+    [socialRenderWorker, 'social_video_render_worker_failed', 'Render worker must audit render failure.'],
+    [socialRenderWorker, 'social_video_render_worker_rendered', 'Render worker must audit rendered result.'],
+    [socialRenderWorker, 'ai_auto_publish_allowed: false', 'Render worker must keep AI auto publish disabled.'],
+    [socialRenderWorker, 'admin_review_required: true', 'Render worker must keep admin review required.'],
     [renderWorkspace, 'Social Video Render Jobs', 'Render jobs workspace is required.'],
     [renderWorkspace, 'Queue / 加入队列', 'Render jobs workspace must expose queue control.'],
     [renderWorkspace, 'Approve / 批准', 'Render jobs workspace must expose approval control.'],
+    [renderWorkspace, 'Generate Render Plan', 'Render jobs workspace must expose render plan generation.'],
     [socialPreviewWorkspace, 'Create Video Render Job', 'Multi-platform preview must create video render jobs from drafts.'],
     [socialPreviewWorkspace, '/api/admin/social-media/render-jobs', 'Multi-platform preview must call render jobs API.'],
     [socialPage, 'SocialVideoRenderJobsWorkspace', 'Social video render jobs route must render dedicated workspace.'],
@@ -184,6 +200,7 @@ if (!failures.length) {
     'verify:auth-welcome',
     'verify:registration-review',
     'verify:social-accounts',
+    'verify:social-video-render-plan',
     'verify:website-social-links',
     'verify:field-rls',
     'verify:security-definer',
@@ -204,4 +221,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX OA production readiness verification passed.');
-console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, structured source/reference video material uploads, social video render job queue, multi-platform preview and FK performance index readiness.');
+console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, structured source/reference video material uploads, social video render job queue, render plan generation, internal render worker, multi-platform preview and FK performance index readiness.');
