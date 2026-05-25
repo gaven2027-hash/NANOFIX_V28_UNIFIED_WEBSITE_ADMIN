@@ -18,14 +18,26 @@ function validUuid(value: unknown) {
   return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
 }
 
-function cleanText(value: unknown, fallback = '') {
-  return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback;
-}
-
 function receiptNo() {
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `RCPT-${stamp}-${suffix}`;
+}
+
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingReceipt(supabase: ReturnType<typeof createSupabaseAdminClient>, paymentId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('receipts')
+    .select(receiptColumns)
+    .eq('payment_id', paymentId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
 }
 
 export async function POST(request: Request) {
@@ -36,7 +48,7 @@ export async function POST(request: Request) {
   if (!supabase) return jsonError('Supabase server client is not configured.', 503);
 
   const body = (await request.json().catch(() => ({}))) as Payload;
-  const action = cleanText(body.action);
+  const action = typeof body.action === 'string' ? body.action.trim() : '';
   const paymentId = String(body.payment_id || '');
 
   if (action !== 'create_receipt') return jsonError('Unsupported action.', 400);
@@ -54,14 +66,7 @@ export async function POST(request: Request) {
     invoice = invoiceData as Payload | null;
   }
 
-  const { data: existing, error: existingError } = await supabase
-    .from('receipts')
-    .select(receiptColumns)
-    .eq('payment_id', paymentId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return jsonError(existingError.message, 500);
+  const existing = await findExistingReceipt(supabase, paymentId);
   if (existing) {
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_receipt_from_payment', object_type: 'receipt', object_id: existing.receipt_id, after_data: { payment_id: paymentId, receipt_id: existing.receipt_id } });
     return NextResponse.json({ ok: true, receipt: existing, payment, invoice, existing: true });
@@ -77,7 +82,16 @@ export async function POST(request: Request) {
   };
 
   const { data: receipt, error: receiptError } = await supabase.from('receipts').insert(receiptPayload).select(receiptColumns).single();
-  if (receiptError) return jsonError(receiptError.message, 500);
+  if (receiptError) {
+    if (isUniqueConflict(receiptError)) {
+      const concurrentExisting = await findExistingReceipt(supabase, paymentId);
+      if (concurrentExisting) {
+        await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_receipt_from_payment_conflict', object_type: 'receipt', object_id: concurrentExisting.receipt_id, after_data: { payment_id: paymentId, receipt_id: concurrentExisting.receipt_id } });
+        return NextResponse.json({ ok: true, receipt: concurrentExisting, payment, invoice, existing: true, recovered_from_conflict: true });
+      }
+    }
+    return jsonError(receiptError.message, 500);
+  }
 
   const { data: updatedPayment } = await supabase
     .from('payments')
