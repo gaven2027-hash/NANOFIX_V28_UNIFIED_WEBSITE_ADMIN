@@ -8,7 +8,7 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const requiredFiles = [
   'supabase/migrations/20260526001000_v28_1_2_social_accounts_binding.sql',
   'app/api/admin/social-accounts/route.ts',
-  'components/SocialAccountsBindingWorkspace.tsx',
+  'components/SocialExpandedAccountsBindingWorkspace.tsx',
   'app/social-media/[section]/page.tsx',
   'lib/nanofix/socialMediaConfig.ts'
 ];
@@ -19,8 +19,15 @@ const requiredPlatforms = [
   'tiktok',
   'youtube_shorts',
   'xiaohongshu',
+  'forum',
   'google_business_profile',
-  'whatsapp'
+  'linkedin',
+  'whatsapp',
+  'whatsapp_channel',
+  'telegram_channel',
+  'website_blog',
+  'website_live_chat',
+  'linktree'
 ];
 
 const requiredColumns = [
@@ -52,7 +59,7 @@ for (const file of requiredFiles) {
 if (!failures.length) {
   const migration = read('supabase/migrations/20260526001000_v28_1_2_social_accounts_binding.sql');
   const api = read('app/api/admin/social-accounts/route.ts');
-  const workspace = read('components/SocialAccountsBindingWorkspace.tsx');
+  const workspace = read('components/SocialExpandedAccountsBindingWorkspace.tsx');
   const page = read('app/social-media/[section]/page.tsx');
   const config = read('lib/nanofix/socialMediaConfig.ts');
 
@@ -65,7 +72,7 @@ if (!failures.length) {
   }
 
   for (const platform of requiredPlatforms) {
-    if (!api.includes(platform) || !workspace.includes(platform)) failures.push(`Missing social platform support: ${platform}`);
+    if (!api.includes(platform) || !workspace.includes(platform)) failures.push(`Missing social platform binding support: ${platform}`);
   }
 
   if (!api.includes('export async function GET') || !api.includes('export async function POST') || !api.includes('export async function PATCH')) {
@@ -74,9 +81,12 @@ if (!failures.length) {
   if (!api.includes('auditLog') || !api.includes('create_social_account_binding') || !api.includes('update_social_account_binding')) {
     failures.push('social-accounts API must write audit logs for create/update.');
   }
-  if (!workspace.includes('/api/admin/social-accounts')) failures.push('SocialAccountsBindingWorkspace does not call /api/admin/social-accounts.');
-  if (!page.includes('SocialAccountsBindingWorkspace') || !page.includes("section.key === 'social-accounts'")) {
-    failures.push('/social-media/social-accounts is not routed to SocialAccountsBindingWorkspace.');
+  if (!api.includes('ai_auto_publish_allowed: false') || !api.includes('admin_review_required: true')) {
+    failures.push('social-accounts API must keep AI publish disabled and admin review required in settings_json.');
+  }
+  if (!workspace.includes('/api/admin/social-accounts')) failures.push('SocialExpandedAccountsBindingWorkspace does not call /api/admin/social-accounts.');
+  if (!page.includes('SocialExpandedAccountsBindingWorkspace') || !page.includes("section.key === 'social-accounts'")) {
+    failures.push('/social-media/social-accounts is not routed to SocialExpandedAccountsBindingWorkspace.');
   }
   if (!config.includes("key: 'social-accounts'")) failures.push('socialMediaConfig is missing social-accounts section.');
 }
@@ -88,4 +98,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX social account binding verification passed.');
-console.log('Checked social_accounts table, API, UI workspace, route and audit logging.');
+console.log('Checked social_accounts table, API, expanded UI workspace, route and safety flags.');
