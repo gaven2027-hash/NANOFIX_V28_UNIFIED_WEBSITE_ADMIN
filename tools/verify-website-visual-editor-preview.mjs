@@ -133,16 +133,27 @@ if (!failures.length) {
   const previewNeedles = [
     'WebsiteSamePositionPreviewPanel',
     'Same-position preview',
-    'Hero',
+    'DeviceMode',
+    "'desktop' | 'tablet' | 'mobile'",
+    'DeviceSwitcher',
+    'Desktop /',
+    'Tablet /',
+    'Mobile /',
+    '1440px website width simulation',
+    '768px tablet simulation',
+    '390px mobile simulation',
+    'max-w-[390px]',
+    'max-w-3xl',
     'Card Grid',
     'CTA',
+    'Hero',
     'Visual / GIF preview placeholder',
-    'preview how this CMS block may look in the same website position',
+    'Preview before publish / 发布前预览',
     'object-cover',
     'Get a Free Quote'
   ];
   for (const needle of previewNeedles) {
-    if (!preview.includes(needle)) failures.push(`Same-position preview panel missing expected behavior: ${needle}`);
+    if (!preview.includes(needle)) failures.push(`Same-position responsive preview panel missing expected behavior: ${needle}`);
   }
 }
 
@@ -153,4 +164,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX website visual editor preview verification passed.');
-console.log('Checked provider registry, CMS database fields, API persistence, publish snapshots, admin UI selector and same-position preview panel.');
+console.log('Checked provider registry, CMS database fields, API persistence, publish snapshots, admin UI selector and responsive Desktop/Tablet/Mobile same-position preview panel.');
