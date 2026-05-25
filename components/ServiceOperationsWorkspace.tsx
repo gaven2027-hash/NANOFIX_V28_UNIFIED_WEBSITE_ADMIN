@@ -58,6 +58,58 @@ function toneForStatus(status: string): BadgeTone {
   return 'blue';
 }
 
+function parseJsonObject(value: unknown): Row | null {
+  if (!value) return null;
+  if (typeof value === 'object' && !Array.isArray(value)) return value as Row;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Row;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function sourceMessageFromLead(row: Row | null, config: PublicModuleConfig) {
+  if (!row || config.key !== 'leads') return null;
+  const data = parseJsonObject(row.ai_extracted_data);
+  const messageId = data?.message_id || data?.source_message_id;
+  if (!messageId && data?.source !== 'social_message') return null;
+  return {
+    messageId: messageId ? String(messageId) : '',
+    source: formatValue(data?.source || 'social_message'),
+    channel: formatValue(data?.channel || row.source_platform),
+    direction: formatValue(data?.direction),
+    risk: formatValue(data?.risk_level),
+    createdFrom: formatValue(data?.created_from),
+    body: formatValue(row.message)
+  };
+}
+
+function SourceMessageCard({ row, config }: { row: Row | null; config: PublicModuleConfig }) {
+  const source = sourceMessageFromLead(row, config);
+  if (!source) return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Source Message / 来源消息</div>
+      <div className="mt-2 grid gap-3 text-sm md:grid-cols-2">
+        <div><span className={labelClass}>Source / 来源</span><div className="font-black text-slate-800">{source.source}</div></div>
+        <div><span className={labelClass}>Channel / 渠道</span><div className="font-black text-slate-800">{source.channel}</div></div>
+        <div><span className={labelClass}>Risk / 风险</span><Badge tone={toneForStatus(source.risk)}>{source.risk}</Badge></div>
+        <div><span className={labelClass}>Message ID</span><div className="break-all font-mono text-xs font-bold text-slate-600">{source.messageId || '—'}</div></div>
+        <div className="md:col-span-2"><span className={labelClass}>Original / 原始消息</span><div className="rounded-2xl bg-white p-3 text-sm font-semibold leading-6 text-slate-700 ring-1 ring-blue-100">{source.body}</div></div>
+      </div>
+      {source.messageId ? (
+        <Link href={`/social-media/messages-inbox?message_id=${encodeURIComponent(source.messageId)}`} className="mt-4 inline-flex rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700">
+          Open Source Message / 打开来源消息
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -152,6 +204,8 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       </div>
 
       {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
+
+      <SourceMessageCard row={row} config={config} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
