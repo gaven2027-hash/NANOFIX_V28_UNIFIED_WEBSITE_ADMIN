@@ -33,6 +33,22 @@ function plusYears(years = 1) {
   return date.toISOString().slice(0, 10);
 }
 
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingWarranty(supabase: ReturnType<typeof createSupabaseAdminClient>, receiptId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('warranties')
+    .select(warrantyColumns)
+    .eq('receipt_id', receiptId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 export async function POST(request: Request) {
   const { context, response } = requireAdmin(request, 'write:operations');
   if (response) return response;
@@ -51,14 +67,7 @@ export async function POST(request: Request) {
   if (receiptError) return jsonError(receiptError.message, 500);
   if (!receipt) return jsonError('Receipt not found.', 404);
 
-  const { data: existing, error: existingError } = await supabase
-    .from('warranties')
-    .select(warrantyColumns)
-    .eq('receipt_id', receiptId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return jsonError(existingError.message, 500);
+  const existing = await findExistingWarranty(supabase, receiptId);
   if (existing) {
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_warranty_from_receipt', object_type: 'warranty', object_id: existing.warranty_id, after_data: { receipt_id: receiptId, warranty_id: existing.warranty_id } });
     return NextResponse.json({ ok: true, warranty: existing, existing: true });
@@ -104,7 +113,16 @@ export async function POST(request: Request) {
   };
 
   const { data: warranty, error: warrantyError } = await supabase.from('warranties').insert(warrantyPayload).select(warrantyColumns).single();
-  if (warrantyError) return jsonError(warrantyError.message, 500);
+  if (warrantyError) {
+    if (isUniqueConflict(warrantyError)) {
+      const concurrentExisting = await findExistingWarranty(supabase, receiptId);
+      if (concurrentExisting) {
+        await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_warranty_from_receipt_conflict', object_type: 'warranty', object_id: concurrentExisting.warranty_id, after_data: { receipt_id: receiptId, warranty_id: concurrentExisting.warranty_id } });
+        return NextResponse.json({ ok: true, warranty: concurrentExisting, existing: true, recovered_from_conflict: true });
+      }
+    }
+    return jsonError(warrantyError.message, 500);
+  }
 
   await auditLog({
     actor_id: context?.actorId,
