@@ -49,7 +49,7 @@ export const operationModules: OperationModuleConfig[] = [
     primaryKey: 'lead_id',
     route: '/service-operations/leads',
     permission: 'write:operations',
-    columns: ['lead_id', 'intake_id', 'customer_id', 'name', 'phone', 'email', 'address', 'address_text', 'issue_type', 'message', 'source_platform', 'binding_status', 'priority', 'urgency_score', 'status', 'owner_id', 'created_at', 'updated_at'],
+    columns: ['lead_id', 'intake_id', 'customer_id', 'name', 'phone', 'email', 'address', 'address_text', 'issue_type', 'message', 'source_platform', 'ai_extracted_data', 'binding_status', 'priority', 'urgency_score', 'status', 'owner_id', 'created_at', 'updated_at'],
     searchFields: ['name', 'phone', 'email', 'address', 'address_text', 'issue_type', 'message', 'source_platform'],
     statusOptions: ['new', 'qualified', 'converted', 'duplicate', 'lost', 'archived'],
     formFields: [
@@ -256,10 +256,6 @@ export const boardLanes = ['Lead', 'Inspection', 'Quotation', 'Work Execution', 
 
 export function getOperationModule(key: string) {
   return operationModules.find((module) => module.key === key);
-}
-
-export function getOperationModuleByObjectType(objectType: string) {
-  return operationModules.find((module) => module.objectType === objectType);
 }
 
 export function getPublicModuleConfig(config: OperationModuleConfig) {
