@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
+import { SocialMaterialPackBuilder, defaultSocialMaterialPack } from './SocialMaterialPackBuilder';
 
 type Row = Record<string, unknown>;
 
@@ -86,9 +87,9 @@ export function SocialMultiPlatformPreviewBoard({
 }) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(SOCIAL_PREVIEW_PLATFORMS.map((item) => item.platform));
   const [baseTitle, setBaseTitle] = useState('NANOFIX no-hacking leak repair proof');
-  const [baseBody, setBaseBody] = useState('Upload one repair video/photo pack, then generate platform-specific versions for review. AI must save drafts only and cannot auto-publish.');
+  const [baseBody, setBaseBody] = useState('Upload NANOFIX source videos, video clips, images and optional reference videos. AI creates platform-specific drafts only; admin review is required before scheduling or publishing.');
   const [serviceType, setServiceType] = useState('No-Hacking Leak Repair');
-  const [sourceMediaJson, setSourceMediaJson] = useState(JSON.stringify({ video_url: '', cover_image_url: '', image_urls: [], service_area: 'Singapore', cta: 'WhatsApp NANOFIX for photo consultation', notes: 'Original source material package for multi-platform review.' }, null, 2));
+  const [sourceMediaJson, setSourceMediaJson] = useState(JSON.stringify(defaultSocialMaterialPack, null, 2));
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -134,7 +135,7 @@ export function SocialMultiPlatformPreviewBoard({
 
   return (
     <div className="space-y-5">
-      <SectionCard title="One Material Pack → Multi-Platform Drafts / 一次素材生成多平台草稿" subtitle="Upload/source one video-photo package, choose platforms, generate separate AI drafts, then review all platform previews side-by-side. AI cannot auto-publish. / 一次上传或登记素材，勾选平台，生成独立草稿，并排审核；AI 默认不能自动发布。">
+      <SectionCard title="One Material Pack → Multi-Platform Drafts / 一次素材生成多平台草稿" subtitle="Separate NANOFIX source videos, reference videos and direct video clip uploads before generating platform drafts. AI cannot auto-publish. / 先明确区分素材视频、参考视频和可直接上传的视频片段，再生成多平台草稿；AI 默认不能自动发布。">
         {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="grid gap-3 md:grid-cols-2">
@@ -142,7 +143,10 @@ export function SocialMultiPlatformPreviewBoard({
             <label><span className={labelClass}>Service Type / 服务类型</span><input className={inputClass} value={serviceType} onChange={(event) => setServiceType(event.target.value)} /></label>
             <label><span className={labelClass}>AI Publish Rule / AI 发布规则</span><input className={inputClass} value="Draft only, admin approval required / 只保存草稿，必须人工审核" readOnly /></label>
             <label className="md:col-span-2"><span className={labelClass}>Base Body / 基础文案</span><textarea className={`${inputClass} min-h-28`} value={baseBody} onChange={(event) => setBaseBody(event.target.value)} /></label>
-            <label className="md:col-span-2"><span className={labelClass}>Source Media JSON / 素材包 JSON</span><textarea className={`${inputClass} min-h-36 font-mono text-xs`} value={sourceMediaJson} onChange={(event) => setSourceMediaJson(event.target.value)} /></label>
+            <div className="md:col-span-2">
+              <div className={labelClass}>Structured Source Media / 结构化素材包</div>
+              <SocialMaterialPackBuilder value={sourceMediaJson} onChange={setSourceMediaJson} />
+            </div>
           </div>
           <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
             <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Select Platforms / 勾选平台</div>
