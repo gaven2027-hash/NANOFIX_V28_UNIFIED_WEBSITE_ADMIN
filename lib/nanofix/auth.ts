@@ -71,15 +71,33 @@ export function getAdminContext(request: Request): AdminContext | null {
   return contextFromVerifiedMiddleware(request);
 }
 
-export function permissionAllowed(context: AdminContext, permission: string) {
-  if (context.permissions.includes("*")) return true;
-  if (context.permissions.includes(permission)) return true;
-  const delimiter = permission.includes(":") ? ":" : ".";
-  const [scopeOrAction, objectOrScope] = permission.split(delimiter);
-  if (delimiter === ":") {
-    return context.permissions.includes(`${scopeOrAction}:*`) || context.permissions.includes(`read:${objectOrScope}`) || context.permissions.includes("read:*");
+function colonPermissionAllowed(permissions: string[], permission: string) {
+  const [action, scope] = permission.split(":");
+  if (!action || !scope) return false;
+  if (permissions.includes(permission)) return true;
+  if (permissions.includes(`${action}:*`)) return true;
+
+  // read:* is intentionally read-only. It must never satisfy write/delete/admin permissions.
+  if (action === "read") {
+    return permissions.includes("read:*");
   }
-  return context.permissions.includes(`${scopeOrAction}.*`) || context.permissions.includes(`${objectOrScope}.${scopeOrAction}`);
+
+  return false;
+}
+
+function dottedPermissionAllowed(permissions: string[], permission: string) {
+  const [object, action] = permission.split(".");
+  if (!object || !action) return false;
+  return permissions.includes(permission) || permissions.includes(`${object}.*`);
+}
+
+export function permissionAllowed(context: AdminContext, permission: string) {
+  const permissions = context.permissions;
+  if (permissions.includes("*")) return true;
+  if (permissions.includes(permission)) return true;
+  if (permission.includes(":")) return colonPermissionAllowed(permissions, permission);
+  if (permission.includes(".")) return dottedPermissionAllowed(permissions, permission);
+  return false;
 }
 
 export function requireAdmin(request: Request, permission = "read:*") {
