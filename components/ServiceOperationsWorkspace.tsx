@@ -165,6 +165,21 @@ function InspectionQuotationCard({ row, config, saving, onCreateQuotation }: { r
   );
 }
 
+function QuotationInvoiceCard({ row, config, saving, onCreateInvoice }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateInvoice: () => void }) {
+  if (!row || config.key !== 'quotations') return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-purple-50 p-4 ring-1 ring-purple-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Invoice Step / 发票流程</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+        Create an invoice from this quotation and continue finance collection workflow. / 根据此报价创建发票，并进入财务收款流程。
+      </p>
+      <button type="button" disabled={saving} onClick={onCreateInvoice} className="mt-4 rounded-2xl bg-purple-700 px-4 py-2 text-sm font-black text-white hover:bg-purple-800 disabled:opacity-60">
+        Create Invoice / 创建发票
+      </button>
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -318,6 +333,27 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     if (quotationId && typeof window !== 'undefined') window.location.assign(`/service-operations/quotations?open=${encodeURIComponent(String(quotationId))}`);
   }
 
+  async function createInvoiceFromQuotation() {
+    if (!row?.quotation_id) return;
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/quotation-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_invoice', quotation_id: row.quotation_id })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Failed to create invoice. / 创建发票失败。');
+      return;
+    }
+    const invoiceId = json.invoice?.invoice_id;
+    setMessage(json.existing ? 'Existing invoice opened. / 已打开现有发票。' : 'Invoice created. / 发票已创建。');
+    onSaved();
+    if (invoiceId && typeof window !== 'undefined') window.location.assign(`/service-operations/invoices?open=${encodeURIComponent(String(invoiceId))}`);
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -335,6 +371,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       <LeadConversionCard row={row} config={config} saving={saving} onConvert={convertLeadToServiceRequest} />
       <ServiceRequestProgressionCard row={row} config={config} saving={saving} onCreateBooking={() => progressServiceRequest('create_booking')} onCreateInspection={() => progressServiceRequest('create_inspection')} />
       <InspectionQuotationCard row={row} config={config} saving={saving} onCreateQuotation={createQuotationFromInspection} />
+      <QuotationInvoiceCard row={row} config={config} saving={saving} onCreateInvoice={createInvoiceFromQuotation} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
