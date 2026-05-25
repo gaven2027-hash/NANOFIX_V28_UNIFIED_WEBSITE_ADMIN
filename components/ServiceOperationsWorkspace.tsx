@@ -47,14 +47,14 @@ function toInputValue(value: unknown, type?: string) {
 }
 
 function pickTitle(row: Row, config: PublicModuleConfig) {
-  const candidates = ['name', 'contact_name', 'invoice_no', 'booking_type', 'issue_type', 'coverage', 'transaction_id', config.primaryKey];
+  const candidates = ['name', 'contact_name', 'invoice_no', 'receipt_no', 'booking_type', 'issue_type', 'coverage', 'transaction_id', config.primaryKey];
   return candidates.map((key) => row[key]).find(Boolean) || row[config.primaryKey] || 'Record';
 }
 
 function toneForStatus(status: string): BadgeTone {
   if (/(new|pending|draft|scheduled|assigned)/i.test(status)) return 'amber';
-  if (/(completed|paid|active|accepted|succeeded|confirmed|approved|converted)/i.test(status)) return 'green';
-  if (/(cancelled|void|failed|lost|rejected|expired|no_show)/i.test(status)) return 'red';
+  if (/(completed|paid|active|accepted|succeeded|confirmed|approved|converted|issued)/i.test(status)) return 'green';
+  if (/(cancelled|void|failed|lost|rejected|expired|no_show|refunded)/i.test(status)) return 'red';
   return 'blue';
 }
 
@@ -118,12 +118,7 @@ function LeadConversionCard({ row, config, saving, onConvert }: { row: Row | nul
       <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
         Convert this lead into a Service Request for booking, inspection and quotation workflow. / 将此线索转换为报修单，进入预约、查验和报价流程。
       </p>
-      <button
-        type="button"
-        disabled={saving}
-        onClick={onConvert}
-        className="mt-4 rounded-2xl bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700 disabled:opacity-60"
-      >
+      <button type="button" disabled={saving} onClick={onConvert} className="mt-4 rounded-2xl bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700 disabled:opacity-60">
         Create Service Request / 创建报修单
       </button>
     </div>
@@ -195,15 +190,26 @@ function InvoicePaymentCard({ row, config, saving, onCreatePayment }: { row: Row
   );
 }
 
+function PaymentReceiptCard({ row, config, saving, onCreateReceipt }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateReceipt: () => void }) {
+  if (!row || config.key !== 'payments') return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-teal-50 p-4 ring-1 ring-teal-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-teal-700">Receipt & Reconciliation / 收据与对账</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+        Issue a receipt, mark this payment as succeeded, reconcile it and mark the linked invoice as paid. / 开具收据，将付款标记成功并完成对账，同时把关联发票标记为已付款。
+      </p>
+      <button type="button" disabled={saving} onClick={onCreateReceipt} className="mt-4 rounded-2xl bg-teal-700 px-4 py-2 text-sm font-black text-white hover:bg-teal-800 disabled:opacity-60">
+        Create Receipt / 创建收据
+      </button>
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {operationModules.map((module) => (
-        <Link
-          key={module.key}
-          href={module.route}
-          className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${activeKey === module.key ? 'border-activeBlue bg-blue-50 text-activeBlue shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-activeBlue hover:text-activeBlue'}`}
-        >
+        <Link key={module.key} href={module.route} className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${activeKey === module.key ? 'border-activeBlue bg-blue-50 text-activeBlue shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-activeBlue hover:text-activeBlue'}`}>
           <span className="block">{module.title}</span>
           <span className="block text-xs font-semibold text-slate-500">{module.zh}</span>
         </Link>
@@ -295,9 +301,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     const serviceRequestId = json.service_request?.service_request_id;
     setMessage(json.existing ? 'Existing service request opened. / 已打开现有报修单。' : 'Service request created. / 报修单已创建。');
     onSaved();
-    if (serviceRequestId && typeof window !== 'undefined') {
-      window.location.assign(`/service-operations/service-requests?open=${encodeURIComponent(String(serviceRequestId))}`);
-    }
+    if (serviceRequestId && typeof window !== 'undefined') window.location.assign(`/service-operations/service-requests?open=${encodeURIComponent(String(serviceRequestId))}`);
   }
 
   async function progressServiceRequest(action: 'create_booking' | 'create_inspection') {
@@ -390,6 +394,27 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     if (paymentId && typeof window !== 'undefined') window.location.assign(`/service-operations/payments?open=${encodeURIComponent(String(paymentId))}`);
   }
 
+  async function createReceiptFromPayment() {
+    if (!row?.payment_id) return;
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/payment-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_receipt', payment_id: row.payment_id })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Failed to create receipt. / 创建收据失败。');
+      return;
+    }
+    const receiptId = json.receipt?.receipt_id;
+    setMessage(json.existing ? 'Existing receipt opened. / 已打开现有收据。' : 'Receipt issued and payment reconciled. / 收据已开具，付款已对账。');
+    onSaved();
+    if (receiptId && typeof window !== 'undefined') window.location.assign(`/service-operations/receipts?open=${encodeURIComponent(String(receiptId))}`);
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -409,6 +434,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       <InspectionQuotationCard row={row} config={config} saving={saving} onCreateQuotation={createQuotationFromInspection} />
       <QuotationInvoiceCard row={row} config={config} saving={saving} onCreateInvoice={createInvoiceFromQuotation} />
       <InvoicePaymentCard row={row} config={config} saving={saving} onCreatePayment={createPaymentFromInvoice} />
+      <PaymentReceiptCard row={row} config={config} saving={saving} onCreateReceipt={createReceiptFromPayment} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
