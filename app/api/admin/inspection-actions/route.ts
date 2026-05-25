@@ -23,6 +23,22 @@ function cleanText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback;
 }
 
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingQuotation(supabase: ReturnType<typeof createSupabaseAdminClient>, serviceRequestId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('quotations')
+    .select(quotationColumns)
+    .eq('service_request_id', serviceRequestId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 function defaultValidUntil() {
   const date = new Date();
   date.setDate(date.getDate() + 14);
@@ -69,14 +85,7 @@ export async function POST(request: Request) {
   if (requestError) return jsonError(requestError.message, 500);
   if (!serviceRequest) return jsonError('Linked service request not found.', 404);
 
-  const { data: existing, error: existingError } = await supabase
-    .from('quotations')
-    .select(quotationColumns)
-    .eq('service_request_id', serviceRequestId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return jsonError(existingError.message, 500);
+  const existing = await findExistingQuotation(supabase, serviceRequestId);
   if (existing) {
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_quotation_from_inspection', object_type: 'quotation', object_id: existing.quotation_id, after_data: { inspection_id: inspectionId, service_request_id: serviceRequestId, quotation_id: existing.quotation_id } });
     return NextResponse.json({ ok: true, quotation: existing, existing: true });
@@ -94,7 +103,16 @@ export async function POST(request: Request) {
   };
 
   const { data: quotation, error: quotationError } = await supabase.from('quotations').insert(quotationPayload).select(quotationColumns).single();
-  if (quotationError) return jsonError(quotationError.message, 500);
+  if (quotationError) {
+    if (isUniqueConflict(quotationError)) {
+      const concurrentExisting = await findExistingQuotation(supabase, serviceRequestId);
+      if (concurrentExisting) {
+        await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_quotation_from_inspection_conflict', object_type: 'quotation', object_id: concurrentExisting.quotation_id, after_data: { inspection_id: inspectionId, service_request_id: serviceRequestId, quotation_id: concurrentExisting.quotation_id } });
+        return NextResponse.json({ ok: true, quotation: concurrentExisting, existing: true, recovered_from_conflict: true });
+      }
+    }
+    return jsonError(quotationError.message, 500);
+  }
 
   const lineItems = buildDefaultLineItems(inspection as Payload, serviceRequest as Payload);
   const { data: version, error: versionError } = await supabase.from('quotation_versions').insert({
