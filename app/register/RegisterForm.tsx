@@ -78,6 +78,22 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
   const [message, setMessage] = useState('');
   const loginHref = useMemo(() => `/login?role=${context}`, [context]);
 
+  async function submitRegistrationRequest(authUserId?: string) {
+    await fetch('/api/public/registration-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        auth_user_id: authUserId || null,
+        email,
+        full_name: name,
+        phone,
+        requested_role: context,
+        source: 'portal_register',
+        registration_source: 'nanofix_portal_register'
+      })
+    });
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -91,16 +107,19 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
 
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: name,
+            name,
             phone,
+            mobile_phone: phone,
+            whatsapp_phone: phone,
             requested_role: context,
             registration_source: 'nanofix_portal_register',
-            review_status: context === 'customer' ? 'pending_customer_profile' : 'pending_review'
+            review_status: 'pending_review'
           }
         }
       });
@@ -109,6 +128,8 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
         setMessage(`${error.message} / 注册失败，请检查资料后重试。`);
         return;
       }
+
+      await submitRegistrationRequest(data.user?.id);
 
       setMessage(
         context === 'customer'
