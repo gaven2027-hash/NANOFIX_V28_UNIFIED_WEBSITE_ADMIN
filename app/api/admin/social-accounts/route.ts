@@ -57,6 +57,7 @@ function sanitizeSocialAccountData(data: Payload, actorId?: string, isCreate = f
   const now = new Date().toISOString();
   const status = normalizeStatus(data.connection_status, isCreate ? 'draft' : 'draft');
   const platform = normalizePlatform(data.platform);
+  const userSettings = parseJson(data.settings_json, {}) as Record<string, unknown>;
   const patch: Payload = {
     platform,
     account_name: cleanText(data.account_name, '', 160),
@@ -74,10 +75,10 @@ function sanitizeSocialAccountData(data: Payload, actorId?: string, isCreate = f
     token_expires_at: cleanText(data.token_expires_at, '', 80) || null,
     permissions_json: parseJson(data.permissions_json, []),
     settings_json: {
-      admin_review_required: true,
-      ai_auto_publish_allowed: false,
+      ...userSettings,
       platform,
-      ...(parseJson(data.settings_json, {}) as Record<string, unknown>)
+      admin_review_required: true,
+      ai_auto_publish_allowed: false
     },
     notes: cleanText(data.notes, '', 4000) || null,
     updated_by: validUuid(actorId) ? actorId : null,
