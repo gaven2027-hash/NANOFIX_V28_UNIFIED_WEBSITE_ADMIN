@@ -19,6 +19,7 @@ const requiredFiles = [
   'app/api/admin/registration-requests/route.ts',
   'app/api/admin/social-accounts/route.ts',
   'app/api/admin/social-media/route.ts',
+  'app/api/admin/social-media/material-upload/route.ts',
   'app/api/admin/website-social-links/route.ts',
   'app/api/admin/backups/jobs/route.ts',
   'app/api/system/module-health-worker/route.ts',
@@ -29,6 +30,7 @@ const requiredFiles = [
   'components/SocialMultiPlatformPreviewBoard.tsx',
   'components/SocialMultiPlatformPreviewWorkspace.tsx',
   'components/SocialExpandedAccountsBindingWorkspace.tsx',
+  'components/SocialMaterialPackBuilder.tsx',
   'components/SystemSettingsWorkspace.tsx',
   'tools/verify-social-multi-platform-preview.mjs',
   'docs/V28_1_2_SECURITY_HARDENING_SUMMARY.md',
@@ -37,7 +39,8 @@ const requiredFiles = [
   'supabase/migrations/20260526006000_v28_1_2_core_business_rls_policies.sql',
   'supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql',
   'supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql',
-  'supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql'
+  'supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql',
+  'supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql'
 ];
 
 for (const file of requiredFiles) {
@@ -54,11 +57,14 @@ if (!failures.length) {
   const moduleRls = read('supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql');
   const fkIndexes = read('supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql');
   const fkIndexesB = read('supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql');
+  const storageMigration = read('supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql');
   const socialApi = read('app/api/admin/social-media/route.ts');
+  const socialUploadApi = read('app/api/admin/social-media/material-upload/route.ts');
   const socialAccountsApi = read('app/api/admin/social-accounts/route.ts');
   const socialPreviewBoard = read('components/SocialMultiPlatformPreviewBoard.tsx');
   const socialPreviewWorkspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
   const socialAccountsWorkspace = read('components/SocialExpandedAccountsBindingWorkspace.tsx');
+  const materialBuilder = read('components/SocialMaterialPackBuilder.tsx');
   const socialConfig = read('lib/nanofix/socialMediaConfig.ts');
   const env = read('.env.example');
   const vercel = read('vercel.json');
@@ -92,6 +98,16 @@ if (!failures.length) {
     [socialApi, 'seedly_community', 'Social API must support Seedly Community drafts.'],
     [socialApi, 'ai_auto_publish_allowed: false', 'Social API must keep AI auto publish disabled.'],
     [socialApi, 'admin_review_required: true', 'Social API must require admin review.'],
+    [socialUploadApi, 'nanofix-social-materials', 'Social material upload API must use private material bucket.'],
+    [socialUploadApi, 'source_video', 'Social material upload API must support source video upload.'],
+    [socialUploadApi, 'reference_video', 'Social material upload API must support reference video upload.'],
+    [socialUploadApi, 'video_clip', 'Social material upload API must support video clip upload.'],
+    [socialUploadApi, '500 * 1024 * 1024', 'Social material upload API must enforce 500MB limit.'],
+    [socialUploadApi, 'upload_social_material', 'Social material upload API must write upload audit log.'],
+    [storageMigration, 'nanofix-social-materials', 'Social material storage migration must create material bucket.'],
+    [storageMigration, 'false', 'Social material storage bucket must be private.'],
+    [storageMigration, 'nanofix_social_materials_admin_read', 'Social material storage must have admin read policy.'],
+    [storageMigration, 'nanofix_social_materials_admin_insert', 'Social material storage must have admin insert policy.'],
     [socialAccountsApi, 'x_twitter', 'Social account API must support X / Twitter binding.'],
     [socialAccountsApi, 'carousell_services', 'Social account API must support Carousell Services binding.'],
     [socialAccountsApi, 'seedly_community', 'Social account API must support Seedly Community binding.'],
@@ -99,6 +115,15 @@ if (!failures.length) {
     [socialAccountsApi, 'telegram_channel', 'Social account API must support Telegram Channel binding.'],
     [socialAccountsApi, 'website_blog', 'Social account API must support Website Blog publishing handoff.'],
     [socialPreviewBoard, 'SOCIAL_PREVIEW_PLATFORMS', 'Social preview board registry is required.'],
+    [socialPreviewBoard, 'SocialMaterialPackBuilder', 'Social preview board must render structured material builder.'],
+    [socialPreviewBoard, 'defaultSocialMaterialPack', 'Social preview board must use structured default material pack.'],
+    [materialBuilder, 'source_video_urls', 'Material builder must separate source videos.'],
+    [materialBuilder, 'reference_video_urls', 'Material builder must separate reference videos.'],
+    [materialBuilder, 'video_clip_urls', 'Material builder must support uploaded video clips.'],
+    [materialBuilder, 'Upload Source Video', 'Material builder must show source video upload control.'],
+    [materialBuilder, 'Upload Reference Video', 'Material builder must show reference video upload control.'],
+    [materialBuilder, 'Upload Video Clip', 'Material builder must show video clip upload control.'],
+    [materialBuilder, '/api/admin/social-media/material-upload', 'Material builder must call material upload API.'],
     [socialPreviewBoard, 'FB Preview', 'FB preview window is required.'],
     [socialPreviewBoard, 'TikTok Preview', 'TikTok preview window is required.'],
     [socialPreviewBoard, 'YouTube Shorts Preview', 'YouTube Shorts preview window is required.'],
@@ -146,9 +171,7 @@ if (!failures.length) {
   ];
   for (const script of requiredVerifyScripts) {
     if (!pkg.scripts?.[script]) failures.push(`Missing npm script: ${script}`);
-    if (!pkg.scripts?.['validate:predeploy']?.includes(`npm run ${script}`)) {
-      failures.push(`validate:predeploy must include ${script}`);
-    }
+    if (!pkg.scripts?.['validate:predeploy']?.includes(`npm run ${script}`)) failures.push(`validate:predeploy must include ${script}`);
   }
 }
 
@@ -159,4 +182,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX OA production readiness verification passed.');
-console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, multi-platform preview and FK performance index readiness.');
+console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, structured source/reference video material uploads, multi-platform preview and FK performance index readiness.');
