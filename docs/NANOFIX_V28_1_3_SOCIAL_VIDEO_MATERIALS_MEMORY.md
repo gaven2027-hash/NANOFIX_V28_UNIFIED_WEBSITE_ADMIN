@@ -26,7 +26,7 @@ The old ambiguous single `video_url` concept must not be reintroduced as the onl
 
 The intended workflow is now:
 
-`Upload / enter source videos → Upload / enter reference videos → Upload video clips → Add keywords / CTA / notes → Select target platforms → Generate platform-specific drafts → Side-by-side preview → Admin review → Create video render job → Queue / approve / schedule snapshot`
+`Upload / enter source videos → Upload / enter reference videos → Upload video clips → Add keywords / CTA / notes → Select target platforms → Generate platform-specific drafts → Side-by-side preview → Admin review → Create video render job → Generate render plan → Queue / approve / schedule snapshot`
 
 AI safety rule remains unchanged:
 
@@ -239,18 +239,93 @@ The render job copies the draft's structured `source_media` material pack from `
 
 ---
 
-## 9. Verification and deployment gates
+## 9. Render plan generation
+
+Implemented planner:
+
+`lib/nanofix/socialVideoRenderPlan.ts`
+
+Implemented API action:
+
+`PATCH /api/admin/social-media/render-jobs` with `action = generate_render_plan`
+
+Implemented UI control:
+
+`Generate Render Plan / 生成渲染方案`
+
+The render plan is written to:
+
+`social_video_render_jobs.output_json.render_plan`
+
+The generated render plan includes:
+
+- `plan_version`
+- `plan_status`
+- `platform`
+- `render_type`
+- output format / aspect ratio / duration / safe title area
+- primary source videos
+- reference videos
+- editable video clips
+- cover image
+- supporting images
+- uploaded material metadata
+- timeline segments:
+  - hook
+  - diagnosis
+  - repair_process
+  - result_cta
+- text layer guidance:
+  - hook keywords
+  - service area
+  - CTA
+  - subtitles required
+  - logo watermark required
+  - voiceover required
+  - background music note
+- reference guidance:
+  - reference video URLs
+  - reference notes
+  - usage rule that reference videos are style references only
+- safety flags:
+  - admin review required
+  - AI auto publish disabled
+  - final human approval required
+- warnings for missing or incomplete materials
+
+Plan statuses:
+
+- `ready_for_worker`: enough source material exists and the job may be queued for a future worker.
+- `needs_material_review`: source videos/clips, cover images, keywords or reference notes are incomplete.
+
+Important rule:
+
+Generating a render plan must not create a final MP4 and must not publish anything. It only prepares the job for a future renderer/worker.
+
+---
+
+## 10. Verification and deployment gates
 
 Updated verification files:
 
 - `tools/verify-social-multi-platform-preview.mjs`
+- `tools/verify-social-video-render-plan.mjs`
 - `tools/verify-oa-production-readiness.mjs`
+
+Updated package script:
+
+- `verify:social-video-render-plan`
+
+`validate:predeploy` must include:
+
+`npm run verify:social-video-render-plan`
 
 The checks must ensure:
 
 - `SocialMaterialPackBuilder.tsx` exists.
 - `material-upload/route.ts` exists.
 - `render-jobs/route.ts` exists.
+- `socialVideoRenderPlan.ts` exists.
 - `SocialVideoRenderJobsWorkspace.tsx` exists.
 - `source_video_urls`, `reference_video_urls`, `video_clip_urls`, `cover_image_url`, `image_urls`, `reference_notes`, `uploaded_materials` exist.
 - Upload kinds `source_video`, `reference_video`, `video_clip`, `cover_image`, `image` exist.
@@ -259,16 +334,18 @@ The checks must ensure:
 - Upload API writes audit logs.
 - `social_video_render_jobs` table exists.
 - Render job API writes create/update audit logs.
+- Render job API supports audited render plan generation.
 - Render job API forces AI auto-publish off and admin review on.
 - `/social-media/social-video-render-jobs` is routed to the dedicated workspace.
 - Multi-platform preview can create video render jobs from selected drafts.
+- Render jobs workspace can generate and display render plans.
 - AI draft-only and admin review safety flags remain enforced.
 
 ---
 
-## 10. Current limitation
+## 11. Current limitation
 
-This enhancement implements structured materials, uploads and a render job queue foundation for AI/social content generation, but it is not yet a full video-rendering engine.
+This enhancement implements structured materials, uploads, a render job queue foundation and render plan generation for AI/social content generation, but it is not yet a full video-rendering engine.
 
 Still not implemented:
 
@@ -287,7 +364,7 @@ These should be handled as a later V28.1.4 / V28.2 video rendering module if nee
 
 ---
 
-## 11. Must not regress
+## 12. Must not regress
 
 Future development must not:
 
@@ -298,11 +375,12 @@ Future development must not:
 - Remove audit logging for uploads.
 - Remove admin review requirements.
 - Remove the `social_video_render_jobs` queue/audit table without replacing it with an equivalent render job system.
+- Remove render plan generation without replacing it with an equivalent timeline/material validation system.
 - Trigger actual rendering/publishing without an approved admin-controlled workflow.
 
 ---
 
-## 12. Related platform preview context
+## 13. Related platform preview context
 
 The multi-platform preview center currently includes:
 
