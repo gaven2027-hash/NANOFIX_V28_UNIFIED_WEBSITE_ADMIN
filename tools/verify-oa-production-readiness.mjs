@@ -18,6 +18,7 @@ const requiredFiles = [
   'app/api/admin/service-operations/route.ts',
   'app/api/admin/registration-requests/route.ts',
   'app/api/admin/social-accounts/route.ts',
+  'app/api/admin/social-media/route.ts',
   'app/api/admin/website-social-links/route.ts',
   'app/api/admin/backups/jobs/route.ts',
   'app/api/system/module-health-worker/route.ts',
@@ -25,7 +26,11 @@ const requiredFiles = [
   'components/ServiceOperationsWorkspace.tsx',
   'components/WebsiteManagementWorkspace.tsx',
   'components/SocialMediaManagementWorkspace.tsx',
+  'components/SocialMultiPlatformPreviewBoard.tsx',
+  'components/SocialMultiPlatformPreviewWorkspace.tsx',
+  'components/SocialExpandedAccountsBindingWorkspace.tsx',
   'components/SystemSettingsWorkspace.tsx',
+  'tools/verify-social-multi-platform-preview.mjs',
   'docs/V28_1_2_SECURITY_HARDENING_SUMMARY.md',
   'supabase/migrations/20260526004000_v28_1_2_field_work_rls_policies.sql',
   'supabase/migrations/20260526005000_v28_1_2_security_definer_access_hardening.sql',
@@ -49,6 +54,12 @@ if (!failures.length) {
   const moduleRls = read('supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql');
   const fkIndexes = read('supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql');
   const fkIndexesB = read('supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql');
+  const socialApi = read('app/api/admin/social-media/route.ts');
+  const socialAccountsApi = read('app/api/admin/social-accounts/route.ts');
+  const socialPreviewBoard = read('components/SocialMultiPlatformPreviewBoard.tsx');
+  const socialPreviewWorkspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
+  const socialAccountsWorkspace = read('components/SocialExpandedAccountsBindingWorkspace.tsx');
+  const socialConfig = read('lib/nanofix/socialMediaConfig.ts');
   const env = read('.env.example');
   const vercel = read('vercel.json');
 
@@ -74,6 +85,32 @@ if (!failures.length) {
     [fkIndexesB, 'service_requests_customer_id_fk_idx', 'Service request customer FK index batch B is required.'],
     [fkIndexesB, 'quotations_service_request_id_fk_idx', 'Quotation service request FK index batch B is required.'],
     [fkIndexesB, 'warranties_customer_id_fk_idx', 'Warranty customer FK index batch B is required.'],
+    [socialApi, 'create_multi_platform_drafts', 'Social API must support multi-platform draft generation.'],
+    [socialApi, 'multiPlatformTargets', 'Social API must define multi-platform preview targets.'],
+    [socialApi, 'ai_auto_publish_allowed: false', 'Social API must keep AI auto publish disabled.'],
+    [socialApi, 'admin_review_required: true', 'Social API must require admin review.'],
+    [socialAccountsApi, 'whatsapp_channel', 'Social account API must support WhatsApp Channel binding.'],
+    [socialAccountsApi, 'telegram_channel', 'Social account API must support Telegram Channel binding.'],
+    [socialAccountsApi, 'website_blog', 'Social account API must support Website Blog publishing handoff.'],
+    [socialPreviewBoard, 'SOCIAL_PREVIEW_PLATFORMS', 'Social preview board registry is required.'],
+    [socialPreviewBoard, 'FB Preview', 'FB preview window is required.'],
+    [socialPreviewBoard, 'TikTok Preview', 'TikTok preview window is required.'],
+    [socialPreviewBoard, 'YouTube Shorts Preview', 'YouTube Shorts preview window is required.'],
+    [socialPreviewBoard, 'Instagram Preview', 'Instagram preview window is required.'],
+    [socialPreviewBoard, 'Xiaohongshu Preview', 'Xiaohongshu preview window is required.'],
+    [socialPreviewBoard, 'Forum Preview', 'Forum preview window is required.'],
+    [socialPreviewBoard, 'Google Business Profile Preview', 'Google Business Profile preview window is required.'],
+    [socialPreviewBoard, 'LinkedIn Preview', 'LinkedIn preview window is required.'],
+    [socialPreviewBoard, 'WhatsApp Channel Preview', 'WhatsApp Channel preview window is required.'],
+    [socialPreviewBoard, 'Telegram Channel Preview', 'Telegram Channel preview window is required.'],
+    [socialPreviewBoard, 'Website Blog Preview', 'Website Blog preview window is required.'],
+    [socialPreviewWorkspace, 'SocialMultiPlatformPreviewBoard', 'Social multi-platform preview workspace must render the board.'],
+    [socialAccountsWorkspace, 'SocialExpandedAccountsBindingWorkspace', 'Expanded social account binding workspace is required.'],
+    [socialConfig, 'forum-preview', 'Forum preview route config is required.'],
+    [socialConfig, 'linkedin-preview', 'LinkedIn preview route config is required.'],
+    [socialConfig, 'whatsapp-channel-preview', 'WhatsApp Channel preview route config is required.'],
+    [socialConfig, 'telegram-channel-preview', 'Telegram Channel preview route config is required.'],
+    [socialConfig, 'website-blog-preview', 'Website Blog preview route config is required.'],
     [env, 'SUPABASE_SERVICE_ROLE_KEY', '.env.example must document service role key.'],
     [env, 'NANOFIX_BACKUP_ENCRYPTION_KEY', '.env.example must document backup encryption key.'],
     [env, 'CRON_SECRET', '.env.example must document cron secret.'],
@@ -110,4 +147,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX OA production readiness verification passed.');
-console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review and FK performance index readiness.');
+console.log('Checked OA auth, RBAC, audit, workflow, RLS, backup, health, social, website CMS, registration review, multi-platform preview and FK performance index readiness.');
