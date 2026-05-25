@@ -22,6 +22,35 @@ function cleanText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback;
 }
 
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingBooking(supabase: ReturnType<typeof createSupabaseAdminClient>, serviceRequestId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('bookings')
+    .select(bookingColumns)
+    .eq('service_request_id', serviceRequestId)
+    .eq('booking_type', 'site_inspection')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
+async function findExistingInspection(supabase: ReturnType<typeof createSupabaseAdminClient>, serviceRequestId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('inspections')
+    .select(inspectionColumns)
+    .eq('service_request_id', serviceRequestId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 function bookingPayloadFromRequest(serviceRequest: Payload, note?: string) {
   return {
     service_request_id: String(serviceRequest.service_request_id),
@@ -79,22 +108,23 @@ export async function POST(request: Request) {
   }
 
   if (action === 'create_booking') {
-    const { data: existing, error: existingError } = await supabase
-      .from('bookings')
-      .select(bookingColumns)
-      .eq('service_request_id', serviceRequestId)
-      .eq('booking_type', 'site_inspection')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (existingError) return jsonError(existingError.message, 500);
+    const existing = await findExistingBooking(supabase, serviceRequestId);
     if (existing) {
       await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_booking_from_service_request', object_type: 'booking', object_id: existing.booking_id, after_data: { service_request_id: serviceRequestId, booking_id: existing.booking_id } });
       return NextResponse.json({ ok: true, booking: existing, existing: true });
     }
 
     const { data: booking, error: bookingError } = await supabase.from('bookings').insert(bookingPayloadFromRequest(serviceRequest, body.note as string | undefined)).select(bookingColumns).single();
-    if (bookingError) return jsonError(bookingError.message, 500);
+    if (bookingError) {
+      if (isUniqueConflict(bookingError)) {
+        const concurrentExisting = await findExistingBooking(supabase, serviceRequestId);
+        if (concurrentExisting) {
+          await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_booking_from_service_request_conflict', object_type: 'booking', object_id: concurrentExisting.booking_id, after_data: { service_request_id: serviceRequestId, booking_id: concurrentExisting.booking_id } });
+          return NextResponse.json({ ok: true, booking: concurrentExisting, existing: true, recovered_from_conflict: true });
+        }
+      }
+      return jsonError(bookingError.message, 500);
+    }
 
     const { data: updatedRequest } = await supabase.from('service_requests').update({ status: 'scheduled', updated_at: new Date().toISOString() }).eq('service_request_id', serviceRequestId).select(requestColumns).maybeSingle();
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create_booking_from_service_request', object_type: 'booking', object_id: booking.booking_id, before_data: { service_request: serviceRequest }, after_data: { booking, service_request: updatedRequest } });
@@ -102,21 +132,23 @@ export async function POST(request: Request) {
   }
 
   if (action === 'create_inspection') {
-    const { data: existing, error: existingError } = await supabase
-      .from('inspections')
-      .select(inspectionColumns)
-      .eq('service_request_id', serviceRequestId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (existingError) return jsonError(existingError.message, 500);
+    const existing = await findExistingInspection(supabase, serviceRequestId);
     if (existing) {
       await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_inspection_from_service_request', object_type: 'inspection', object_id: existing.inspection_id, after_data: { service_request_id: serviceRequestId, inspection_id: existing.inspection_id } });
       return NextResponse.json({ ok: true, inspection: existing, existing: true });
     }
 
     const { data: inspection, error: inspectionError } = await supabase.from('inspections').insert(inspectionPayloadFromRequest(serviceRequest)).select(inspectionColumns).single();
-    if (inspectionError) return jsonError(inspectionError.message, 500);
+    if (inspectionError) {
+      if (isUniqueConflict(inspectionError)) {
+        const concurrentExisting = await findExistingInspection(supabase, serviceRequestId);
+        if (concurrentExisting) {
+          await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_inspection_from_service_request_conflict', object_type: 'inspection', object_id: concurrentExisting.inspection_id, after_data: { service_request_id: serviceRequestId, inspection_id: concurrentExisting.inspection_id } });
+          return NextResponse.json({ ok: true, inspection: concurrentExisting, existing: true, recovered_from_conflict: true });
+        }
+      }
+      return jsonError(inspectionError.message, 500);
+    }
 
     const { data: updatedRequest } = await supabase.from('service_requests').update({ status: 'scheduled', updated_at: new Date().toISOString() }).eq('service_request_id', serviceRequestId).select(requestColumns).maybeSingle();
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create_inspection_from_service_request', object_type: 'inspection', object_id: inspection.inspection_id, before_data: { service_request: serviceRequest }, after_data: { inspection, service_request: updatedRequest } });
