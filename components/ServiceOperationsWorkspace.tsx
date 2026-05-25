@@ -180,6 +180,21 @@ function QuotationInvoiceCard({ row, config, saving, onCreateInvoice }: { row: R
   );
 }
 
+function InvoicePaymentCard({ row, config, saving, onCreatePayment }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreatePayment: () => void }) {
+  if (!row || config.key !== 'invoices') return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Payment Step / 收款流程</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+        Create a payment record from this invoice and continue reconciliation workflow. / 根据此发票创建付款记录，并进入财务对账流程。
+      </p>
+      <button type="button" disabled={saving} onClick={onCreatePayment} className="mt-4 rounded-2xl bg-emerald-700 px-4 py-2 text-sm font-black text-white hover:bg-emerald-800 disabled:opacity-60">
+        Create Payment / 创建付款记录
+      </button>
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -354,6 +369,27 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     if (invoiceId && typeof window !== 'undefined') window.location.assign(`/service-operations/invoices?open=${encodeURIComponent(String(invoiceId))}`);
   }
 
+  async function createPaymentFromInvoice() {
+    if (!row?.invoice_id) return;
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/invoice-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_payment', invoice_id: row.invoice_id })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Failed to create payment. / 创建付款记录失败。');
+      return;
+    }
+    const paymentId = json.payment?.payment_id;
+    setMessage(json.existing ? 'Existing payment opened. / 已打开现有付款记录。' : 'Payment created. / 付款记录已创建。');
+    onSaved();
+    if (paymentId && typeof window !== 'undefined') window.location.assign(`/service-operations/payments?open=${encodeURIComponent(String(paymentId))}`);
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -372,6 +408,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       <ServiceRequestProgressionCard row={row} config={config} saving={saving} onCreateBooking={() => progressServiceRequest('create_booking')} onCreateInspection={() => progressServiceRequest('create_inspection')} />
       <InspectionQuotationCard row={row} config={config} saving={saving} onCreateQuotation={createQuotationFromInspection} />
       <QuotationInvoiceCard row={row} config={config} saving={saving} onCreateInvoice={createInvoiceFromQuotation} />
+      <InvoicePaymentCard row={row} config={config} saving={saving} onCreatePayment={createPaymentFromInvoice} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
