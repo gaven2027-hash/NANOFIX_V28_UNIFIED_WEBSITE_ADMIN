@@ -34,6 +34,22 @@ function invoiceNo() {
   return `NF-${stamp}-${suffix}`;
 }
 
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingInvoice(supabase: ReturnType<typeof createSupabaseAdminClient>, quotationId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('invoices')
+    .select(invoiceColumns)
+    .eq('quotation_id', quotationId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 export async function POST(request: Request) {
   const { context, response } = requireAdmin(request, 'write:finance');
   if (response) return response;
@@ -52,14 +68,7 @@ export async function POST(request: Request) {
   if (quotationError) return jsonError(quotationError.message, 500);
   if (!quotation) return jsonError('Quotation not found.', 404);
 
-  const { data: existing, error: existingError } = await supabase
-    .from('invoices')
-    .select(invoiceColumns)
-    .eq('quotation_id', quotationId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return jsonError(existingError.message, 500);
+  const existing = await findExistingInvoice(supabase, quotationId);
   if (existing) {
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_invoice_from_quotation', object_type: 'invoice', object_id: existing.invoice_id, after_data: { quotation_id: quotationId, invoice_id: existing.invoice_id } });
     return NextResponse.json({ ok: true, invoice: existing, existing: true });
@@ -95,7 +104,16 @@ export async function POST(request: Request) {
   };
 
   const { data: invoice, error: invoiceError } = await supabase.from('invoices').insert(invoicePayload).select(invoiceColumns).single();
-  if (invoiceError) return jsonError(invoiceError.message, 500);
+  if (invoiceError) {
+    if (isUniqueConflict(invoiceError)) {
+      const concurrentExisting = await findExistingInvoice(supabase, quotationId);
+      if (concurrentExisting) {
+        await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_invoice_from_quotation_conflict', object_type: 'invoice', object_id: concurrentExisting.invoice_id, after_data: { quotation_id: quotationId, invoice_id: concurrentExisting.invoice_id } });
+        return NextResponse.json({ ok: true, invoice: concurrentExisting, existing: true, recovered_from_conflict: true });
+      }
+    }
+    return jsonError(invoiceError.message, 500);
+  }
 
   const { data: updatedQuotation } = await supabase.from('quotations').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('quotation_id', quotationId).select(quotationColumns).maybeSingle();
 
