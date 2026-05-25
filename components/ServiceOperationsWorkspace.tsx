@@ -130,6 +130,26 @@ function LeadConversionCard({ row, config, saving, onConvert }: { row: Row | nul
   );
 }
 
+function ServiceRequestProgressionCard({ row, config, saving, onCreateBooking, onCreateInspection }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateBooking: () => void; onCreateInspection: () => void }) {
+  if (!row || config.key !== 'service-requests') return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Next Step / 下一步流程</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+        Move this service request into site booking and inspection workflow. / 将此报修单推进到预约和现场查验流程。
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" disabled={saving} onClick={onCreateBooking} className="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-black text-white hover:bg-amber-700 disabled:opacity-60">
+          Create Booking / 创建预约
+        </button>
+        <button type="button" disabled={saving} onClick={onCreateInspection} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-60">
+          Create Inspection / 创建查验
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -235,6 +255,33 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     }
   }
 
+  async function progressServiceRequest(action: 'create_booking' | 'create_inspection') {
+    if (!row?.service_request_id) return;
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/request-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, service_request_id: row.service_request_id })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Failed to create next step. / 创建下一步失败。');
+      return;
+    }
+    onSaved();
+    if (action === 'create_booking') {
+      const bookingId = json.booking?.booking_id;
+      setMessage(json.existing ? 'Existing booking opened. / 已打开现有预约。' : 'Booking created. / 预约已创建。');
+      if (bookingId && typeof window !== 'undefined') window.location.assign(`/service-operations/bookings?open=${encodeURIComponent(String(bookingId))}`);
+    } else {
+      const inspectionId = json.inspection?.inspection_id;
+      setMessage(json.existing ? 'Existing inspection opened. / 已打开现有查验。' : 'Inspection created. / 查验已创建。');
+      if (inspectionId && typeof window !== 'undefined') window.location.assign(`/service-operations/inspections?open=${encodeURIComponent(String(inspectionId))}`);
+    }
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -250,6 +297,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
 
       <SourceMessageCard row={row} config={config} />
       <LeadConversionCard row={row} config={config} saving={saving} onConvert={convertLeadToServiceRequest} />
+      <ServiceRequestProgressionCard row={row} config={config} saving={saving} onCreateBooking={() => progressServiceRequest('create_booking')} onCreateInspection={() => progressServiceRequest('create_inspection')} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
