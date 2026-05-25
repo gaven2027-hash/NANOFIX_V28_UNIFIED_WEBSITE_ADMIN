@@ -50,6 +50,8 @@ async function getDashboardData(search: string) {
 
   const todayStart = singaporeDayStartIso();
   const profileColumns = 'profile_id,auth_user_id,email,full_name,role,is_active,password_status,username,mobile_phone,whatsapp_phone,profile_status,review_status,created_at,updated_at';
+  const aiColumns = 'draft_id,module,record_id,task,human_review_status,ai_risk_level,admin_note,reviewed_by,reviewed_at,approved_at,rejected_at,created_at';
+  const socialColumns = 'message_id,lead_id,customer_id,channel,direction,body,risk_level,handling_status,follow_up_note,handled_by,handled_at,lead_conversion_status,created_at';
 
   const [
     leads,
@@ -73,10 +75,10 @@ async function getDashboardData(search: string) {
     safeList('pending_inspections', supabase.from('inspections').select('inspection_id,service_request_id,engineer_id,scheduled_at,status,created_at').in('status', ['scheduled', 'assigned', 'pending', 'in_progress']).order('created_at', { ascending: false }).limit(120)),
     safeList('pending_quotes', supabase.from('quotations').select('quotation_id,customer_id,service_request_id,version,total_amount,currency,valid_until,status,created_at,updated_at').in('status', ['draft', 'sent', 'pending_review', 'pending']).order('created_at', { ascending: false }).limit(120)),
     safeList('unpaid_invoices', supabase.from('invoices').select('invoice_id,invoice_no,customer_id,job_id,total_amount,currency,due_date,status,created_at').in('status', ['unpaid', 'overdue', 'sent', 'issued']).order('created_at', { ascending: false }).limit(120)),
-    safeList('ai_handoff', supabase.from('ai_drafts').select('draft_id,module,record_id,task,human_review_status,ai_risk_level,created_at').in('human_review_status', ['pending_review', 'rejected']).order('created_at', { ascending: false }).limit(120)),
-    safeList('module_health', supabase.from('app_modules').select('module_key,name,category,criticality,health_status,enabled,updated_at').order('updated_at', { ascending: false }).limit(120)),
+    safeList('ai_handoff', supabase.from('ai_drafts').select(aiColumns).in('human_review_status', ['pending_review', 'rejected', 'needs_revision']).order('created_at', { ascending: false }).limit(120)),
+    safeList('module_health', supabase.from('app_modules').select('module_key,name,category,criticality,health_status,enabled,admin_note,last_reviewed_by,last_reviewed_at,updated_at').order('updated_at', { ascending: false }).limit(120)),
     safeList('intake', supabase.from('service_requests').select('service_request_id,customer_id,contact_name,phone,email,issue_type,address_text,status,priority,source_platform,created_at,updated_at').order('created_at', { ascending: false }).limit(120)),
-    safeList('channel_alerts', supabase.from('social_messages').select('message_id,lead_id,customer_id,channel,direction,body,risk_level,created_at').order('created_at', { ascending: false }).limit(120)),
+    safeList('channel_alerts', supabase.from('social_messages').select(socialColumns).order('created_at', { ascending: false }).limit(120)),
     safeList('global_search', supabase.from('search_logs').select('search_log_id,actor_id,query,filters,result_count,created_at').order('created_at', { ascending: false }).limit(120)),
     safeList('audit', supabase.from('audit_logs').select('audit_id,actor_id,actor_role,action,object_type,object_id,created_at').order('created_at', { ascending: false }).limit(120)),
     safeList('new_members', supabase.from('profiles').select(profileColumns).eq('role', 'customer').gte('created_at', todayStart).order('created_at', { ascending: false }).limit(120)),
