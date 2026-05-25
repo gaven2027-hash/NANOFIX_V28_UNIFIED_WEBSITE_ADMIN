@@ -81,9 +81,7 @@ function sourceMessageFromLead(row: Row | null, config: PublicModuleConfig) {
     messageId: messageId ? String(messageId) : '',
     source: formatValue(data?.source || 'social_message'),
     channel: formatValue(data?.channel || row.source_platform),
-    direction: formatValue(data?.direction),
     risk: formatValue(data?.risk_level),
-    createdFrom: formatValue(data?.created_from),
     body: formatValue(row.message)
   };
 }
@@ -110,16 +108,24 @@ function SourceMessageCard({ row, config }: { row: Row | null; config: PublicMod
   );
 }
 
-function LeadConversionCard({ row, config, saving, onConvert }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onConvert: () => void }) {
-  if (!row || config.key !== 'leads') return null;
+function FlowCard({ show, tone, title, text, button, saving, onClick }: { show: boolean; tone: string; title: string; text: string; button: string; saving: boolean; onClick: () => void }) {
+  if (!show) return null;
+  const styles: Record<string, string> = {
+    green: 'bg-green-50 ring-green-100 text-green-700 bg-green-600 hover:bg-green-700',
+    amber: 'bg-amber-50 ring-amber-100 text-amber-700 bg-amber-600 hover:bg-amber-700',
+    cyan: 'bg-cyan-50 ring-cyan-100 text-cyan-700 bg-cyan-700 hover:bg-cyan-800',
+    purple: 'bg-purple-50 ring-purple-100 text-purple-700 bg-purple-700 hover:bg-purple-800',
+    emerald: 'bg-emerald-50 ring-emerald-100 text-emerald-700 bg-emerald-700 hover:bg-emerald-800',
+    teal: 'bg-teal-50 ring-teal-100 text-teal-700 bg-teal-700 hover:bg-teal-800',
+    orange: 'bg-orange-50 ring-orange-100 text-orange-700 bg-orange-600 hover:bg-orange-700'
+  };
+  const [cardBg, ring, titleColor, buttonBg, buttonHover] = (styles[tone] || styles.green).split(' ');
   return (
-    <div className="mb-5 rounded-3xl bg-green-50 p-4 ring-1 ring-green-100">
-      <div className="text-xs font-black uppercase tracking-[0.16em] text-green-700">Lead Conversion / 线索转换</div>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-        Convert this lead into a Service Request for booking, inspection and quotation workflow. / 将此线索转换为报修单，进入预约、查验和报价流程。
-      </p>
-      <button type="button" disabled={saving} onClick={onConvert} className="mt-4 rounded-2xl bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700 disabled:opacity-60">
-        Create Service Request / 创建报修单
+    <div className={`mb-5 rounded-3xl ${cardBg} p-4 ring-1 ${ring}`}>
+      <div className={`text-xs font-black uppercase tracking-[0.16em] ${titleColor}`}>{title}</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">{text}</p>
+      <button type="button" disabled={saving} onClick={onClick} className={`mt-4 rounded-2xl ${buttonBg} px-4 py-2 text-sm font-black text-white ${buttonHover} disabled:opacity-60`}>
+        {button}
       </button>
     </div>
   );
@@ -130,77 +136,11 @@ function ServiceRequestProgressionCard({ row, config, saving, onCreateBooking, o
   return (
     <div className="mb-5 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-100">
       <div className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Next Step / 下一步流程</div>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-        Move this service request into site booking and inspection workflow. / 将此报修单推进到预约和现场查验流程。
-      </p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">Move this service request into site booking and inspection workflow. / 将此报修单推进到预约和现场查验流程。</p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" disabled={saving} onClick={onCreateBooking} className="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-black text-white hover:bg-amber-700 disabled:opacity-60">
-          Create Booking / 创建预约
-        </button>
-        <button type="button" disabled={saving} onClick={onCreateInspection} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-60">
-          Create Inspection / 创建查验
-        </button>
+        <button type="button" disabled={saving} onClick={onCreateBooking} className="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-black text-white hover:bg-amber-700 disabled:opacity-60">Create Booking / 创建预约</button>
+        <button type="button" disabled={saving} onClick={onCreateInspection} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-60">Create Inspection / 创建查验</button>
       </div>
-    </div>
-  );
-}
-
-function InspectionQuotationCard({ row, config, saving, onCreateQuotation }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateQuotation: () => void }) {
-  if (!row || config.key !== 'inspections') return null;
-  return (
-    <div className="mb-5 rounded-3xl bg-cyan-50 p-4 ring-1 ring-cyan-100">
-      <div className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Quotation Step / 报价流程</div>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-        Create a draft quotation from this inspection and continue the approval workflow. / 根据此查验记录创建报价草稿，并进入报价审批流程。
-      </p>
-      <button type="button" disabled={saving} onClick={onCreateQuotation} className="mt-4 rounded-2xl bg-cyan-700 px-4 py-2 text-sm font-black text-white hover:bg-cyan-800 disabled:opacity-60">
-        Create Quotation / 创建报价
-      </button>
-    </div>
-  );
-}
-
-function QuotationInvoiceCard({ row, config, saving, onCreateInvoice }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateInvoice: () => void }) {
-  if (!row || config.key !== 'quotations') return null;
-  return (
-    <div className="mb-5 rounded-3xl bg-purple-50 p-4 ring-1 ring-purple-100">
-      <div className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">Invoice Step / 发票流程</div>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-        Create an invoice from this quotation and continue finance collection workflow. / 根据此报价创建发票，并进入财务收款流程。
-      </p>
-      <button type="button" disabled={saving} onClick={onCreateInvoice} className="mt-4 rounded-2xl bg-purple-700 px-4 py-2 text-sm font-black text-white hover:bg-purple-800 disabled:opacity-60">
-        Create Invoice / 创建发票
-      </button>
-    </div>
-  );
-}
-
-function InvoicePaymentCard({ row, config, saving, onCreatePayment }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreatePayment: () => void }) {
-  if (!row || config.key !== 'invoices') return null;
-  return (
-    <div className="mb-5 rounded-3xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
-      <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Payment Step / 收款流程</div>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-        Create a payment record from this invoice and continue reconciliation workflow. / 根据此发票创建付款记录，并进入财务对账流程。
-      </p>
-      <button type="button" disabled={saving} onClick={onCreatePayment} className="mt-4 rounded-2xl bg-emerald-700 px-4 py-2 text-sm font-black text-white hover:bg-emerald-800 disabled:opacity-60">
-        Create Payment / 创建付款记录
-      </button>
-    </div>
-  );
-}
-
-function PaymentReceiptCard({ row, config, saving, onCreateReceipt }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateReceipt: () => void }) {
-  if (!row || config.key !== 'payments') return null;
-  return (
-    <div className="mb-5 rounded-3xl bg-teal-50 p-4 ring-1 ring-teal-100">
-      <div className="text-xs font-black uppercase tracking-[0.16em] text-teal-700">Receipt & Reconciliation / 收据与对账</div>
-      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-        Issue a receipt, mark this payment as succeeded, reconcile it and mark the linked invoice as paid. / 开具收据，将付款标记成功并完成对账，同时把关联发票标记为已付款。
-      </p>
-      <button type="button" disabled={saving} onClick={onCreateReceipt} className="mt-4 rounded-2xl bg-teal-700 px-4 py-2 text-sm font-black text-white hover:bg-teal-800 disabled:opacity-60">
-        Create Receipt / 创建收据
-      </button>
     </div>
   );
 }
@@ -219,9 +159,7 @@ function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
 }
 
 function FieldInput({ field, value, onChange }: { field: PublicModuleConfig['formFields'][number]; value: unknown; onChange: (value: string) => void }) {
-  if (field.type === 'textarea') {
-    return <textarea className={`${inputClass} min-h-24`} value={toInputValue(value)} onChange={(event) => onChange(event.target.value)} />;
-  }
+  if (field.type === 'textarea') return <textarea className={`${inputClass} min-h-24`} value={toInputValue(value)} onChange={(event) => onChange(event.target.value)} />;
   if (field.type === 'select') {
     return (
       <select className={inputClass} value={toInputValue(value)} onChange={(event) => onChange(event.target.value)}>
@@ -250,16 +188,12 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
   async function saveRecord() {
     setSaving(true);
     setMessage('');
-    const endpoint = '/api/admin/service-operations';
     const method = row ? 'PATCH' : 'POST';
     const payload = row ? { module: config.key, id: row[config.primaryKey], data: form } : { module: config.key, data: form };
-    const response = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const response = await fetch('/api/admin/service-operations', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const json = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Save failed. / 保存失败。');
-      return;
-    }
+    if (!response.ok || !json.ok) return setMessage(json.error || 'Save failed. / 保存失败。');
     setMessage('Saved. / 已保存。');
     onSaved();
   }
@@ -268,151 +202,63 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     if (!row || !status) return;
     setSaving(true);
     setMessage('');
-    const response = await fetch('/api/admin/service-operations', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ module: config.key, id: row[config.primaryKey], status, reason })
-    });
+    const response = await fetch('/api/admin/service-operations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ module: config.key, id: row[config.primaryKey], status, reason }) });
     const json = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Status update failed. / 状态修改失败。');
-      return;
-    }
+    if (!response.ok || !json.ok) return setMessage(json.error || 'Status update failed. / 状态修改失败。');
     setMessage('Status updated and audit log written. / 状态已修改并写入审计日志。');
     onSaved();
   }
 
-  async function convertLeadToServiceRequest() {
-    if (!row?.lead_id) return;
+  async function runAction(endpoint: string, payload: Row, targetKey: string, targetRoute: string, success: string, fail: string) {
     setSaving(true);
     setMessage('');
-    const response = await fetch('/api/admin/lead-actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_service_request', lead_id: row.lead_id })
-    });
+    const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const json = await response.json().catch(() => ({}));
     setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Failed to create service request. / 创建报修单失败。');
-      return;
-    }
-    const serviceRequestId = json.service_request?.service_request_id;
-    setMessage(json.existing ? 'Existing service request opened. / 已打开现有报修单。' : 'Service request created. / 报修单已创建。');
+    if (!response.ok || !json.ok) return setMessage(json.error || fail);
+    const id = json[targetKey]?.[`${targetKey}_id`];
+    setMessage(json.existing ? `Existing ${targetKey} opened. / 已打开现有记录。` : success);
     onSaved();
-    if (serviceRequestId && typeof window !== 'undefined') window.location.assign(`/service-operations/service-requests?open=${encodeURIComponent(String(serviceRequestId))}`);
+    if (id && typeof window !== 'undefined') window.location.assign(`${targetRoute}?open=${encodeURIComponent(String(id))}`);
+  }
+
+  async function convertLeadToServiceRequest() {
+    if (!row?.lead_id) return;
+    await runAction('/api/admin/lead-actions', { action: 'create_service_request', lead_id: row.lead_id }, 'service_request', '/service-operations/service-requests', 'Service request created. / 报修单已创建。', 'Failed to create service request. / 创建报修单失败。');
   }
 
   async function progressServiceRequest(action: 'create_booking' | 'create_inspection') {
     if (!row?.service_request_id) return;
-    setSaving(true);
-    setMessage('');
-    const response = await fetch('/api/admin/request-actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, service_request_id: row.service_request_id })
-    });
-    const json = await response.json().catch(() => ({}));
-    setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Failed to create next step. / 创建下一步失败。');
-      return;
-    }
-    onSaved();
-    if (action === 'create_booking') {
-      const bookingId = json.booking?.booking_id;
-      setMessage(json.existing ? 'Existing booking opened. / 已打开现有预约。' : 'Booking created. / 预约已创建。');
-      if (bookingId && typeof window !== 'undefined') window.location.assign(`/service-operations/bookings?open=${encodeURIComponent(String(bookingId))}`);
-    } else {
-      const inspectionId = json.inspection?.inspection_id;
-      setMessage(json.existing ? 'Existing inspection opened. / 已打开现有查验。' : 'Inspection created. / 查验已创建。');
-      if (inspectionId && typeof window !== 'undefined') window.location.assign(`/service-operations/inspections?open=${encodeURIComponent(String(inspectionId))}`);
-    }
+    const target = action === 'create_booking' ? 'booking' : 'inspection';
+    const route = action === 'create_booking' ? '/service-operations/bookings' : '/service-operations/inspections';
+    const success = action === 'create_booking' ? 'Booking created. / 预约已创建。' : 'Inspection created. / 查验已创建。';
+    await runAction('/api/admin/request-actions', { action, service_request_id: row.service_request_id }, target, route, success, 'Failed to create next step. / 创建下一步失败。');
   }
 
   async function createQuotationFromInspection() {
     if (!row?.inspection_id) return;
-    setSaving(true);
-    setMessage('');
-    const response = await fetch('/api/admin/inspection-actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_quotation', inspection_id: row.inspection_id })
-    });
-    const json = await response.json().catch(() => ({}));
-    setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Failed to create quotation. / 创建报价失败。');
-      return;
-    }
-    const quotationId = json.quotation?.quotation_id;
-    setMessage(json.existing ? 'Existing quotation opened. / 已打开现有报价。' : 'Quotation created. / 报价已创建。');
-    onSaved();
-    if (quotationId && typeof window !== 'undefined') window.location.assign(`/service-operations/quotations?open=${encodeURIComponent(String(quotationId))}`);
+    await runAction('/api/admin/inspection-actions', { action: 'create_quotation', inspection_id: row.inspection_id }, 'quotation', '/service-operations/quotations', 'Quotation created. / 报价已创建。', 'Failed to create quotation. / 创建报价失败。');
   }
 
   async function createInvoiceFromQuotation() {
     if (!row?.quotation_id) return;
-    setSaving(true);
-    setMessage('');
-    const response = await fetch('/api/admin/quotation-actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_invoice', quotation_id: row.quotation_id })
-    });
-    const json = await response.json().catch(() => ({}));
-    setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Failed to create invoice. / 创建发票失败。');
-      return;
-    }
-    const invoiceId = json.invoice?.invoice_id;
-    setMessage(json.existing ? 'Existing invoice opened. / 已打开现有发票。' : 'Invoice created. / 发票已创建。');
-    onSaved();
-    if (invoiceId && typeof window !== 'undefined') window.location.assign(`/service-operations/invoices?open=${encodeURIComponent(String(invoiceId))}`);
+    await runAction('/api/admin/quotation-actions', { action: 'create_invoice', quotation_id: row.quotation_id }, 'invoice', '/service-operations/invoices', 'Invoice created. / 发票已创建。', 'Failed to create invoice. / 创建发票失败。');
   }
 
   async function createPaymentFromInvoice() {
     if (!row?.invoice_id) return;
-    setSaving(true);
-    setMessage('');
-    const response = await fetch('/api/admin/invoice-actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_payment', invoice_id: row.invoice_id })
-    });
-    const json = await response.json().catch(() => ({}));
-    setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Failed to create payment. / 创建付款记录失败。');
-      return;
-    }
-    const paymentId = json.payment?.payment_id;
-    setMessage(json.existing ? 'Existing payment opened. / 已打开现有付款记录。' : 'Payment created. / 付款记录已创建。');
-    onSaved();
-    if (paymentId && typeof window !== 'undefined') window.location.assign(`/service-operations/payments?open=${encodeURIComponent(String(paymentId))}`);
+    await runAction('/api/admin/invoice-actions', { action: 'create_payment', invoice_id: row.invoice_id }, 'payment', '/service-operations/payments', 'Payment created. / 付款记录已创建。', 'Failed to create payment. / 创建付款记录失败。');
   }
 
   async function createReceiptFromPayment() {
     if (!row?.payment_id) return;
-    setSaving(true);
-    setMessage('');
-    const response = await fetch('/api/admin/payment-actions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create_receipt', payment_id: row.payment_id })
-    });
-    const json = await response.json().catch(() => ({}));
-    setSaving(false);
-    if (!response.ok || !json.ok) {
-      setMessage(json.error || 'Failed to create receipt. / 创建收据失败。');
-      return;
-    }
-    const receiptId = json.receipt?.receipt_id;
-    setMessage(json.existing ? 'Existing receipt opened. / 已打开现有收据。' : 'Receipt issued and payment reconciled. / 收据已开具，付款已对账。');
-    onSaved();
-    if (receiptId && typeof window !== 'undefined') window.location.assign(`/service-operations/receipts?open=${encodeURIComponent(String(receiptId))}`);
+    await runAction('/api/admin/payment-actions', { action: 'create_receipt', payment_id: row.payment_id }, 'receipt', '/service-operations/receipts', 'Receipt issued and payment reconciled. / 收据已开具，付款已对账。', 'Failed to create receipt. / 创建收据失败。');
+  }
+
+  async function createWarrantyFromReceipt() {
+    if (!row?.receipt_id) return;
+    await runAction('/api/admin/receipt-actions', { action: 'create_warranty', receipt_id: row.receipt_id }, 'warranty', '/service-operations/warranties', 'Warranty created. / 保修已创建。', 'Failed to create warranty. / 创建保修失败。');
   }
 
   return (
@@ -429,12 +275,13 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
 
       <SourceMessageCard row={row} config={config} />
-      <LeadConversionCard row={row} config={config} saving={saving} onConvert={convertLeadToServiceRequest} />
+      <FlowCard show={!!row && config.key === 'leads'} tone="green" title="Lead Conversion / 线索转换" text="Convert this lead into a Service Request for booking, inspection and quotation workflow. / 将此线索转换为报修单，进入预约、查验和报价流程。" button="Create Service Request / 创建报修单" saving={saving} onClick={convertLeadToServiceRequest} />
       <ServiceRequestProgressionCard row={row} config={config} saving={saving} onCreateBooking={() => progressServiceRequest('create_booking')} onCreateInspection={() => progressServiceRequest('create_inspection')} />
-      <InspectionQuotationCard row={row} config={config} saving={saving} onCreateQuotation={createQuotationFromInspection} />
-      <QuotationInvoiceCard row={row} config={config} saving={saving} onCreateInvoice={createInvoiceFromQuotation} />
-      <InvoicePaymentCard row={row} config={config} saving={saving} onCreatePayment={createPaymentFromInvoice} />
-      <PaymentReceiptCard row={row} config={config} saving={saving} onCreateReceipt={createReceiptFromPayment} />
+      <FlowCard show={!!row && config.key === 'inspections'} tone="cyan" title="Quotation Step / 报价流程" text="Create a draft quotation from this inspection and continue the approval workflow. / 根据此查验记录创建报价草稿，并进入报价审批流程。" button="Create Quotation / 创建报价" saving={saving} onClick={createQuotationFromInspection} />
+      <FlowCard show={!!row && config.key === 'quotations'} tone="purple" title="Invoice Step / 发票流程" text="Create an invoice from this quotation and continue finance collection workflow. / 根据此报价创建发票，并进入财务收款流程。" button="Create Invoice / 创建发票" saving={saving} onClick={createInvoiceFromQuotation} />
+      <FlowCard show={!!row && config.key === 'invoices'} tone="emerald" title="Payment Step / 收款流程" text="Create a payment record from this invoice and continue reconciliation workflow. / 根据此发票创建付款记录，并进入财务对账流程。" button="Create Payment / 创建付款记录" saving={saving} onClick={createPaymentFromInvoice} />
+      <FlowCard show={!!row && config.key === 'payments'} tone="teal" title="Receipt & Reconciliation / 收据与对账" text="Issue a receipt, mark this payment as succeeded, reconcile it and mark the linked invoice as paid. / 开具收据，将付款标记成功并完成对账，同时把关联发票标记为已付款。" button="Create Receipt / 创建收据" saving={saving} onClick={createReceiptFromPayment} />
+      <FlowCard show={!!row && config.key === 'receipts'} tone="orange" title="Warranty Step / 保修流程" text="Create an active warranty from this receipt and link it back to receipt, payment and invoice records. / 根据此收据创建有效保修，并关联收据、付款和发票记录。" button="Create Warranty / 创建保修" saving={saving} onClick={createWarrantyFromReceipt} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
