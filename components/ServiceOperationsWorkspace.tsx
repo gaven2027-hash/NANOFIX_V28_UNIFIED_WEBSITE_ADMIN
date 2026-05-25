@@ -8,6 +8,7 @@ import { SectionCard } from './SectionCard';
 import { boardLanes, operationModules, type OperationModuleKey } from '@/lib/nanofix/operationsConfig';
 
 type BadgeTone = 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan';
+type FlowTone = 'green' | 'amber' | 'cyan' | 'purple' | 'emerald' | 'teal' | 'orange';
 type Row = Record<string, unknown>;
 type PublicModuleConfig = {
   key: OperationModuleKey;
@@ -28,6 +29,16 @@ type WorkspaceProps = {
 
 const inputClass = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-activeBlue focus:ring-2 focus:ring-blue-100';
 const labelClass = 'mb-1 block text-xs font-black uppercase tracking-[0.12em] text-slate-500';
+
+const flowToneClasses: Record<FlowTone, { card: string; ring: string; title: string; button: string; buttonHover: string }> = {
+  green: { card: 'bg-green-50', ring: 'ring-green-100', title: 'text-green-700', button: 'bg-green-600', buttonHover: 'hover:bg-green-700' },
+  amber: { card: 'bg-amber-50', ring: 'ring-amber-100', title: 'text-amber-700', button: 'bg-amber-600', buttonHover: 'hover:bg-amber-700' },
+  cyan: { card: 'bg-cyan-50', ring: 'ring-cyan-100', title: 'text-cyan-700', button: 'bg-cyan-700', buttonHover: 'hover:bg-cyan-800' },
+  purple: { card: 'bg-purple-50', ring: 'ring-purple-100', title: 'text-purple-700', button: 'bg-purple-700', buttonHover: 'hover:bg-purple-800' },
+  emerald: { card: 'bg-emerald-50', ring: 'ring-emerald-100', title: 'text-emerald-700', button: 'bg-emerald-700', buttonHover: 'hover:bg-emerald-800' },
+  teal: { card: 'bg-teal-50', ring: 'ring-teal-100', title: 'text-teal-700', button: 'bg-teal-700', buttonHover: 'hover:bg-teal-800' },
+  orange: { card: 'bg-orange-50', ring: 'ring-orange-100', title: 'text-orange-700', button: 'bg-orange-600', buttonHover: 'hover:bg-orange-700' }
+};
 
 function formatValue(value: unknown) {
   if (value === null || value === undefined || value === '') return '—';
@@ -108,23 +119,14 @@ function SourceMessageCard({ row, config }: { row: Row | null; config: PublicMod
   );
 }
 
-function FlowCard({ show, tone, title, text, button, saving, onClick }: { show: boolean; tone: string; title: string; text: string; button: string; saving: boolean; onClick: () => void }) {
+function FlowCard({ show, tone, title, text, button, saving, onClick }: { show: boolean; tone: FlowTone; title: string; text: string; button: string; saving: boolean; onClick: () => void }) {
   if (!show) return null;
-  const styles: Record<string, string> = {
-    green: 'bg-green-50 ring-green-100 text-green-700 bg-green-600 hover:bg-green-700',
-    amber: 'bg-amber-50 ring-amber-100 text-amber-700 bg-amber-600 hover:bg-amber-700',
-    cyan: 'bg-cyan-50 ring-cyan-100 text-cyan-700 bg-cyan-700 hover:bg-cyan-800',
-    purple: 'bg-purple-50 ring-purple-100 text-purple-700 bg-purple-700 hover:bg-purple-800',
-    emerald: 'bg-emerald-50 ring-emerald-100 text-emerald-700 bg-emerald-700 hover:bg-emerald-800',
-    teal: 'bg-teal-50 ring-teal-100 text-teal-700 bg-teal-700 hover:bg-teal-800',
-    orange: 'bg-orange-50 ring-orange-100 text-orange-700 bg-orange-600 hover:bg-orange-700'
-  };
-  const [cardBg, ring, titleColor, buttonBg, buttonHover] = (styles[tone] || styles.green).split(' ');
+  const classes = flowToneClasses[tone];
   return (
-    <div className={`mb-5 rounded-3xl ${cardBg} p-4 ring-1 ${ring}`}>
-      <div className={`text-xs font-black uppercase tracking-[0.16em] ${titleColor}`}>{title}</div>
+    <div className={`mb-5 rounded-3xl ${classes.card} p-4 ring-1 ${classes.ring}`}>
+      <div className={`text-xs font-black uppercase tracking-[0.16em] ${classes.title}`}>{title}</div>
       <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">{text}</p>
-      <button type="button" disabled={saving} onClick={onClick} className={`mt-4 rounded-2xl ${buttonBg} px-4 py-2 text-sm font-black text-white ${buttonHover} disabled:opacity-60`}>
+      <button type="button" disabled={saving} onClick={onClick} className={`mt-4 rounded-2xl ${classes.button} px-4 py-2 text-sm font-black text-white ${classes.buttonHover} disabled:opacity-60`}>
         {button}
       </button>
     </div>
@@ -267,8 +269,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
         <div>
           <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">{row ? 'View / Edit Detail' : 'New Record'}</div>
           <h3 className="mt-1 text-xl font-black text-slate-950">{row ? formatValue(pickTitle(row, config)) : `Create ${config.title}`}</h3>
-          {row ? <p className="mt-1 break-all text-xs font-semibold text-slate-500">{config.primaryKey}: {formatValue(row[config.primaryKey])}</p> : null}
-        </div>
+          {row ? <p className="mt-1 break-all text-xs font-semibold text-slate-500">{config.primaryKey}: {formatValue(row[config.primaryKey])}</p> : null}</div>
         <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-200">Close / 关闭</button>
       </div>
 
@@ -353,16 +354,11 @@ function ModuleWorkspace({ moduleKey }: { moduleKey: OperationModuleKey }) {
     }
   }
 
-  useEffect(() => {
-    void loadRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleKey, openId]);
+  useEffect(() => { void loadRows(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [moduleKey, openId]);
 
   const visibleColumns = useMemo(() => config?.summaryFields || [], [config]);
 
-  if (!config) {
-    return <div className="rounded-3xl bg-white p-6 text-sm font-bold text-slate-600 shadow-soft ring-1 ring-slate-200">Loading module... / 正在加载模块...</div>;
-  }
+  if (!config) return <div className="rounded-3xl bg-white p-6 text-sm font-bold text-slate-600 shadow-soft ring-1 ring-slate-200">Loading module... / 正在加载模块...</div>;
 
   return (
     <div>
@@ -383,24 +379,12 @@ function ModuleWorkspace({ moduleKey }: { moduleKey: OperationModuleKey }) {
 
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="min-w-[920px] w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="p-3">Status / 状态</th>
-                  {visibleColumns.map((column) => <th key={column} className="p-3">{column}</th>)}
-                  <th className="p-3">Action / 操作</th>
-                </tr>
-              </thead>
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Status / 状态</th>{visibleColumns.map((column) => <th key={column} className="p-3">{column}</th>)}<th className="p-3">Action / 操作</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((row) => (
-                  <tr key={String(row[config.primaryKey])} className="hover:bg-blue-50/50">
-                    <td className="p-3"><Badge tone={toneForStatus(String(row.status || ''))}>{formatValue(row.status)}</Badge></td>
-                    {visibleColumns.map((column) => <td key={column} className="max-w-56 truncate p-3 font-semibold text-slate-700">{formatValue(row[column])}</td>)}
-                    <td className="p-3"><button type="button" onClick={() => { setSelected(row); setCreating(false); }} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open / 打开</button></td>
-                  </tr>
+                  <tr key={String(row[config.primaryKey])} className="hover:bg-blue-50/50"><td className="p-3"><Badge tone={toneForStatus(String(row.status || ''))}>{formatValue(row.status)}</Badge></td>{visibleColumns.map((column) => <td key={column} className="max-w-56 truncate p-3 font-semibold text-slate-700">{formatValue(row[column])}</td>)}<td className="p-3"><button type="button" onClick={() => { setSelected(row); setCreating(false); }} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open / 打开</button></td></tr>
                 ))}
-                {!rows.length ? (
-                  <tr><td colSpan={visibleColumns.length + 2} className="p-6 text-center text-sm font-bold text-slate-500">{loading ? 'Loading... / 加载中...' : 'No records yet. Use New to create one. / 暂无记录，可点击新增。'}</td></tr>
-                ) : null}
+                {!rows.length ? <tr><td colSpan={visibleColumns.length + 2} className="p-6 text-center text-sm font-bold text-slate-500">{loading ? 'Loading... / 加载中...' : 'No records yet. Use New to create one. / 暂无记录，可点击新增。'}</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -424,41 +408,23 @@ function BoardWorkspace() {
     if (response.ok && json.ok) setModules(json.modules || []);
   }
 
-  useEffect(() => {
-    void loadBoard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { void loadBoard(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   return (
     <div>
       <ModuleTabs />
       <SectionCard title="Dispatch & Field Work Board / 派工与现场作业看板" subtitle="Real board grouped by Lead → Inspection → Quotation → Work Execution → Finance → Warranty. / 按真实业务链路分组的看板。">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-slate-600">Cards are clickable and open their real module detail page. / 卡片可点击进入真实模块详情页。</p>
-          <button type="button" onClick={loadBoard} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700">Refresh / 刷新</button>
-        </div>
+        <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-600">Cards are clickable and open their real module detail page. / 卡片可点击进入真实模块详情页。</p><button type="button" onClick={loadBoard} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700">Refresh / 刷新</button></div>
         <div className="grid gap-4 xl:grid-cols-6">
           {boardLanes.map((lane) => {
             const laneModules = modules.filter((module) => module.config.boardLane === lane);
             const laneRows = laneModules.flatMap((module) => module.rows.map((row) => ({ row, config: module.config })));
             return (
               <div key={lane} className="rounded-3xl border border-slate-200 bg-adminBg p-3">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h4 className="text-sm font-black text-slate-900">{lane}</h4>
-                  <Badge tone={laneRows.length ? 'blue' : 'gray'}>{laneRows.length}</Badge>
-                </div>
+                <div className="mb-3 flex items-center justify-between gap-2"><h4 className="text-sm font-black text-slate-900">{lane}</h4><Badge tone={laneRows.length ? 'blue' : 'gray'}>{laneRows.length}</Badge></div>
                 <div className="space-y-2">
                   {laneRows.slice(0, 12).map(({ row, config }) => (
-                    <Link key={`${config.key}-${String(row[config.primaryKey])}`} href={`${config.route}?open=${String(row[config.primaryKey])}`} className="block rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:ring-blue-200">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-black text-slate-900">{formatValue(pickTitle(row, config))}</div>
-                          <div className="mt-1 text-xs font-semibold text-slate-500">{config.title}</div>
-                        </div>
-                        <Badge tone={toneForStatus(String(row.status || ''))}>{formatValue(row.status)}</Badge>
-                      </div>
-                      <div className="mt-2 break-all text-[11px] font-semibold text-slate-400">{String(row[config.primaryKey]).slice(0, 8)}...</div>
-                    </Link>
+                    <Link key={`${config.key}-${String(row[config.primaryKey])}`} href={`${config.route}?open=${String(row[config.primaryKey])}`} className="block rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:ring-blue-200"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-black text-slate-900">{formatValue(pickTitle(row, config))}</div><div className="mt-1 text-xs font-semibold text-slate-500">{config.title}</div></div><Badge tone={toneForStatus(String(row.status || ''))}>{formatValue(row.status)}</Badge></div><div className="mt-2 break-all text-[11px] font-semibold text-slate-400">{String(row[config.primaryKey]).slice(0, 8)}...</div></Link>
                   ))}
                   {!laneRows.length ? <div className="rounded-2xl bg-white/70 p-3 text-xs font-bold text-slate-400">{loading ? 'Loading...' : 'No cards / 暂无卡片'}</div> : null}
                 </div>
