@@ -31,7 +31,8 @@ const requiredFiles = [
   'supabase/migrations/20260526005000_v28_1_2_security_definer_access_hardening.sql',
   'supabase/migrations/20260526006000_v28_1_2_core_business_rls_policies.sql',
   'supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql',
-  'supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql'
+  'supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql',
+  'supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql'
 ];
 
 for (const file of requiredFiles) {
@@ -47,6 +48,7 @@ if (!failures.length) {
   const coreRls = read('supabase/migrations/20260526006000_v28_1_2_core_business_rls_policies.sql');
   const moduleRls = read('supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql');
   const fkIndexes = read('supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql');
+  const fkIndexesB = read('supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql');
   const env = read('.env.example');
   const vercel = read('vercel.json');
 
@@ -65,8 +67,13 @@ if (!failures.length) {
     [coreRls, 'payments_admin_all', 'Finance payment policy is required.'],
     [moduleRls, 'webhook_events_admin_select', 'Webhook event policy is required.'],
     [moduleRls, 'otp_verifications_admin_select', 'OTP log policy is required.'],
-    [fkIndexes, 'job_assignments_job_id_idx', 'OA FK performance index is required.'],
-    [fkIndexes, 'service_requests_intake_id_idx', 'Service request FK index is required.'],
+    [fkIndexes, 'job_assignments_job_id_idx', 'OA FK performance index batch A is required.'],
+    [fkIndexes, 'service_requests_intake_id_idx', 'Service request FK index batch A is required.'],
+    [fkIndexes, 'warranties_job_id_idx', 'Warranty FK index batch A is required.'],
+    [fkIndexesB, 'bookings_service_request_id_fk_idx', 'Booking service request FK index batch B is required.'],
+    [fkIndexesB, 'service_requests_customer_id_fk_idx', 'Service request customer FK index batch B is required.'],
+    [fkIndexesB, 'quotations_service_request_id_fk_idx', 'Quotation service request FK index batch B is required.'],
+    [fkIndexesB, 'warranties_customer_id_fk_idx', 'Warranty customer FK index batch B is required.'],
     [env, 'SUPABASE_SERVICE_ROLE_KEY', '.env.example must document service role key.'],
     [env, 'NANOFIX_BACKUP_ENCRYPTION_KEY', '.env.example must document backup encryption key.'],
     [env, 'CRON_SECRET', '.env.example must document cron secret.'],
@@ -90,7 +97,7 @@ if (!failures.length) {
   ];
   for (const script of requiredVerifyScripts) {
     if (!pkg.scripts?.[script]) failures.push(`Missing npm script: ${script}`);
-    if (script !== 'verify:oa-readiness' && !pkg.scripts?.['validate:predeploy']?.includes(`npm run ${script}`)) {
+    if (!pkg.scripts?.['validate:predeploy']?.includes(`npm run ${script}`)) {
       failures.push(`validate:predeploy must include ${script}`);
     }
   }
