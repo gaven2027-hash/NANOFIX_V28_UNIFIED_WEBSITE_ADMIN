@@ -62,12 +62,16 @@ function hasRenderableOutput(row: Payload) {
   return row.render_status === 'rendered' && output.renderer_contract_valid === true && !!outputRef;
 }
 
-function hasApprovedRenderedOutput(row: Payload) {
+function hasFinalApprovedRenderedOutput(row: Payload) {
   const output = getOutput(row);
   const result = getRendererResult(row);
   const review = getRenderedOutputReview(row);
   const outputRef = result && (cleanText(result.output_video_url, '', 2000) || cleanText(result.output_storage_path, '', 2000));
-  return row.render_status === 'approved' && output.renderer_contract_valid === true && review?.status === 'approved' && !!outputRef;
+  return row.render_status === 'approved'
+    && output.renderer_contract_valid === true
+    && review?.status === 'approved'
+    && review?.final_approval_completed === true
+    && !!outputRef;
 }
 
 function payload(body: Payload, actorId?: string) {
@@ -176,18 +180,22 @@ export async function PATCH(request: Request) {
   }
 
   if (action === 'approve_rendered_output') {
-    if (!hasRenderableOutput(before)) return jsonError('Only rendered jobs with a valid renderer contract and output video reference can be approved.', 409);
+    if (!hasRenderableOutput(before)) return jsonError('Only rendered jobs with a valid renderer contract and output video reference can be final-approved before scheduling.', 409);
     const now = new Date().toISOString();
     const nextOutput = {
       ...getOutput(before),
       rendered_output_review: {
         status: 'approved',
+        final_approval_completed: true,
         approved_at: now,
         approved_by: validUuid(context?.actorId) ? context?.actorId : null,
         review_notes: cleanText(body.review_notes, '', 2000),
+        ready_for_schedule: true,
+        publish_ready_after_schedule: true,
         admin_review_required: true,
         ai_auto_publish_allowed: false
       },
+      final_approval_completed_before_schedule: true,
       admin_review_required: true,
       ai_auto_publish_allowed: false
     };
@@ -198,7 +206,7 @@ export async function PATCH(request: Request) {
       .select(columns)
       .single();
     if (error) return jsonError(error.message, 500);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'approve_social_video_rendered_output', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'final_approve_social_video_rendered_output_before_schedule', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
     return NextResponse.json({ ok: true, row: data });
   }
 
@@ -208,12 +216,16 @@ export async function PATCH(request: Request) {
       ...getOutput(before),
       rendered_output_review: {
         status: 'revision_requested',
+        final_approval_completed: false,
         requested_at: now,
         requested_by: validUuid(context?.actorId) ? context?.actorId : null,
         review_notes: cleanText(body.review_notes, 'Revision requested by admin.', 2000),
+        ready_for_schedule: false,
+        publish_ready_after_schedule: false,
         admin_review_required: true,
         ai_auto_publish_allowed: false
       },
+      final_approval_completed_before_schedule: false,
       admin_review_required: true,
       ai_auto_publish_allowed: false
     };
@@ -224,12 +236,12 @@ export async function PATCH(request: Request) {
       .select(columns)
       .single();
     if (error) return jsonError(error.message, 500);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'request_social_video_render_revision', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'request_social_video_render_revision_before_schedule', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
     return NextResponse.json({ ok: true, row: data });
   }
 
   if (action === 'create_rendered_output_schedule_snapshot') {
-    if (!hasApprovedRenderedOutput(before)) return jsonError('Only approved rendered outputs with a valid renderer contract and output video reference can create schedule snapshots.', 409);
+    if (!hasFinalApprovedRenderedOutput(before)) return jsonError('Only final-approved rendered outputs with a valid renderer contract and output video reference can be scheduled.', 409);
     const p = platform(before.platform || 'all');
     const { data: existing, error: versionError } = await supabase
       .from('social_publish_versions')
@@ -242,7 +254,7 @@ export async function PATCH(request: Request) {
     const scheduledAt = cleanText(body.scheduled_at, '', 80) || null;
     const now = new Date().toISOString();
     const snapshot = {
-      source: 'approved_rendered_social_video_output',
+      source: 'final_approved_rendered_social_video_output',
       render_job_id: before.render_job_id,
       content_id: before.content_id || null,
       platform: p,
@@ -253,9 +265,11 @@ export async function PATCH(request: Request) {
       render_plan: getOutput(before).render_plan || null,
       renderer_result: getRendererResult(before),
       rendered_output_review: getRenderedOutputReview(before),
+      final_approval_completed_before_schedule: true,
+      publish_ready_after_schedule: true,
+      platform_api_called: false,
       admin_review_required: true,
       ai_auto_publish_allowed: false,
-      publish_requires_separate_admin_action: true,
       created_at: now
     };
     const { data: version, error } = await supabase
@@ -276,15 +290,20 @@ export async function PATCH(request: Request) {
     const nextOutput = {
       ...getOutput(before),
       schedule_snapshot_handoff: {
-        status: 'scheduled_snapshot_created',
+        status: 'scheduled_publish_ready_snapshot_created',
         version_id: version.version_id,
         version_no: version.version_no,
         scheduled_at: scheduledAt,
         created_at: now,
         created_by: validUuid(context?.actorId) ? context?.actorId : null,
+        final_approval_completed_before_schedule: true,
+        publish_ready_after_schedule: true,
+        platform_api_called: false,
         admin_review_required: true,
         ai_auto_publish_allowed: false
       },
+      final_approval_completed_before_schedule: true,
+      publish_ready_after_schedule: true,
       admin_review_required: true,
       ai_auto_publish_allowed: false
     };
@@ -295,7 +314,7 @@ export async function PATCH(request: Request) {
       .select(columns)
       .single();
     if (updateError) return jsonError(updateError.message, 500);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create_social_video_render_schedule_snapshot', object_type: 'social_publish_version', object_id: version.version_id, before_data: before, after_data: { render_job: row, version } });
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'final_approve_and_schedule_social_video_render', object_type: 'social_publish_version', object_id: version.version_id, before_data: before, after_data: { render_job: row, version } });
     return NextResponse.json({ ok: true, row, version });
   }
 
