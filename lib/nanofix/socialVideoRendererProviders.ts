@@ -146,6 +146,7 @@ export function rendererProviderOptionsForClient() {
     priority: provider.priority,
     category: provider.category,
     default_render_type: provider.default_render_type,
+    endpoint_env: provider.endpoint_env || '',
     supports_worker: provider.supports_worker,
     requires_external_endpoint: provider.requires_external_endpoint,
     recommended_for: provider.recommended_for,
