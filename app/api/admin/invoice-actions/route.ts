@@ -27,6 +27,22 @@ function transactionId() {
   return `PAY-${stamp}-${suffix}`;
 }
 
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingPayment(supabase: ReturnType<typeof createSupabaseAdminClient>, invoiceId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('payments')
+    .select(paymentColumns)
+    .eq('invoice_id', invoiceId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 export async function POST(request: Request) {
   const { context, response } = requireAdmin(request, 'write:finance');
   if (response) return response;
@@ -45,14 +61,7 @@ export async function POST(request: Request) {
   if (invoiceError) return jsonError(invoiceError.message, 500);
   if (!invoice) return jsonError('Invoice not found.', 404);
 
-  const { data: existing, error: existingError } = await supabase
-    .from('payments')
-    .select(paymentColumns)
-    .eq('invoice_id', invoiceId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return jsonError(existingError.message, 500);
+  const existing = await findExistingPayment(supabase, invoiceId);
   if (existing) {
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_payment_from_invoice', object_type: 'payment', object_id: existing.payment_id, after_data: { invoice_id: invoiceId, payment_id: existing.payment_id } });
     return NextResponse.json({ ok: true, payment: existing, existing: true });
@@ -71,7 +80,16 @@ export async function POST(request: Request) {
   };
 
   const { data: payment, error: paymentError } = await supabase.from('payments').insert(paymentPayload).select(paymentColumns).single();
-  if (paymentError) return jsonError(paymentError.message, 500);
+  if (paymentError) {
+    if (isUniqueConflict(paymentError)) {
+      const concurrentExisting = await findExistingPayment(supabase, invoiceId);
+      if (concurrentExisting) {
+        await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_payment_from_invoice_conflict', object_type: 'payment', object_id: concurrentExisting.payment_id, after_data: { invoice_id: invoiceId, payment_id: concurrentExisting.payment_id } });
+        return NextResponse.json({ ok: true, payment: concurrentExisting, existing: true, recovered_from_conflict: true });
+      }
+    }
+    return jsonError(paymentError.message, 500);
+  }
 
   const { data: updatedInvoice } = await supabase.from('invoices').update({ status: 'partially_paid' }).eq('invoice_id', invoiceId).select(invoiceColumns).maybeSingle();
 
