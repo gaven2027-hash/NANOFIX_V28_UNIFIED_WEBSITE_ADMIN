@@ -13,6 +13,7 @@ export type CustomerCenterSectionKey =
   | 'linked-warranties'
   | 'customer-binding'
   | 'pending-binding-review'
+  | 'registration-review'
   | 'customer-registration-login'
   | 'customer-registration-methods'
   | 'email-mobile-whatsapp-otp'
@@ -48,6 +49,7 @@ export const customerCenterSections: CustomerCenterSectionConfig[] = [
   { key: 'linked-warranties', href: '/customer-center/linked-warranties', title: 'Linked Warranties', zh: '关联保修', tab: 'linked', category: 'warranties', helper: 'Search customer-linked warranty records and claims.' },
   { key: 'customer-binding', href: '/customer-center/customer-binding', title: 'Customer Binding', zh: '客户绑定', tab: 'binding', category: 'binding', helper: 'Review customer binding suggestions and approve/reject binding records.' },
   { key: 'pending-binding-review', href: '/customer-center/pending-binding-review', title: 'Pending Binding Review', zh: '待绑定审核', tab: 'binding', category: 'binding_review', helper: 'Review pending customer-service request matching suggestions.' },
+  { key: 'registration-review', href: '/customer-center/registration-review', title: 'Registration Review', zh: '注册审核', tab: 'auth', category: 'registration_review', helper: 'Review customer, engineer and admin registration requests before activating access and assigning roles.' },
   { key: 'customer-registration-login', href: '/customer-center/customer-registration-login', title: 'Customer Registration / Login', zh: '客户注册/登录', tab: 'auth', category: 'login', helper: 'Manage customer registration/login methods: username, email, mobile phone and WhatsApp.' },
   { key: 'customer-registration-methods', href: '/customer-center/customer-registration-methods', title: 'Customer Registration Methods', zh: '客户注册方式', tab: 'auth', category: 'registration_methods', helper: 'Support three registration methods: username with email verification, email registration, and mobile/WhatsApp verification.' },
   { key: 'email-mobile-whatsapp-otp', href: '/customer-center/email-mobile-whatsapp-otp', title: 'Email / Mobile / WhatsApp OTP', zh: '邮箱/手机/WhatsApp OTP', tab: 'auth', category: 'otp', helper: 'Review and operate OTP/verification actions for email, mobile and WhatsApp.' },
