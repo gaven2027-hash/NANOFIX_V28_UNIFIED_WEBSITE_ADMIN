@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/nanofix/auth';
+import { buildSocialVideoRenderPlan } from '@/lib/nanofix/socialVideoRenderPlan';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +116,32 @@ export async function PATCH(request: Request) {
   const { data: before, error: beforeError } = await supabase.from('social_video_render_jobs').select(columns).eq('render_job_id', id).maybeSingle();
   if (beforeError) return jsonError(beforeError.message, 500);
   if (!before) return jsonError('Render job not found.', 404);
+
+  if (String(body.action || '') === 'generate_render_plan') {
+    const plan = buildSocialVideoRenderPlan({
+      platform: String(before.platform || 'all'),
+      title: String(before.title || 'NANOFIX video render plan'),
+      material_pack: before.material_pack,
+      render_settings: before.render_settings
+    });
+    const nextOutput = {
+      ...(before.output_json && typeof before.output_json === 'object' ? before.output_json as Record<string, unknown> : {}),
+      render_plan: plan,
+      render_plan_generated_at: new Date().toISOString(),
+      admin_review_required: true,
+      ai_auto_publish_allowed: false
+    };
+    const nextStatus = plan.plan_status === 'ready_for_worker' ? 'queued' : 'draft';
+    const { data, error } = await supabase
+      .from('social_video_render_jobs')
+      .update({ output_json: nextOutput, render_status: nextStatus, updated_at: new Date().toISOString(), admin_review_required: true, ai_auto_publish_allowed: false })
+      .eq('render_job_id', id)
+      .select(columns)
+      .single();
+    if (error) return jsonError(error.message, 500);
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'generate_social_video_render_plan', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
+    return NextResponse.json({ ok: true, row: data, render_plan: plan });
+  }
 
   const job = payload({ ...before, ...body }, context?.actorId);
   const { data, error } = await supabase.from('social_video_render_jobs').update(job).eq('render_job_id', id).select(columns).single();
