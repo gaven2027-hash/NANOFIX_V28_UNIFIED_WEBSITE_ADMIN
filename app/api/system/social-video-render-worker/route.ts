@@ -1,9 +1,14 @@
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { fail, ok } from '@/lib/nanofix/api';
+import { validateSocialVideoRendererResult } from '@/lib/nanofix/socialVideoRendererContract';
 
 export const dynamic = 'force-dynamic';
 
 type RenderJob = Record<string, unknown>;
+
+type RendererCallResult =
+  | { ok: true; result: Record<string, unknown>; validation: ReturnType<typeof validateSocialVideoRendererResult> }
+  | { ok: false; skipped?: boolean; error: string; details?: unknown; validation?: ReturnType<typeof validateSocialVideoRendererResult> };
 
 const columns = 'render_job_id,content_id,platform,render_status,render_type,title,material_pack,render_settings,output_json,error_message,admin_review_required,ai_auto_publish_allowed,requested_by,approved_by,scheduled_at,started_at,finished_at,created_at,updated_at';
 
@@ -38,7 +43,7 @@ function rendererToken() {
   return (process.env.NANOFIX_VIDEO_RENDERER_TOKEN || '').trim();
 }
 
-async function callRenderer(job: RenderJob) {
+async function callRenderer(job: RenderJob): Promise<RendererCallResult> {
   const endpoint = rendererEndpoint();
   if (!endpoint) {
     return {
@@ -55,6 +60,7 @@ async function callRenderer(job: RenderJob) {
       ...(rendererToken() ? { Authorization: `Bearer ${rendererToken()}` } : {})
     },
     body: JSON.stringify({
+      contract_version: 'v28.1.3-renderer-contract-1',
       render_job_id: job.render_job_id,
       platform: job.platform,
       render_type: job.render_type,
@@ -62,6 +68,8 @@ async function callRenderer(job: RenderJob) {
       material_pack: job.material_pack,
       render_settings: job.render_settings,
       output_json: job.output_json,
+      required_result_fields: ['ok', 'renderer_name', 'render_job_id', 'output_mime_type', 'rendered_at'],
+      required_output_reference: 'output_video_url or output_storage_path',
       admin_review_required: true,
       ai_auto_publish_allowed: false
     })
@@ -71,7 +79,13 @@ async function callRenderer(job: RenderJob) {
   if (!response.ok || json.ok === false) {
     return { ok: false, error: json.error || `Renderer returned HTTP ${response.status}`, details: json };
   }
-  return { ok: true, result: json };
+
+  const validation = validateSocialVideoRendererResult(json, String(job.render_job_id || ''));
+  if (!validation.valid || !validation.normalized) {
+    return { ok: false, error: 'Renderer result failed NANOFIX renderer contract validation.', details: json, validation };
+  }
+
+  return { ok: true, result: validation.normalized, validation };
 }
 
 async function processJob(job: RenderJob) {
@@ -127,6 +141,7 @@ async function processJob(job: RenderJob) {
           ...previousOutput,
           worker_result: rendered,
           renderer_configured: !rendered.skipped,
+          renderer_contract_valid: false,
           ai_auto_publish_allowed: false,
           admin_review_required: true
         },
@@ -140,7 +155,7 @@ async function processJob(job: RenderJob) {
       .single();
     if (error) throw new Error(error.message);
     await auditLog({ action: 'social_video_render_worker_failed', actor_role: 'system_worker', object_type: 'social_video_render_job', object_id: id, before_data: processing, after_data: data });
-    return { render_job_id: id, status: 'failed', reason: rendered.error, renderer_configured: !rendered.skipped };
+    return { render_job_id: id, status: 'failed', reason: rendered.error, renderer_configured: !rendered.skipped, renderer_contract_valid: false };
   }
 
   const { data, error } = await supabase
@@ -150,6 +165,7 @@ async function processJob(job: RenderJob) {
       output_json: {
         ...previousOutput,
         renderer_result: rendered.result,
+        renderer_contract_valid: true,
         rendered_at: finishedAt,
         ai_auto_publish_allowed: false,
         admin_review_required: true
@@ -165,7 +181,7 @@ async function processJob(job: RenderJob) {
     .single();
   if (error) throw new Error(error.message);
   await auditLog({ action: 'social_video_render_worker_rendered', actor_role: 'system_worker', object_type: 'social_video_render_job', object_id: id, before_data: processing, after_data: data });
-  return { render_job_id: id, status: 'rendered' };
+  return { render_job_id: id, status: 'rendered', renderer_contract_valid: true };
 }
 
 export async function POST(request: Request) {
