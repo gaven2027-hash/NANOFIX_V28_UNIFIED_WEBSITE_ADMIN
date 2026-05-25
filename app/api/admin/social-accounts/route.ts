@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 type Payload = Record<string, unknown>;
 
 const socialAccountColumns = 'social_account_id,platform,account_name,account_handle,account_url,business_id,page_id,app_id,connection_status,is_active,webhook_url,api_base_url,access_token_secret_name,refresh_token_secret_name,token_expires_at,permissions_json,settings_json,notes,last_connected_at,last_checked_at,created_by,updated_by,created_at,updated_at';
-const allowedPlatforms = ['facebook', 'instagram', 'tiktok', 'youtube_shorts', 'xiaohongshu', 'forum', 'google_business_profile', 'linkedin', 'whatsapp', 'whatsapp_channel', 'telegram_channel', 'website_blog', 'website_live_chat', 'linktree', 'other'];
+const allowedPlatforms = ['facebook', 'instagram', 'tiktok', 'youtube_shorts', 'xiaohongshu', 'forum', 'google_business_profile', 'linkedin', 'x_twitter', 'carousell_services', 'seedly_community', 'whatsapp', 'whatsapp_channel', 'telegram_channel', 'website_blog', 'website_live_chat', 'linktree', 'other'];
 const allowedStatuses = ['draft', 'connected', 'needs_reauth', 'disconnected', 'disabled', 'error'];
 
 function jsonError(message: string, status = 400) {
