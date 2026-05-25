@@ -34,6 +34,7 @@ const requiredFiles = [
   'supabase/migrations/20260526006000_v28_1_2_core_business_rls_policies.sql',
   'supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql',
   'supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql',
+  'supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql',
   'tools/verify-oa-production-readiness.mjs'
 ];
 
@@ -52,6 +53,7 @@ if (!failures.length) {
   const coreRls = read('supabase/migrations/20260526006000_v28_1_2_core_business_rls_policies.sql');
   const moduleRls = read('supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql');
   const fk = read('supabase/migrations/20260526008000_v28_1_2_oa_fk_performance_indexes.sql');
+  const fkB = read('supabase/migrations/20260526008100_v28_1_2_oa_fk_performance_indexes_b.sql');
 
   const scripts = [
     'verify:service-flow',
@@ -82,7 +84,8 @@ if (!failures.length) {
     [hardening.includes('revoke execute on function public.handle_new_auth_user()') && hardening.includes('security_invoker'), 'Security definer hardening is required.'],
     [coreRls.includes('audit_logs_admin_select') && coreRls.includes('payments_admin_all'), 'Core business RLS policies are required.'],
     [moduleRls.includes('webhook_events_admin_select') && moduleRls.includes('otp_verifications_admin_select'), 'Module RLS policies are required.'],
-    [fk.includes('job_assignments_job_id_idx') && fk.includes('service_requests_intake_id_idx') && fk.includes('warranties_job_id_idx'), 'OA foreign key indexes are required.']
+    [fk.includes('job_assignments_job_id_idx') && fk.includes('service_requests_intake_id_idx') && fk.includes('warranties_job_id_idx'), 'OA foreign key index batch A is required.'],
+    [fkB.includes('bookings_service_request_id_fk_idx') && fkB.includes('service_requests_customer_id_fk_idx') && fkB.includes('warranties_customer_id_fk_idx'), 'OA foreign key index batch B is required.']
   ];
 
   for (const [ok, message] of checks) {
