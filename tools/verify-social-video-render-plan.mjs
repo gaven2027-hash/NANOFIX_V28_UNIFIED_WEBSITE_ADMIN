@@ -93,11 +93,18 @@ if (!failures.length) {
     'generate_social_video_render_plan',
     'approve_rendered_output',
     'request_render_revision',
-    'approve_social_video_rendered_output',
-    'request_social_video_render_revision',
+    'final_approve_social_video_rendered_output_before_schedule',
+    'request_social_video_render_revision_before_schedule',
     'hasRenderableOutput',
+    'hasFinalApprovedRenderedOutput',
     'renderer_contract_valid === true',
-    'Only rendered jobs with a valid renderer contract and output video reference can be approved',
+    'final_approval_completed_before_schedule',
+    'publish_ready_after_schedule',
+    'Only rendered jobs with a valid renderer contract and output video reference can be final-approved before scheduling',
+    'Only final-approved rendered outputs with a valid renderer contract and output video reference can be scheduled',
+    'final_approved_rendered_social_video_output',
+    'final_approve_and_schedule_social_video_render',
+    'platform_api_called: false',
     'output_json',
     'render_plan',
     'render_plan_generated_at',
@@ -152,15 +159,20 @@ if (!failures.length) {
   }
 
   const reviewNeedles = [
-    'Rendered Output Review',
-    'Approve Rendered Output',
+    'Final Approval Before Scheduling',
+    'Final Approve',
+    'Final Approve & Schedule',
     'Request Revision',
     'approve_rendered_output',
     'request_render_revision',
+    'create_rendered_output_schedule_snapshot',
+    'final_approval_completed_before_schedule',
+    'publish_ready_after_schedule',
     'renderer_contract_valid',
     'output_video_url',
     'output_storage_path',
-    'Approval is enabled only when status is rendered'
+    'Scheduling confirms the video has passed all required reviews and is publish-ready',
+    'still does not auto-publish or call platform APIs'
   ];
   for (const needle of reviewNeedles) {
     if (!reviewPanel.includes(needle)) failures.push(`Rendered output review panel missing: ${needle}`);
@@ -182,4 +194,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX social video render plan verification passed.');
-console.log('Checked render plan builder, renderer contract, API action, rendered output review, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
+console.log('Checked render plan builder, renderer contract, API action, pre-schedule final approval, publish-ready scheduling, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
