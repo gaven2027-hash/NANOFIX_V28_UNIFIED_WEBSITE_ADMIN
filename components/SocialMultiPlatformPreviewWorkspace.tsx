@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
 import { SocialMultiPlatformPreviewBoard } from './SocialMultiPlatformPreviewBoard';
+import { defaultSocialMaterialPack } from './SocialMaterialPackBuilder';
 
 type Row = Record<string, unknown>;
 
@@ -15,10 +16,27 @@ function formatValue(value: unknown) {
 
 function statusTone(status: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan' {
   const s = String(status || '');
-  if (/(approved|published|connected)/i.test(s)) return 'green';
-  if (/(draft|pending|scheduled)/i.test(s)) return 'amber';
+  if (/(approved|published|connected|rendered)/i.test(s)) return 'green';
+  if (/(draft|pending|scheduled|queued|processing)/i.test(s)) return 'amber';
   if (/(rejected|failed|cancelled|disabled|error)/i.test(s)) return 'red';
   return 'blue';
+}
+
+function extractMaterialPack(draft: Row) {
+  const refs = Array.isArray(draft.source_references) ? draft.source_references : [];
+  const first = refs.find((item) => item && typeof item === 'object') as Record<string, unknown> | undefined;
+  const material = first && typeof first.source_media === 'object' && first.source_media ? first.source_media as Record<string, unknown> : {};
+  return { ...defaultSocialMaterialPack, ...material };
+}
+
+function renderTypeForPlatform(platform: unknown) {
+  const p = String(platform || 'all');
+  if (p === 'website_blog') return 'blog_embed';
+  if (p === 'carousell_services') return 'listing_video';
+  if (p === 'instagram') return 'reel';
+  if (p === 'facebook') return 'reel';
+  if (p === 'whatsapp_channel' || p === 'telegram_channel') return 'story';
+  return 'short_video';
 }
 
 export function SocialMultiPlatformPreviewWorkspace() {
@@ -75,28 +93,66 @@ export function SocialMultiPlatformPreviewWorkspace() {
     await loadData();
   }
 
+  async function createRenderJob(draft: Row) {
+    setMessage('');
+    const materialPack = extractMaterialPack(draft);
+    const response = await fetch('/api/admin/social-media/render-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content_id: draft.content_id,
+        platform: draft.platform || 'all',
+        render_status: 'draft',
+        render_type: renderTypeForPlatform(draft.platform),
+        title: `Render: ${formatValue(draft.title)}`,
+        material_pack: materialPack,
+        render_settings: {
+          output_format: 'mp4',
+          aspect_ratio: String(draft.platform || '').includes('youtube') || String(draft.platform || '').includes('tiktok') ? '9:16' : '4:5',
+          include_subtitles: true,
+          include_logo_watermark: true,
+          voiceover_required: false,
+          admin_review_required: true,
+          ai_auto_publish_allowed: false,
+          source: 'multi_platform_preview_review'
+        },
+        output_json: {
+          draft_title: draft.title,
+          draft_body: draft.body,
+          source: 'selected_social_draft'
+        }
+      })
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Render job creation failed. / 创建渲染任务失败。');
+      return;
+    }
+    setMessage(`Render job created: ${json.row?.render_job_id || '—'} / 已创建视频渲染任务。`);
+  }
+
   return (
     <div className="space-y-5">
       {message ? <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
-      <SectionCard title="Multi-Platform Social Review Flow / 多平台社媒审核流程" subtitle="One material pack creates separate platform drafts. Admin reviews all preview windows side-by-side, then edits, approves, schedules or records publish snapshots per platform. / 一次素材生成多个平台独立草稿，并排预览，逐个平台编辑、批准、排期或记录发布快照。">
+      <SectionCard title="Multi-Platform Social Review Flow / 多平台社媒审核流程" subtitle="One material pack creates separate platform drafts. Admin reviews all preview windows side-by-side, then edits, approves, schedules or creates video render jobs per platform. / 一次素材生成多个平台独立草稿，并排预览，逐个平台编辑、批准、排期或创建视频渲染任务。">
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Step 1</div><div className="mt-1 text-sm font-black text-slate-900">Upload / register source material</div></div>
           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Step 2</div><div className="mt-1 text-sm font-black text-slate-900">Select target platforms</div></div>
           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Step 3</div><div className="mt-1 text-sm font-black text-slate-900">Generate draft-only versions</div></div>
-          <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Step 4</div><div className="mt-1 text-sm font-black text-slate-900">Admin approval / schedule</div></div>
+          <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Step 4</div><div className="mt-1 text-sm font-black text-slate-900">Review / render queue</div></div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Badge tone="amber">AI cannot auto publish</Badge>
           <Badge tone="blue">Admin review required</Badge>
           <Badge tone="green">Per-platform drafts</Badge>
-          <Badge tone="cyan">Publish snapshots auditable</Badge>
+          <Badge tone="cyan">Render queue auditable</Badge>
         </div>
       </SectionCard>
 
       <SocialMultiPlatformPreviewBoard drafts={drafts} onRefresh={loadData} onOpenDraft={setSelectedDraft} onCreateSnapshot={createSnapshot} />
 
       {selectedDraft ? (
-        <SectionCard title="Selected Draft Detail / 已选草稿详情" subtitle="This keeps editing review visible from the same preview page. Use the normal AI Drafts table for full text editing if needed. / 在同一预览页面查看所选草稿详情；完整编辑可进入普通 AI 草稿列表。">
+        <SectionCard title="Selected Draft Detail / 已选草稿详情" subtitle="Use this detail panel to create a schedule snapshot or a future video render queue job. / 可在此创建排期快照，或创建未来视频渲染队列任务。">
           <div className="grid gap-3 md:grid-cols-3">
             <div><div className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Platform</div><div className="mt-1 text-sm font-black text-slate-900">{formatValue(selectedDraft.platform)}</div></div>
             <div><div className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Status</div><div className="mt-1"><Badge tone={statusTone(selectedDraft.approval_status)}>{formatValue(selectedDraft.approval_status)}</Badge></div></div>
@@ -108,6 +164,7 @@ export function SocialMultiPlatformPreviewWorkspace() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" onClick={() => void createSnapshot(selectedDraft)} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700">Create Schedule Snapshot / 创建排期快照</button>
+            <button type="button" onClick={() => void createRenderJob(selectedDraft)} className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-black text-white hover:bg-emerald-700">Create Video Render Job / 创建视频渲染任务</button>
             <button type="button" onClick={() => setSelectedDraft(null)} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200">Close Detail / 关闭详情</button>
           </div>
         </SectionCard>
