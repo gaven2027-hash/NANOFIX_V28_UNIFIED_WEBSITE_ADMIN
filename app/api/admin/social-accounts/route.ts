@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 type Payload = Record<string, unknown>;
 
 const socialAccountColumns = 'social_account_id,platform,account_name,account_handle,account_url,business_id,page_id,app_id,connection_status,is_active,webhook_url,api_base_url,access_token_secret_name,refresh_token_secret_name,token_expires_at,permissions_json,settings_json,notes,last_connected_at,last_checked_at,created_by,updated_by,created_at,updated_at';
-const allowedPlatforms = ['facebook', 'instagram', 'tiktok', 'youtube_shorts', 'xiaohongshu', 'google_business_profile', 'whatsapp', 'website_live_chat', 'linktree', 'other'];
+const allowedPlatforms = ['facebook', 'instagram', 'tiktok', 'youtube_shorts', 'xiaohongshu', 'forum', 'google_business_profile', 'linkedin', 'whatsapp', 'whatsapp_channel', 'telegram_channel', 'website_blog', 'website_live_chat', 'linktree', 'other'];
 const allowedStatuses = ['draft', 'connected', 'needs_reauth', 'disconnected', 'disabled', 'error'];
 
 function jsonError(message: string, status = 400) {
@@ -56,8 +56,9 @@ function normalizeStatus(value: unknown, fallback = 'draft') {
 function sanitizeSocialAccountData(data: Payload, actorId?: string, isCreate = false) {
   const now = new Date().toISOString();
   const status = normalizeStatus(data.connection_status, isCreate ? 'draft' : 'draft');
+  const platform = normalizePlatform(data.platform);
   const patch: Payload = {
-    platform: normalizePlatform(data.platform),
+    platform,
     account_name: cleanText(data.account_name, '', 160),
     account_handle: cleanText(data.account_handle, '', 160) || null,
     account_url: cleanUrl(data.account_url),
@@ -72,7 +73,12 @@ function sanitizeSocialAccountData(data: Payload, actorId?: string, isCreate = f
     refresh_token_secret_name: cleanText(data.refresh_token_secret_name, '', 260) || null,
     token_expires_at: cleanText(data.token_expires_at, '', 80) || null,
     permissions_json: parseJson(data.permissions_json, []),
-    settings_json: parseJson(data.settings_json, {}),
+    settings_json: {
+      admin_review_required: true,
+      ai_auto_publish_allowed: false,
+      platform,
+      ...(parseJson(data.settings_json, {}) as Record<string, unknown>)
+    },
     notes: cleanText(data.notes, '', 4000) || null,
     updated_by: validUuid(actorId) ? actorId : null,
     updated_at: now
@@ -112,7 +118,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await query;
   if (error) return jsonError(error.message, 500);
-  return NextResponse.json({ ok: true, rows: data || [] });
+  return NextResponse.json({ ok: true, rows: data || [], allowedPlatforms });
 }
 
 export async function POST(request: Request) {
