@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { fail, ok } from '@/lib/nanofix/api';
 import { validateSocialVideoRendererResult } from '@/lib/nanofix/socialVideoRendererContract';
+import { getRendererEndpointForProvider } from '@/lib/nanofix/socialVideoRendererProviders';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ type RendererCallResult =
   | { ok: true; result: Record<string, unknown>; validation: ReturnType<typeof validateSocialVideoRendererResult> }
   | { ok: false; skipped?: boolean; error: string; details?: unknown; validation?: ReturnType<typeof validateSocialVideoRendererResult> };
 
-const columns = 'render_job_id,content_id,platform,render_status,render_type,title,material_pack,render_settings,output_json,error_message,admin_review_required,ai_auto_publish_allowed,requested_by,approved_by,scheduled_at,started_at,finished_at,created_at,updated_at';
+const columns = 'render_job_id,content_id,platform,render_status,render_type,renderer_provider,renderer_template_id,renderer_model,renderer_endpoint_key,renderer_cost_estimate,title,material_pack,render_settings,output_json,error_message,admin_review_required,ai_auto_publish_allowed,requested_by,approved_by,scheduled_at,started_at,finished_at,created_at,updated_at';
 
 function authorized(request: Request) {
   const expected = process.env.CRON_SECRET || process.env.NANOFIX_SYSTEM_WORKER_TOKEN;
@@ -35,21 +36,29 @@ function hasRenderPlan(job: RenderJob) {
   return !!(output.render_plan && typeof output.render_plan === 'object');
 }
 
-function rendererEndpoint() {
-  return (process.env.NANOFIX_VIDEO_RENDERER_ENDPOINT || '').trim();
-}
-
-function rendererToken() {
-  return (process.env.NANOFIX_VIDEO_RENDERER_TOKEN || '').trim();
+function getRenderSettings(job: RenderJob) {
+  return job.render_settings && typeof job.render_settings === 'object' ? job.render_settings as Record<string, unknown> : {};
 }
 
 async function callRenderer(job: RenderJob): Promise<RendererCallResult> {
-  const endpoint = rendererEndpoint();
+  const providerMeta = getRendererEndpointForProvider(job.renderer_provider);
+  const { provider, endpoint, token } = providerMeta;
+
+  if (provider.key === 'manual_final_video_upload') {
+    return {
+      ok: false,
+      skipped: true,
+      error: 'Manual Final Video Upload was selected. Worker must not call an external renderer. Upload the final edited video and complete review manually.',
+      details: { renderer_provider: provider.key, renderer_provider_note: provider.short_note, renderer_provider_note_zh: provider.short_note_zh }
+    };
+  }
+
   if (!endpoint) {
     return {
       ok: false,
       skipped: true,
-      error: 'NANOFIX_VIDEO_RENDERER_ENDPOINT is not configured. Worker marked this job failed instead of fake-rendering a video.'
+      error: `${provider.endpoint_env || 'Selected renderer endpoint'} is not configured for ${provider.label}. Worker marked this job failed instead of fake-rendering a video.`,
+      details: { renderer_provider: provider.key, renderer_provider_note: provider.short_note, renderer_provider_note_zh: provider.short_note_zh, endpoint_env: provider.endpoint_env }
     };
   }
 
@@ -57,13 +66,21 @@ async function callRenderer(job: RenderJob): Promise<RendererCallResult> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(rendererToken() ? { Authorization: `Bearer ${rendererToken()}` } : {})
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
     body: JSON.stringify({
       contract_version: 'v28.1.3-renderer-contract-1',
       render_job_id: job.render_job_id,
       platform: job.platform,
       render_type: job.render_type,
+      renderer_provider: provider.key,
+      renderer_provider_label: provider.label,
+      renderer_provider_note: provider.short_note,
+      renderer_provider_note_zh: provider.short_note_zh,
+      renderer_template_id: job.renderer_template_id || getRenderSettings(job).renderer_template_id || null,
+      renderer_model: job.renderer_model || getRenderSettings(job).renderer_model || null,
+      renderer_endpoint_key: job.renderer_endpoint_key || provider.endpoint_env || null,
+      renderer_cost_estimate: job.renderer_cost_estimate || getRenderSettings(job).renderer_cost_estimate || null,
       title: job.title,
       material_pack: job.material_pack,
       render_settings: job.render_settings,
@@ -85,7 +102,7 @@ async function callRenderer(job: RenderJob): Promise<RendererCallResult> {
     return { ok: false, error: 'Renderer result failed NANOFIX renderer contract validation.', details: json, validation };
   }
 
-  return { ok: true, result: validation.normalized, validation };
+  return { ok: true, result: { ...validation.normalized, renderer_provider: provider.key, renderer_provider_note: provider.short_note, renderer_provider_note_zh: provider.short_note_zh }, validation };
 }
 
 async function processJob(job: RenderJob) {
@@ -93,6 +110,7 @@ async function processJob(job: RenderJob) {
   if (!supabase) throw new Error('Supabase server client is not configured.');
   const id = String(job.render_job_id || '');
   const now = new Date().toISOString();
+  const provider = getRendererEndpointForProvider(job.renderer_provider).provider;
 
   if (!hasRenderPlan(job)) {
     const output = getOutput(job);
@@ -101,7 +119,7 @@ async function processJob(job: RenderJob) {
       .update({
         render_status: 'failed',
         error_message: 'Render plan is missing. Generate render_plan before running the worker.',
-        output_json: { ...output, worker_error: 'missing_render_plan', ai_auto_publish_allowed: false, admin_review_required: true },
+        output_json: { ...output, worker_error: 'missing_render_plan', renderer_provider: provider.key, renderer_provider_note: provider.short_note, renderer_provider_note_zh: provider.short_note_zh, ai_auto_publish_allowed: false, admin_review_required: true },
         finished_at: now,
         updated_at: now,
         admin_review_required: true,
@@ -112,7 +130,7 @@ async function processJob(job: RenderJob) {
       .single();
     if (error) throw new Error(error.message);
     await auditLog({ action: 'social_video_render_worker_failed_missing_plan', actor_role: 'system_worker', object_type: 'social_video_render_job', object_id: id, before_data: job, after_data: data });
-    return { render_job_id: id, status: 'failed', reason: 'missing_render_plan' };
+    return { render_job_id: id, status: 'failed', reason: 'missing_render_plan', renderer_provider: provider.key };
   }
 
   const { data: processing, error: processingError } = await supabase
@@ -123,7 +141,7 @@ async function processJob(job: RenderJob) {
     .select(columns)
     .maybeSingle();
   if (processingError) throw new Error(processingError.message);
-  if (!processing) return { render_job_id: id, status: 'skipped', reason: 'job_was_not_queued' };
+  if (!processing) return { render_job_id: id, status: 'skipped', reason: 'job_was_not_queued', renderer_provider: provider.key };
 
   await auditLog({ action: 'social_video_render_worker_started', actor_role: 'system_worker', object_type: 'social_video_render_job', object_id: id, before_data: job, after_data: processing });
 
@@ -140,6 +158,9 @@ async function processJob(job: RenderJob) {
         output_json: {
           ...previousOutput,
           worker_result: rendered,
+          renderer_provider: provider.key,
+          renderer_provider_note: provider.short_note,
+          renderer_provider_note_zh: provider.short_note_zh,
           renderer_configured: !rendered.skipped,
           renderer_contract_valid: false,
           ai_auto_publish_allowed: false,
@@ -155,7 +176,7 @@ async function processJob(job: RenderJob) {
       .single();
     if (error) throw new Error(error.message);
     await auditLog({ action: 'social_video_render_worker_failed', actor_role: 'system_worker', object_type: 'social_video_render_job', object_id: id, before_data: processing, after_data: data });
-    return { render_job_id: id, status: 'failed', reason: rendered.error, renderer_configured: !rendered.skipped, renderer_contract_valid: false };
+    return { render_job_id: id, status: 'failed', reason: rendered.error, renderer_provider: provider.key, renderer_configured: !rendered.skipped, renderer_contract_valid: false };
   }
 
   const { data, error } = await supabase
@@ -165,6 +186,9 @@ async function processJob(job: RenderJob) {
       output_json: {
         ...previousOutput,
         renderer_result: rendered.result,
+        renderer_provider: provider.key,
+        renderer_provider_note: provider.short_note,
+        renderer_provider_note_zh: provider.short_note_zh,
         renderer_contract_valid: true,
         rendered_at: finishedAt,
         ai_auto_publish_allowed: false,
@@ -181,7 +205,7 @@ async function processJob(job: RenderJob) {
     .single();
   if (error) throw new Error(error.message);
   await auditLog({ action: 'social_video_render_worker_rendered', actor_role: 'system_worker', object_type: 'social_video_render_job', object_id: id, before_data: processing, after_data: data });
-  return { render_job_id: id, status: 'rendered', renderer_contract_valid: true };
+  return { render_job_id: id, status: 'rendered', renderer_provider: provider.key, renderer_contract_valid: true };
 }
 
 export async function POST(request: Request) {
@@ -208,7 +232,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return ok({ processed: results.length, results, renderer_configured: Boolean(rendererEndpoint()) });
+  return ok({ processed: results.length, results });
 }
 
 export const GET = POST;
