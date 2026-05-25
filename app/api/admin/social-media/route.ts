@@ -17,6 +17,22 @@ const draftStatuses = ['draft', 'pending_review', 'approved', 'rejected', 'publi
 const versionStatuses = ['approved', 'scheduled', 'published', 'cancelled', 'failed'];
 const messageDirections = ['inbound', 'outbound', 'internal_note'];
 
+const multiPlatformTargets = [
+  { platform: 'facebook', label: 'FB Preview', angle: 'local trust proof and service CTA' },
+  { platform: 'tiktok', label: 'TikTok Preview', angle: 'short hook, subtitles and fast CTA' },
+  { platform: 'youtube_shorts', label: 'YouTube Shorts Preview', angle: 'searchable Shorts title and description' },
+  { platform: 'instagram', label: 'Instagram Preview', angle: 'visual-first Reel or post caption' },
+  { platform: 'xiaohongshu', label: 'Xiaohongshu Preview', angle: 'problem story and Chinese-localised note' },
+  { platform: 'forum', label: 'Forum Preview', angle: 'long-form forum thread with problem and solution' },
+  { platform: 'google_business_profile', label: 'Google Business Profile Preview', angle: 'local SEO business update' },
+  { platform: 'linkedin', label: 'LinkedIn Preview', angle: 'B2B commercial credibility update' },
+  { platform: 'whatsapp_channel', label: 'WhatsApp Channel Preview', angle: 'short subscriber broadcast draft' },
+  { platform: 'telegram_channel', label: 'Telegram Channel Preview', angle: 'compact community channel draft' },
+  { platform: 'website_blog', label: 'Website Blog Preview', angle: 'SEO and AEO website article handoff' }
+];
+
+const allowedDraftPlatforms = ['all', 'general', 'facebook', 'instagram', 'tiktok', 'youtube_shorts', 'xiaohongshu', 'forum', 'google_business_profile', 'linkedin', 'whatsapp', 'whatsapp_channel', 'telegram_channel', 'website_blog', 'website_live_chat'];
+
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
@@ -51,7 +67,13 @@ function nullableUuid(value: unknown) {
 }
 
 function normalizePlatform(value: unknown, fallback = 'general') {
-  return cleanText(value, fallback).toLowerCase().replace(/[^a-z0-9_ -]/g, '').replace(/\s+/g, '_').slice(0, 80) || fallback;
+  const platform = cleanText(value, fallback).toLowerCase().replace(/[^a-z0-9_ -]/g, '').replace(/\s+/g, '_').replace(/-/g, '_').slice(0, 80) || fallback;
+  return platform;
+}
+
+function normalizeDraftPlatform(value: unknown) {
+  const platform = normalizePlatform(value, 'general');
+  return allowedDraftPlatforms.includes(platform) ? platform : 'general';
 }
 
 function buildRecordPayload(body: Payload, actorId?: string) {
@@ -87,7 +109,7 @@ function buildDraftPayload(body: Payload, actorId?: string) {
   const approvalStatus = draftStatuses.includes(String(body.approval_status)) ? String(body.approval_status) : 'draft';
   const payload: Payload = {
     module: 'social',
-    platform: normalizePlatform(body.platform, section?.platform || 'all'),
+    platform: normalizeDraftPlatform(body.platform || section?.platform || 'all'),
     title: cleanText(body.title, section?.title || 'Social Draft'),
     body: cleanText(body.body),
     prompt_version: cleanText(body.prompt_version, section?.key || 'manual'),
@@ -97,6 +119,50 @@ function buildDraftPayload(body: Payload, actorId?: string) {
   };
   if (validUuid(actorId)) payload.reviewer_id = actorId;
   return payload;
+}
+
+function buildMultiPlatformDraftPayloads(body: Payload, actorId?: string) {
+  const requested = Array.isArray(body.platforms) ? body.platforms.map(normalizeDraftPlatform) : [];
+  const uniquePlatforms = [...new Set(requested)].filter((platform) => multiPlatformTargets.some((target) => target.platform === platform));
+  const platforms = uniquePlatforms.length ? uniquePlatforms : multiPlatformTargets.map((target) => target.platform);
+  const sourceMedia = safeJson(body.source_media, {});
+  const baseTitle = cleanText(body.base_title, 'NANOFIX social repair content');
+  const baseBody = cleanText(body.base_body, 'NANOFIX repair material pack for platform-specific social review.');
+  const serviceType = cleanText(body.service_type, 'NANOFIX Repair Service');
+  const createdAt = new Date().toISOString();
+
+  return platforms.map((platform) => {
+    const target = multiPlatformTargets.find((item) => item.platform === platform)!;
+    return {
+      module: 'social',
+      platform,
+      title: `${target.label}: ${baseTitle}`.slice(0, 500),
+      body: [
+        `${baseBody}`,
+        '',
+        `Platform angle: ${target.angle}.`,
+        `Service type: ${serviceType}.`,
+        'Admin review required before approval, scheduling or publishing.',
+        'AI auto publish allowed: false.'
+      ].join('\n'),
+      prompt_version: `multi-platform-preview-review/${platform}`,
+      model: cleanText(body.model, 'manual_ai_assisted'),
+      source_references: [
+        {
+          source: 'multi_platform_material_pack',
+          target_platform: platform,
+          target_label: target.label,
+          service_type: serviceType,
+          source_media: sourceMedia,
+          admin_review_required: true,
+          ai_auto_publish_allowed: false,
+          created_at: createdAt
+        }
+      ],
+      approval_status: 'draft',
+      reviewer_id: validUuid(actorId) ? actorId : null
+    };
+  });
 }
 
 async function listRecords(search: string | null, status: string | null, sectionKey: string | null, platform: string | null) {
@@ -131,7 +197,7 @@ async function listDrafts(search: string | null, status: string | null, sectionK
   const supabase = createSupabaseAdminClient();
   if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   const section = getSocialMediaSection(sectionKey || undefined);
-  let query = supabase.from('content_drafts').select(draftColumns).eq('module', 'social').order('created_at', { ascending: false }).limit(120);
+  let query = supabase.from('content_drafts').select(draftColumns).eq('module', 'social').order('created_at', { ascending: false }).limit(160);
   const draftPlatform = platform && platform !== 'all' ? platform : section?.platform && section.platform !== 'all' ? section.platform : '';
   if (draftPlatform) query = query.eq('platform', draftPlatform);
   if (status && draftStatuses.includes(status)) query = query.eq('approval_status', status);
@@ -145,7 +211,7 @@ async function listDrafts(search: string | null, status: string | null, sectionK
 async function listVersions(search: string | null, status: string | null, platform: string | null) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
-  let query = supabase.from('social_publish_versions').select(versionColumns).order('created_at', { ascending: false }).limit(80);
+  let query = supabase.from('social_publish_versions').select(versionColumns).order('created_at', { ascending: false }).limit(100);
   if (platform && platform !== 'all') query = query.eq('platform', platform);
   if (status && versionStatuses.includes(status)) query = query.eq('status', status);
   const q = cleanSearch(search);
@@ -196,7 +262,7 @@ export async function GET(request: Request) {
   if (!messages.ok) return jsonError(messages.error, messages.status);
   if (!drafts.ok) return jsonError(drafts.error, drafts.status);
   if (!versions.ok) return jsonError(versions.error, versions.status);
-  return NextResponse.json({ ok: true, records: records.data, messages: messages.data, drafts: drafts.data, versions: versions.data, recordStatuses, draftStatuses, versionStatuses });
+  return NextResponse.json({ ok: true, records: records.data, messages: messages.data, drafts: drafts.data, versions: versions.data, recordStatuses, draftStatuses, versionStatuses, multiPlatformTargets });
 }
 
 export async function POST(request: Request) {
@@ -230,6 +296,20 @@ export async function POST(request: Request) {
     if (error) return jsonError(error.message, 500);
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create', object_type: 'social_content_draft', object_id: data.content_id, after_data: data });
     return NextResponse.json({ ok: true, draft: data });
+  }
+
+  if (action === 'create_multi_platform_drafts') {
+    const payloads = buildMultiPlatformDraftPayloads(body, context?.actorId);
+    const { data, error } = await supabase.from('content_drafts').insert(payloads).select(draftColumns);
+    if (error) return jsonError(error.message, 500);
+    await auditLog({
+      actor_id: context?.actorId,
+      actor_role: context?.role,
+      action: 'create_multi_platform_social_drafts',
+      object_type: 'social_content_drafts',
+      after_data: { count: data?.length || 0, platforms: payloads.map((item) => item.platform), ai_auto_publish_allowed: false, admin_review_required: true }
+    });
+    return NextResponse.json({ ok: true, drafts: data || [], platforms: payloads.map((item) => item.platform) });
   }
 
   return jsonError('Unsupported action.', 400);
@@ -268,12 +348,12 @@ export async function PATCH(request: Request) {
   if (action === 'publish_snapshot') {
     const contentId = String(body.content_id || '');
     const recordId = String(body.record_id || '');
-    const platform = normalizePlatform(body.platform, 'all');
+    const platform = normalizeDraftPlatform(body.platform || 'all');
     const status = versionStatuses.includes(String(body.status)) ? String(body.status) : 'scheduled';
     const { data: existing, error: versionError } = await supabase.from('social_publish_versions').select('version_no').eq('platform', platform).order('version_no', { ascending: false }).limit(1);
     if (versionError) return jsonError(versionError.message, 500);
     const versionNo = Number(existing?.[0]?.version_no || 0) + 1;
-    const snapshot = safeJson(body.snapshot_json, { platform, status, source: 'manual social admin publish snapshot', created_at: new Date().toISOString() });
+    const snapshot = safeJson(body.snapshot_json, { platform, status, source: 'manual social admin publish snapshot', created_at: new Date().toISOString(), ai_auto_publish_allowed: false });
     const { data, error } = await supabase
       .from('social_publish_versions')
       .insert({ content_id: validUuid(contentId) ? contentId : null, record_id: validUuid(recordId) ? recordId : null, platform, version_no: versionNo, status, snapshot_json: snapshot, scheduled_at: body.scheduled_at || null, published_by: validUuid(context?.actorId) ? context?.actorId : null })
