@@ -15,6 +15,7 @@
     "verify": "node tools/verify-v28.mjs",
     "verify:service-flow": "node tools/verify-service-operations-flow.mjs",
     "verify:social-accounts": "node tools/verify-social-accounts-binding.mjs",
+    "verify:website-social-links": "node tools/verify-website-social-links.mjs",
     "build:css": "tailwindcss -i ./app/globals.css -o ./public/static/nanofix-tailwind.css --minify",
     "build:preview": "npm run build:css && node tools/build-preview-package.mjs",
     "analyze:images": "node tools/analyze-images.mjs",
@@ -36,7 +37,7 @@
     "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
-    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:service-flow && npm run verify:social-accounts && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:service-flow && npm run verify:social-accounts && npm run verify:website-social-links && npm run validate:package && npm run audit:v28 && npm run validate:platform",
     "check:staging": "node tools/staging-supabase-check.mjs",
     "validate:platform": "node tools/deploy-readiness-check.mjs"
   },
