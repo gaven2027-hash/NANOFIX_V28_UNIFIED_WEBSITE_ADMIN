@@ -24,14 +24,60 @@ const requiredFiles = [
   ".vercelignore",
   ".env.example",
   "middleware.ts",
+  "app/login/LoginShell.tsx",
+  "app/register/RegisterShell.tsx",
+  "app/api/public/registration-requests/route.ts",
+  "app/api/admin/registration-requests/route.ts",
+  "app/api/admin/social-accounts/route.ts",
+  "app/api/admin/website-social-links/route.ts",
+  "app/api/public/website-social-links/route.ts",
+  "components/RegistrationReviewWorkspace.tsx",
+  "components/SocialAccountsBindingWorkspace.tsx",
+  "components/WebsiteSocialLinksWorkspace.tsx",
   "supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql",
-  "supabase/migrations/20260523_v28_production_hardening.sql"
+  "supabase/migrations/20260523_v28_production_hardening.sql",
+  "supabase/migrations/20260526001000_v28_1_2_social_accounts_binding.sql",
+  "supabase/migrations/20260526002000_v28_1_2_website_social_links.sql",
+  "supabase/migrations/20260526003000_v28_1_2_portal_registration_requests.sql",
+  "supabase/migrations/20260526004000_v28_1_2_field_work_rls_policies.sql",
+  "supabase/migrations/20260526005000_v28_1_2_security_definer_access_hardening.sql",
+  "supabase/migrations/20260526006000_v28_1_2_core_business_rls_policies.sql",
+  "supabase/migrations/20260526007000_v28_1_2_module_rls_policies.sql",
+  "tools/verify-auth-welcome-pages.mjs",
+  "tools/verify-core-business-rls.mjs",
+  "tools/verify-field-work-rls.mjs",
+  "tools/verify-module-rls.mjs",
+  "tools/verify-registration-review.mjs",
+  "tools/verify-security-definer-hardening.mjs",
+  "tools/verify-social-accounts-binding.mjs",
+  "tools/verify-website-social-links.mjs"
 ];
 for (const file of requiredFiles) assert(exists(file), `Missing required deployment file: ${file}`);
 
 const pkg = JSON.parse(read("package.json"));
-for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging"]) {
+const requiredScripts = [
+  "build",
+  "build:ci",
+  "validate:predeploy",
+  "quality:gate",
+  "verify",
+  "test:e2e:smoke",
+  "check:staging",
+  "verify:service-flow",
+  "verify:social-accounts",
+  "verify:website-social-links",
+  "verify:auth-welcome",
+  "verify:registration-review",
+  "verify:field-rls",
+  "verify:security-definer",
+  "verify:core-rls",
+  "verify:module-rls"
+];
+for (const script of requiredScripts) {
   assert(pkg.scripts?.[script], `Missing npm script: ${script}`);
+}
+for (const script of requiredScripts.filter((script) => script.startsWith("verify:") && script !== "verify")) {
+  assert(pkg.scripts?.["validate:predeploy"]?.includes(`npm run ${script}`), `validate:predeploy must include ${script}`);
 }
 assert(pkg.engines?.node?.includes(">=20"), "package.json should require Node >=20 for Vercel/GitHub consistency");
 assert(pkg.engines?.node?.includes("<23"), "package.json should cap Node below 23 until dependencies are verified");
@@ -94,16 +140,33 @@ for (const key of requiredEnv) assert(env.includes(key), `.env.example missing r
 const middleware = read("middleware.ts");
 assert(middleware.includes("x-admin-role") && middleware.includes("x-nanofix-role"), "middleware should explicitly strip untrusted client role headers");
 assert(middleware.includes("/login"), "middleware should redirect protected pages to /login");
+assert(middleware.includes("loginAliases") && middleware.includes("registerAliases"), "middleware should route role-based login/register aliases");
 
 const migrations = fs.readdirSync(path.join(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
-assert(migrations.length >= 6, "Expected complete Supabase migrations set");
+assert(migrations.length >= 13, "Expected complete Supabase migrations set including V28.1.2 hardening migrations");
 assert(migrations.every((name, index, arr) => index === 0 || arr[index - 1] <= name), "Supabase migrations should be lexically ordered");
 const joinedMigrations = migrations.map((file) => read(`supabase/migrations/${file}`)).join("\n");
-for (const table of ["profiles", "customers", "unified_intake", "leads", "service_requests", "audit_logs", "app_modules"]) {
-  assert(joinedMigrations.includes(`public.${table}`), `Supabase migrations missing core table reference: ${table}`);
+for (const table of [
+  "profiles",
+  "customers",
+  "unified_intake",
+  "leads",
+  "service_requests",
+  "audit_logs",
+  "app_modules",
+  "social_accounts",
+  "website_social_links",
+  "portal_registration_requests"
+]) {
+  assert(joinedMigrations.includes(`public.${table}`), `Supabase migrations missing table reference: ${table}`);
 }
 assert(joinedMigrations.includes("revoke execute on function public.search_all_records"), "search_all_records RPC must be revoked from public/anon/authenticated");
 assert(joinedMigrations.includes("grant execute on function public.transition_status_tx"), "transition_status_tx RPC must be granted only to service_role");
+assert(joinedMigrations.includes("revoke execute on function public.handle_new_auth_user() from public, anon, authenticated"), "handle_new_auth_user must not be callable by public/anon/authenticated RPC");
+assert(joinedMigrations.includes("with (security_invoker = true)"), "latest_module_health view must use security_invoker=true");
+assert(joinedMigrations.includes("job_assignments_engineer_own") && joinedMigrations.includes("job_photos_engineer_assigned"), "Field work engineer ownership RLS policies are missing");
+assert(joinedMigrations.includes("audit_logs_admin_select") && !joinedMigrations.includes("audit_logs_admin_all"), "audit_logs should remain admin select-only through RLS");
+assert(joinedMigrations.includes("webhook_events_admin_select") && joinedMigrations.includes("otp_verifications_admin_select"), "Sensitive module event/OTP RLS select-only policies are missing");
 assert(joinedMigrations.toLowerCase().includes("enable row level security"), "Supabase migrations must enable RLS");
 
 const nextConfig = read("next.config.mjs");
@@ -111,9 +174,15 @@ assert(nextConfig.includes("Content-Security-Policy"), "next.config.mjs should d
 assert(nextConfig.includes("Strict-Transport-Security"), "next.config.mjs should define HSTS");
 warn(!nextConfig.includes("'unsafe-inline'"), "CSP still allows 'unsafe-inline' for legacy visual-lock HTML; acceptable now, remove in pure component rewrite");
 
+const loginShell = read("app/login/LoginShell.tsx");
+const registerShell = read("app/register/RegisterShell.tsx");
+assert(loginShell.includes("team_on_site_premium.webp") && registerShell.includes("team_on_site_premium.webp"), "Login/Register pages must use homepage first hero image background");
+assert(read("app/login/LoginForm.tsx").includes("NANOFIX Premium Member Portal"), "Login page must include role-based premium member welcome copy");
+assert(read("app/register/RegisterForm.tsx").includes("Engineer Account Application"), "Register page must include role-based engineer application copy");
+
 if (failures.length) {
   console.error("NANOFIX deployment readiness check failed:");
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log(JSON.stringify({ ok: true, checks: "github_vercel_supabase", warnings }, null, 2));
+console.log(JSON.stringify({ ok: true, checks: "github_vercel_supabase_v28_1_2_hardened", warnings }, null, 2));
