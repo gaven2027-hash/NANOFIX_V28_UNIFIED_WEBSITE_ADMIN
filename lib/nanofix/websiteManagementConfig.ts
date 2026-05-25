@@ -11,6 +11,7 @@ export type WebsiteSectionKey =
   | 'publish'
   | 'forms'
   | 'website-leads'
+  | 'contact-social-links'
   | 'media-library'
   | 'schema-faq-internal-links'
   | 'qr-display-disabled';
@@ -39,6 +40,7 @@ export const websiteSections: WebsiteSectionConfig[] = [
   { key: 'publish', href: '/website-management/publish', title: 'Publish', zh: '发布', tab: 'publish', helper: 'Publish route snapshots and keep version records for rollback and audit.' },
   { key: 'forms', href: '/website-management/forms', title: 'Forms', zh: '表单', tab: 'blocks', blockType: 'form', helper: 'Manage website form copy, field schema notes and submission routing rules.' },
   { key: 'website-leads', href: '/website-management/website-leads', title: 'Website Leads', zh: '网站线索', tab: 'blocks', blockType: 'json', helper: 'Manage CMS instructions for website lead capture and intake handoff.' },
+  { key: 'contact-social-links', href: '/website-management/contact-social-links', title: 'Contact & Social Links', zh: '联系与社媒链接', tab: 'blocks', blockType: 'json', helper: 'Manage public website contact and social icon URLs, including Facebook, Instagram, TikTok and YouTube footer links.' },
   { key: 'media-library', href: '/website-management/media-library', title: 'Media Library', zh: '媒体库', tab: 'blocks', blockType: 'json', helper: 'Manage media metadata and placement notes. Storage upload workflow can be connected in the next phase.' },
   { key: 'schema-faq-internal-links', href: '/website-management/schema-faq-internal-links', title: 'Schema / FAQ / Internal Links', zh: '结构化数据/FAQ/内链', tab: 'blocks', blockType: 'seo', helper: 'Manage FAQ schema, service schema, internal link map and AEO answer blocks.' },
   { key: 'qr-display-disabled', href: '/website-management/qr-display-disabled', title: 'QR Display Disabled on Public Website', zh: '公共网站禁止显示二维码', tab: 'blocks', blockType: 'json', helper: 'Keep public QR display disabled while allowing backend QR settings and download workflows.' }
