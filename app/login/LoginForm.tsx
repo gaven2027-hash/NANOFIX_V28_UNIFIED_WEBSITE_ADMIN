@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@/lib/supabase/browser';
@@ -22,7 +23,9 @@ const copyByContext = {
       ['Real-time operations control', '实时业务流程管控']
     ],
     footer: 'For authorised NANOFIX administrators only.',
-    footerZh: '仅限已授权的 NANOFIX 管理员使用。'
+    footerZh: '仅限已授权的 NANOFIX 管理员使用。',
+    registerCta: 'Request Admin Access',
+    registerCtaZh: '申请管理员权限'
   },
   customer: {
     eyebrow: 'NANOFIX Premium Member Portal',
@@ -39,7 +42,9 @@ const copyByContext = {
       ['Keep your service records organised', '集中保存您的服务记录']
     ],
     footer: 'Designed for NANOFIX customers and premium members.',
-    footerZh: '专为 NANOFIX 客户与高级会员使用。'
+    footerZh: '专为 NANOFIX 客户与高级会员使用。',
+    registerCta: 'Create Premium Member Account',
+    registerCtaZh: '注册高级会员账号'
   },
   engineer: {
     eyebrow: 'NANOFIX Field Engineer Portal',
@@ -56,7 +61,9 @@ const copyByContext = {
       ['Upload site notes and photos', '上传现场记录与照片']
     ],
     footer: 'For approved NANOFIX engineers and field teams.',
-    footerZh: '仅限已审核通过的 NANOFIX 工程师和现场团队使用。'
+    footerZh: '仅限已审核通过的 NANOFIX 工程师和现场团队使用。',
+    registerCta: 'Apply for Engineer Access',
+    registerCtaZh: '申请工程师账号'
   }
 } as const;
 
@@ -93,6 +100,7 @@ function LoginFormInner({ forcedContext }: { forcedContext?: LoginContext }) {
   const context = getLoginContext(requestedNext, searchParams.get('role'), forcedContext);
   const copy = copyByContext[context];
   const setupWarning = useMemo(() => searchParams.get('setup') === 'supabase_env_missing', [searchParams]);
+  const registerHref = useMemo(() => `/register?role=${context}`, [context]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -182,6 +190,10 @@ function LoginFormInner({ forcedContext }: { forcedContext?: LoginContext }) {
         <button className="w-full rounded-2xl bg-activeBlue px-4 py-3 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>
           {loading ? 'Signing in... / 登录中...' : 'Sign In / 登录'}
         </button>
+        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-center text-xs font-bold leading-5 text-blue-800 ring-1 ring-blue-100">
+          New to this portal? / 还没有账号？<br />
+          <Link href={registerHref} className="text-activeBlue hover:underline">{copy.registerCta} / {copy.registerCtaZh}</Link>
+        </div>
         <p className="text-center text-[11px] font-bold leading-5 text-slate-500">
           {copy.footer}<br />{copy.footerZh}
         </p>
