@@ -20,7 +20,8 @@ const requiredFiles = [
   'app/api/admin/receipt-actions/route.ts',
   'supabase/migrations/20260525233000_v28_1_2_invoice_quotation_link.sql',
   'supabase/migrations/20260525234000_v28_1_2_warranty_receipt_link.sql',
-  'supabase/migrations/20260525235000_v28_1_2_service_flow_idempotency_indexes.sql'
+  'supabase/migrations/20260525235000_v28_1_2_service_flow_idempotency_indexes.sql',
+  'supabase/migrations/20260525235500_v28_1_2_service_flow_front_idempotency_indexes.sql'
 ];
 
 const requiredModuleKeys = [
@@ -60,11 +61,18 @@ const requiredRoutes = [
   '/service-operations/warranties'
 ];
 
-const requiredIndexes = [
+const requiredBackIndexes = [
   'invoices_one_per_quotation_uidx',
   'payments_one_per_invoice_uidx',
   'receipts_one_per_payment_uidx',
   'warranties_one_per_receipt_uidx'
+];
+
+const requiredFrontIndexes = [
+  'service_requests_one_per_lead_uidx',
+  'bookings_one_site_inspection_per_request_uidx',
+  'inspections_one_per_request_uidx',
+  'quotations_one_per_request_uidx'
 ];
 
 const failures = [];
@@ -78,7 +86,8 @@ if (!failures.length) {
   const workspace = read('components/ServiceOperationsWorkspace.tsx');
   const adminShell = read('components/AdminShell.tsx');
   const dynamicPage = read('app/service-operations/[module]/page.tsx');
-  const idempotencyMigration = read('supabase/migrations/20260525235000_v28_1_2_service_flow_idempotency_indexes.sql');
+  const backIdempotencyMigration = read('supabase/migrations/20260525235000_v28_1_2_service_flow_idempotency_indexes.sql');
+  const frontIdempotencyMigration = read('supabase/migrations/20260525235500_v28_1_2_service_flow_front_idempotency_indexes.sql');
 
   for (const key of requiredModuleKeys) {
     if (!operationsConfig.includes(`key: '${key}'`)) failures.push(`Missing operation module key: ${key}`);
@@ -95,8 +104,12 @@ if (!failures.length) {
     if (!workspace.includes(item.route)) failures.push(`Missing workspace route for ${item.action}: ${item.route}`);
   }
 
-  for (const indexName of requiredIndexes) {
-    if (!idempotencyMigration.includes(indexName)) failures.push(`Missing idempotency index in migration: ${indexName}`);
+  for (const indexName of requiredBackIndexes) {
+    if (!backIdempotencyMigration.includes(indexName)) failures.push(`Missing back idempotency index in migration: ${indexName}`);
+  }
+
+  for (const indexName of requiredFrontIndexes) {
+    if (!frontIdempotencyMigration.includes(indexName)) failures.push(`Missing front idempotency index in migration: ${indexName}`);
   }
 
   if (!dynamicPage.includes('generateStaticParams') || !dynamicPage.includes('operationModules.map')) {
@@ -121,4 +134,4 @@ if (failures.length) {
 console.log('NANOFIX Service Operations flow verification passed.');
 console.log('Checked modules:', requiredModuleKeys.join(' → '));
 console.log('Checked flow: Lead → Service Request → Booking/Inspection → Quotation → Invoice → Payment → Receipt → Warranty');
-console.log('Checked idempotency indexes:', requiredIndexes.join(', '));
+console.log('Checked idempotency indexes:', [...requiredFrontIndexes, ...requiredBackIndexes].join(', '));
