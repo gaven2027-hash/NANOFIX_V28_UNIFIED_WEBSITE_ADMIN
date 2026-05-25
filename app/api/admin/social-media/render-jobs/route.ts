@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/nanofix/auth';
 import { buildSocialVideoRenderPlan } from '@/lib/nanofix/socialVideoRenderPlan';
+import { getSocialVideoRendererProvider, normaliseRendererProvider, rendererProviderOptionsForClient } from '@/lib/nanofix/socialVideoRendererProviders';
 
 export const dynamic = 'force-dynamic';
 
 type Payload = Record<string, unknown>;
 
-const columns = 'render_job_id,content_id,platform,render_status,render_type,title,material_pack,render_settings,output_json,error_message,admin_review_required,ai_auto_publish_allowed,requested_by,approved_by,scheduled_at,started_at,finished_at,created_at,updated_at';
+const columns = 'render_job_id,content_id,platform,render_status,render_type,renderer_provider,renderer_template_id,renderer_model,renderer_endpoint_key,renderer_cost_estimate,title,material_pack,render_settings,output_json,error_message,admin_review_required,ai_auto_publish_allowed,requested_by,approved_by,scheduled_at,started_at,finished_at,created_at,updated_at';
 const versionColumns = 'version_id,content_id,record_id,platform,version_no,status,snapshot_json,scheduled_at,published_at,published_by,created_at';
 const statuses = ['draft', 'queued', 'processing', 'rendered', 'failed', 'cancelled', 'approved', 'scheduled'];
 const renderTypes = ['short_video', 'long_video', 'story', 'reel', 'listing_video', 'blog_embed'];
@@ -18,6 +19,11 @@ function jsonError(message: string, status = 400) {
 
 function cleanText(value: unknown, fallback = '', max = 4000) {
   return typeof value === 'string' ? value.trim().slice(0, max) : fallback;
+}
+
+function cleanNumber(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function safeJson(value: unknown, fallback: Payload | unknown[] = {}) {
@@ -55,6 +61,25 @@ function getRenderedOutputReview(row: Payload) {
   return output.rendered_output_review && typeof output.rendered_output_review === 'object' ? output.rendered_output_review as Payload : null;
 }
 
+function providerSummary(row: Payload) {
+  const provider = getSocialVideoRendererProvider(row.renderer_provider);
+  return {
+    renderer_provider: provider.key,
+    renderer_provider_label: provider.label,
+    renderer_provider_label_zh: provider.label_zh,
+    renderer_provider_note: provider.short_note,
+    renderer_provider_note_zh: provider.short_note_zh,
+    renderer_provider_priority: provider.priority,
+    renderer_provider_category: provider.category,
+    renderer_supports_worker: provider.supports_worker,
+    renderer_requires_external_endpoint: provider.requires_external_endpoint,
+    renderer_template_id: cleanText(row.renderer_template_id, '', 200) || null,
+    renderer_model: cleanText(row.renderer_model, '', 200) || null,
+    renderer_endpoint_key: cleanText(row.renderer_endpoint_key, '', 200) || null,
+    renderer_cost_estimate: typeof row.renderer_cost_estimate === 'number' ? row.renderer_cost_estimate : cleanNumber(row.renderer_cost_estimate)
+  };
+}
+
 function hasRenderableOutput(row: Payload) {
   const output = getOutput(row);
   const result = getRendererResult(row);
@@ -77,15 +102,31 @@ function hasFinalApprovedRenderedOutput(row: Payload) {
 function payload(body: Payload, actorId?: string) {
   const renderStatus = statuses.includes(String(body.render_status)) ? String(body.render_status) : 'draft';
   const renderType = renderTypes.includes(String(body.render_type)) ? String(body.render_type) : 'short_video';
+  const provider = getSocialVideoRendererProvider(body.renderer_provider);
+  const renderSettings = safeJson(body.render_settings, {}) as Record<string, unknown>;
   return {
     content_id: validUuid(body.content_id) ? body.content_id : null,
     platform: platform(body.platform),
     render_status: renderStatus,
     render_type: renderType,
+    renderer_provider: provider.key,
+    renderer_template_id: cleanText(body.renderer_template_id, '', 200) || null,
+    renderer_model: cleanText(body.renderer_model, '', 200) || null,
+    renderer_endpoint_key: cleanText(body.renderer_endpoint_key, '', 200) || provider.endpoint_env || null,
+    renderer_cost_estimate: cleanNumber(body.renderer_cost_estimate),
     title: cleanText(body.title, 'NANOFIX Video Render Job', 500),
     material_pack: safeJson(body.material_pack, {}),
     render_settings: {
-      ...(safeJson(body.render_settings, {}) as Record<string, unknown>),
+      ...renderSettings,
+      renderer_provider: provider.key,
+      renderer_provider_label: provider.label,
+      renderer_provider_label_zh: provider.label_zh,
+      renderer_provider_note: provider.short_note,
+      renderer_provider_note_zh: provider.short_note_zh,
+      renderer_template_id: cleanText(body.renderer_template_id, '', 200) || renderSettings.renderer_template_id || null,
+      renderer_model: cleanText(body.renderer_model, '', 200) || renderSettings.renderer_model || null,
+      renderer_endpoint_key: cleanText(body.renderer_endpoint_key, '', 200) || provider.endpoint_env || renderSettings.renderer_endpoint_key || null,
+      renderer_cost_estimate: cleanNumber(body.renderer_cost_estimate) ?? renderSettings.renderer_cost_estimate ?? null,
       admin_review_required: true,
       ai_auto_publish_allowed: false
     },
@@ -112,15 +153,17 @@ export async function GET(request: Request) {
   const id = url.searchParams.get('id');
   const status = url.searchParams.get('status');
   const p = url.searchParams.get('platform');
+  const provider = url.searchParams.get('renderer_provider');
 
   let query = supabase.from('social_video_render_jobs').select(columns).order('created_at', { ascending: false }).limit(100);
   if (validUuid(id)) query = query.eq('render_job_id', id);
   if (status && statuses.includes(status)) query = query.eq('render_status', status);
   if (p && p !== 'all') query = query.eq('platform', platform(p));
+  if (provider) query = query.eq('renderer_provider', normaliseRendererProvider(provider));
 
   const { data, error } = await query;
   if (error) return jsonError(error.message, 500);
-  return NextResponse.json({ ok: true, rows: data || [], statuses, renderTypes });
+  return NextResponse.json({ ok: true, rows: data || [], statuses, renderTypes, rendererProviders: rendererProviderOptionsForClient() });
 }
 
 export async function POST(request: Request) {
@@ -134,7 +177,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from('social_video_render_jobs').insert({ ...job, created_at: new Date().toISOString() }).select(columns).single();
   if (error) return jsonError(error.message, 500);
   await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'create_social_video_render_job', object_type: 'social_video_render_job', object_id: data.render_job_id, after_data: data });
-  return NextResponse.json({ ok: true, row: data });
+  return NextResponse.json({ ok: true, row: data, rendererProviders: rendererProviderOptionsForClient() });
 }
 
 export async function PATCH(request: Request) {
@@ -154,15 +197,22 @@ export async function PATCH(request: Request) {
   const action = String(body.action || '');
 
   if (action === 'generate_render_plan') {
+    const providerMeta = providerSummary(before);
     const plan = buildSocialVideoRenderPlan({
       platform: String(before.platform || 'all'),
       title: String(before.title || 'NANOFIX video render plan'),
       material_pack: before.material_pack,
-      render_settings: before.render_settings
+      render_settings: {
+        ...(before.render_settings && typeof before.render_settings === 'object' ? before.render_settings as Payload : {}),
+        ...providerMeta,
+        admin_review_required: true,
+        ai_auto_publish_allowed: false
+      }
     });
     const nextOutput = {
       ...getOutput(before),
       render_plan: plan,
+      renderer_provider: providerMeta,
       render_plan_generated_at: new Date().toISOString(),
       admin_review_required: true,
       ai_auto_publish_allowed: false
@@ -243,6 +293,7 @@ export async function PATCH(request: Request) {
   if (action === 'create_rendered_output_schedule_snapshot') {
     if (!hasFinalApprovedRenderedOutput(before)) return jsonError('Only final-approved rendered outputs with a valid renderer contract and output video reference can be scheduled.', 409);
     const p = platform(before.platform || 'all');
+    const providerMeta = providerSummary(before);
     const { data: existing, error: versionError } = await supabase
       .from('social_publish_versions')
       .select('version_no')
@@ -260,6 +311,7 @@ export async function PATCH(request: Request) {
       platform: p,
       title: before.title,
       render_type: before.render_type,
+      ...providerMeta,
       material_pack: before.material_pack || {},
       render_settings: before.render_settings || {},
       render_plan: getOutput(before).render_plan || null,
@@ -296,6 +348,7 @@ export async function PATCH(request: Request) {
         scheduled_at: scheduledAt,
         created_at: now,
         created_by: validUuid(context?.actorId) ? context?.actorId : null,
+        ...providerMeta,
         final_approval_completed_before_schedule: true,
         publish_ready_after_schedule: true,
         platform_api_called: false,
