@@ -21,6 +21,9 @@ export type SocialMediaSectionKey =
   | 'forum-preview'
   | 'google-business-profile-post-preview'
   | 'linkedin-preview'
+  | 'x-twitter-preview'
+  | 'carousell-services-preview'
+  | 'seedly-community-preview'
   | 'whatsapp-channel-preview'
   | 'telegram-channel-preview'
   | 'website-blog-preview'
@@ -60,6 +63,9 @@ export const socialMediaSections: SocialMediaSectionConfig[] = [
   { key: 'forum-preview', href: '/social-media/forum-preview', title: 'Forum Preview', zh: '论坛预览', tab: 'drafts', platform: 'forum', helper: 'Preview forum thread drafts.' },
   { key: 'google-business-profile-post-preview', href: '/social-media/google-business-profile-post-preview', title: 'Google Business Profile Post Preview', zh: 'Google 商家帖子预览', tab: 'drafts', platform: 'google_business_profile', helper: 'Preview Google Business Profile posts.' },
   { key: 'linkedin-preview', href: '/social-media/linkedin-preview', title: 'LinkedIn Preview', zh: 'LinkedIn 预览', tab: 'drafts', platform: 'linkedin', helper: 'Preview LinkedIn company updates.' },
+  { key: 'x-twitter-preview', href: '/social-media/x-twitter-preview', title: 'X / Twitter Preview', zh: 'X / Twitter 预览', tab: 'drafts', platform: 'x_twitter', helper: 'Preview short public update, complaint-monitoring response or thread drafts.' },
+  { key: 'carousell-services-preview', href: '/social-media/carousell-services-preview', title: 'Carousell Services Preview', zh: 'Carousell 服务预览', tab: 'drafts', platform: 'carousell_services', helper: 'Preview local service listing drafts with service area, before/after images and WhatsApp CTA.' },
+  { key: 'seedly-community-preview', href: '/social-media/seedly-community-preview', title: 'Seedly Community Preview', zh: 'Seedly 社区预览', tab: 'drafts', platform: 'seedly_community', helper: 'Preview helpful community answer drafts for repair cost and home maintenance discussions.' },
   { key: 'whatsapp-channel-preview', href: '/social-media/whatsapp-channel-preview', title: 'WhatsApp Channel Preview', zh: 'WhatsApp 频道预览', tab: 'drafts', platform: 'whatsapp_channel', helper: 'Preview WhatsApp Channel drafts.' },
   { key: 'telegram-channel-preview', href: '/social-media/telegram-channel-preview', title: 'Telegram Channel Preview', zh: 'Telegram 频道预览', tab: 'drafts', platform: 'telegram_channel', helper: 'Preview Telegram Channel drafts.' },
   { key: 'website-blog-preview', href: '/social-media/website-blog-preview', title: 'Website Blog Preview', zh: '网站博客预览', tab: 'drafts', platform: 'website_blog', helper: 'Preview Website Blog drafts.' },
