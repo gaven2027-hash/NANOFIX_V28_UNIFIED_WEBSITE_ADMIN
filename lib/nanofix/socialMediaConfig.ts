@@ -13,6 +13,7 @@ export type SocialMediaSectionKey =
   | 'media-library'
   | 'ai-social-content-studio'
   | 'multi-platform-preview-review'
+  | 'social-video-render-jobs'
   | 'facebook-preview'
   | 'instagram-preview'
   | 'tiktok-preview'
@@ -55,6 +56,7 @@ export const socialMediaSections: SocialMediaSectionConfig[] = [
   { key: 'media-library', href: '/social-media/media-library', title: 'Media Library', zh: '媒体库', tab: 'records', platform: 'all', helper: 'Manage social media asset metadata.' },
   { key: 'ai-social-content-studio', href: '/social-media/ai-social-content-studio', title: 'AI Social Content Studio', zh: 'AI 社媒内容工作室', tab: 'drafts', platform: 'all', helper: 'Generate platform-specific draft content.' },
   { key: 'multi-platform-preview-review', href: '/social-media/multi-platform-preview-review', title: 'Multi-Platform Preview Review', zh: '多平台并排模拟预览审核', tab: 'drafts', platform: 'all', helper: 'Review all platform previews side by side.' },
+  { key: 'social-video-render-jobs', href: '/social-media/social-video-render-jobs', title: 'Social Video Render Jobs', zh: '社媒视频渲染任务', tab: 'drafts', platform: 'all', helper: 'Create and review video rendering queue jobs from approved source videos, reference videos and uploaded clips. This is a queue foundation, not automatic publishing.' },
   { key: 'facebook-preview', href: '/social-media/facebook-preview', title: 'Facebook Preview', zh: 'Facebook 预览', tab: 'drafts', platform: 'facebook', helper: 'Preview Facebook drafts.' },
   { key: 'instagram-preview', href: '/social-media/instagram-preview', title: 'Instagram Preview', zh: 'Instagram 预览', tab: 'drafts', platform: 'instagram', helper: 'Preview Instagram drafts.' },
   { key: 'tiktok-preview', href: '/social-media/tiktok-preview', title: 'TikTok Preview', zh: 'TikTok 预览', tab: 'drafts', platform: 'tiktok', helper: 'Preview TikTok drafts.' },
