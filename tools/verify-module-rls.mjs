@@ -70,13 +70,19 @@ const selectOnlyPolicies = [
 const failures = [];
 if (!exists(migrationFile)) failures.push(`Missing required migration: ${migrationFile}`);
 
+function policyIsSelectOnly(sql, policyName) {
+  const escaped = policyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`create\\s+policy\\s+${escaped}\\s+on\\s+public\\.[a-z0-9_]+\\s+for\\s+select\\s+using`, 'i');
+  return pattern.test(sql);
+}
+
 if (!failures.length) {
   const migration = read(migrationFile);
   for (const policy of requiredPolicies) {
     if (!migration.includes(`create policy ${policy}`)) failures.push(`Missing module RLS policy: ${policy}`);
   }
   for (const policy of selectOnlyPolicies) {
-    if (!migration.includes(`create policy ${policy}`) || !migration.includes(`${policy} on public.`) || !migration.includes(' for select using ')) {
+    if (!policyIsSelectOnly(migration, policy)) {
       failures.push(`Sensitive log/event policy must be select-only: ${policy}`);
     }
   }
