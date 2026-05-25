@@ -35,15 +35,15 @@ const requiredModuleKeys = [
   'warranties'
 ];
 
-const requiredFlowActions = [
-  'create_service_request',
-  'create_booking',
-  'create_inspection',
-  'create_quotation',
-  'create_invoice',
-  'create_payment',
-  'create_receipt',
-  'create_warranty'
+const flowActions = [
+  { action: 'create_service_request', api: 'app/api/admin/lead-actions/route.ts', route: '/service-operations/service-requests' },
+  { action: 'create_booking', api: 'app/api/admin/request-actions/route.ts', route: '/service-operations/bookings' },
+  { action: 'create_inspection', api: 'app/api/admin/request-actions/route.ts', route: '/service-operations/inspections' },
+  { action: 'create_quotation', api: 'app/api/admin/inspection-actions/route.ts', route: '/service-operations/quotations' },
+  { action: 'create_invoice', api: 'app/api/admin/quotation-actions/route.ts', route: '/service-operations/invoices' },
+  { action: 'create_payment', api: 'app/api/admin/invoice-actions/route.ts', route: '/service-operations/payments' },
+  { action: 'create_receipt', api: 'app/api/admin/payment-actions/route.ts', route: '/service-operations/receipts' },
+  { action: 'create_warranty', api: 'app/api/admin/receipt-actions/route.ts', route: '/service-operations/warranties' }
 ];
 
 const requiredRoutes = [
@@ -79,10 +79,11 @@ if (!failures.length) {
     if (!operationsConfig.includes(`route: '${route}'`)) failures.push(`Missing operation route: ${route}`);
   }
 
-  for (const action of requiredFlowActions) {
-    if (!workspace.includes(action) && !read(`app/api/admin/${action.replace('create_', '').replace('service_request', 'lead').replace('booking', 'request').replace('inspection', 'request').replace('quotation', 'inspection').replace('invoice', 'quotation').replace('payment', 'invoice').replace('receipt', 'payment').replace('warranty', 'receipt')}-actions/route.ts`).includes(action)) {
-      failures.push(`Missing flow action reference: ${action}`);
-    }
+  for (const item of flowActions) {
+    const apiContent = read(item.api);
+    if (!apiContent.includes(item.action)) failures.push(`Missing API action: ${item.action} in ${item.api}`);
+    if (!workspace.includes(item.action)) failures.push(`Missing workspace action call: ${item.action}`);
+    if (!workspace.includes(item.route)) failures.push(`Missing workspace route for ${item.action}: ${item.route}`);
   }
 
   if (!dynamicPage.includes('generateStaticParams') || !dynamicPage.includes('operationModules.map')) {
@@ -93,8 +94,6 @@ if (!failures.length) {
     failures.push('Receipts route should remain hidden from sidebar to preserve the confirmed left menu.');
   }
 
-  if (!workspace.includes('/service-operations/receipts')) failures.push('Workspace does not route payments to receipts.');
-  if (!workspace.includes('/service-operations/warranties')) failures.push('Workspace does not route receipts to warranties.');
   if (!operationsConfig.includes('receipt_id') || !operationsConfig.includes('payment_id') || !operationsConfig.includes('invoice_id')) {
     failures.push('Warranty source linkage fields are not exposed in operationsConfig.');
   }
