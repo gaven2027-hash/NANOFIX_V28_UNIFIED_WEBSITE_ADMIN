@@ -17,6 +17,154 @@ import { renderLegacyRouteBody } from "@/lib/nanofix/legacy-renderer";
 
 export type LegacyLocale = "en" | "zh";
 
+const mobileCarouselArrowCss = `
+.nanofix-mobile-carousel-shell {
+  position: relative;
+  isolation: isolate;
+}
+.nanofix-mobile-carousel-target {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.nanofix-mobile-carousel-arrow {
+  display: none;
+}
+@media (max-width: 767px) {
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 45;
+    width: 38px;
+    height: 38px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 95, 0, 0.38);
+    background: rgba(255, 255, 255, 0.96);
+    color: #FF5F00;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background .18s ease, color .18s ease, transform .18s ease, opacity .18s ease;
+    backdrop-filter: blur(10px);
+  }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-arrow:active,
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-arrow:focus-visible {
+    background: #FF5F00;
+    color: #fff;
+    transform: translateY(-50%) scale(1.06);
+    outline: none;
+  }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-arrow-left { left: 8px; }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-arrow-right { right: 8px; }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-arrow i { font-size: 14px; line-height: 1; }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-edge-left,
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-edge-right {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 38;
+    width: 54px;
+    opacity: .82;
+  }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-edge-left {
+    left: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,.92), rgba(255,255,255,0));
+  }
+  .nanofix-mobile-carousel-shell .nanofix-mobile-carousel-edge-right {
+    right: 0;
+    background: linear-gradient(270deg, rgba(255,255,255,.92), rgba(255,255,255,0));
+  }
+}
+@media (min-width: 768px) {
+  .nanofix-mobile-carousel-arrow,
+  .nanofix-mobile-carousel-edge-left,
+  .nanofix-mobile-carousel-edge-right {
+    display: none !important;
+  }
+}
+`;
+
+function createMobileCarouselArrowBridge() {
+  return `
+(function(){
+  const mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 767px)') : null;
+  function isMobile(){ return !mobileQuery || mobileQuery.matches; }
+  function isBadContainer(el){
+    if (!el || !el.closest) return true;
+    if (el.closest('header, nav, footer, form, .dropdown-menu')) return true;
+    return false;
+  }
+  function canScroll(el){
+    if (!el || isBadContainer(el)) return false;
+    const style = window.getComputedStyle(el);
+    const overflowX = style.overflowX || '';
+    const scrollableStyle = overflowX === 'auto' || overflowX === 'scroll' || el.className.toString().includes('overflow-x-auto') || el.className.toString().includes('snap-x');
+    return scrollableStyle && el.scrollWidth > el.clientWidth + 36 && el.children.length > 1;
+  }
+  function findScrollTarget(root){
+    if (canScroll(root)) return root;
+    const candidates = root.querySelectorAll('.overflow-x-auto, .snap-x, [class*="carousel"], [data-carousel], [data-slider]');
+    for (const candidate of candidates) {
+      if (canScroll(candidate)) return candidate;
+    }
+    return null;
+  }
+  function addArrow(shell, target, direction){
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'nanofix-mobile-carousel-arrow nanofix-mobile-carousel-arrow-' + (direction < 0 ? 'left' : 'right');
+    button.setAttribute('aria-label', direction < 0 ? 'Scroll carousel left' : 'Scroll carousel right');
+    button.setAttribute('data-mobile-carousel-arrow', direction < 0 ? 'left' : 'right');
+    button.innerHTML = direction < 0 ? '<i class="fa fa-chevron-left" aria-hidden="true"></i>' : '<i class="fa fa-chevron-right" aria-hidden="true"></i>';
+    button.addEventListener('click', function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      const distance = Math.max(260, Math.round(target.clientWidth * 0.82));
+      target.scrollBy({ left: direction * distance, behavior: 'smooth' });
+    });
+    shell.appendChild(button);
+  }
+  function enhanceOne(root){
+    const target = findScrollTarget(root);
+    if (!target || target.dataset.mobileCarouselArrows === 'true') return;
+    const shell = target.parentElement && !isBadContainer(target.parentElement) ? target.parentElement : target;
+    shell.classList.add('nanofix-mobile-carousel-shell');
+    target.classList.add('nanofix-mobile-carousel-target');
+    target.dataset.mobileCarouselArrows = 'true';
+    if (!shell.querySelector(':scope > .nanofix-mobile-carousel-edge-left')) {
+      const leftEdge = document.createElement('span');
+      leftEdge.className = 'nanofix-mobile-carousel-edge-left';
+      leftEdge.setAttribute('aria-hidden', 'true');
+      shell.appendChild(leftEdge);
+    }
+    if (!shell.querySelector(':scope > .nanofix-mobile-carousel-edge-right')) {
+      const rightEdge = document.createElement('span');
+      rightEdge.className = 'nanofix-mobile-carousel-edge-right';
+      rightEdge.setAttribute('aria-hidden', 'true');
+      shell.appendChild(rightEdge);
+    }
+    if (!shell.querySelector(':scope > .nanofix-mobile-carousel-arrow-left')) addArrow(shell, target, -1);
+    if (!shell.querySelector(':scope > .nanofix-mobile-carousel-arrow-right')) addArrow(shell, target, 1);
+  }
+  function enhanceMobileCarousels(){
+    if (!isMobile()) return;
+    const roots = document.querySelectorAll('section, [data-home-only="true"], main');
+    roots.forEach(enhanceOne);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enhanceMobileCarousels, { once: true });
+  } else {
+    enhanceMobileCarousels();
+  }
+  window.addEventListener('resize', function(){ window.clearTimeout(window.nanofixMobileCarouselTimer); window.nanofixMobileCarouselTimer = window.setTimeout(enhanceMobileCarousels, 160); }, { passive: true });
+  if (mobileQuery && mobileQuery.addEventListener) mobileQuery.addEventListener('change', enhanceMobileCarousels);
+})();
+`;
+}
+
 function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
   const pathAliases = Object.fromEntries(
     routeDefinitions
@@ -268,7 +416,7 @@ export function LegacyWebsitePage({
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: legacyInlineCss }} />
+      <style dangerouslySetInnerHTML={{ __html: `${legacyInlineCss}\n${mobileCarouselArrowCss}` }} />
       {schemas.map((schema, index) => (
         <script
           id={`nanofix-schema-${index}`}
@@ -288,6 +436,11 @@ export function LegacyWebsitePage({
         id="nanofix-cms-published-overrides"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: cmsRuntimeScript }}
+      />
+      <Script
+        id="nanofix-mobile-carousel-arrow-bridge"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: createMobileCarouselArrowBridge() }}
       />
       <Script
         id="nanofix-lead-api-bridge"
