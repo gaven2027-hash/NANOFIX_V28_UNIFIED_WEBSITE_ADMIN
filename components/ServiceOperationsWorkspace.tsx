@@ -150,6 +150,21 @@ function ServiceRequestProgressionCard({ row, config, saving, onCreateBooking, o
   );
 }
 
+function InspectionQuotationCard({ row, config, saving, onCreateQuotation }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onCreateQuotation: () => void }) {
+  if (!row || config.key !== 'inspections') return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-cyan-50 p-4 ring-1 ring-cyan-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Quotation Step / 报价流程</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+        Create a draft quotation from this inspection and continue the approval workflow. / 根据此查验记录创建报价草稿，并进入报价审批流程。
+      </p>
+      <button type="button" disabled={saving} onClick={onCreateQuotation} className="mt-4 rounded-2xl bg-cyan-700 px-4 py-2 text-sm font-black text-white hover:bg-cyan-800 disabled:opacity-60">
+        Create Quotation / 创建报价
+      </button>
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -282,6 +297,27 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     }
   }
 
+  async function createQuotationFromInspection() {
+    if (!row?.inspection_id) return;
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/inspection-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_quotation', inspection_id: row.inspection_id })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Failed to create quotation. / 创建报价失败。');
+      return;
+    }
+    const quotationId = json.quotation?.quotation_id;
+    setMessage(json.existing ? 'Existing quotation opened. / 已打开现有报价。' : 'Quotation created. / 报价已创建。');
+    onSaved();
+    if (quotationId && typeof window !== 'undefined') window.location.assign(`/service-operations/quotations?open=${encodeURIComponent(String(quotationId))}`);
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -298,6 +334,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       <SourceMessageCard row={row} config={config} />
       <LeadConversionCard row={row} config={config} saving={saving} onConvert={convertLeadToServiceRequest} />
       <ServiceRequestProgressionCard row={row} config={config} saving={saving} onCreateBooking={() => progressServiceRequest('create_booking')} onCreateInspection={() => progressServiceRequest('create_inspection')} />
+      <InspectionQuotationCard row={row} config={config} saving={saving} onCreateQuotation={createQuotationFromInspection} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
