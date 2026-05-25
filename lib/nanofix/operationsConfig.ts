@@ -7,6 +7,7 @@ export type OperationModuleKey =
   | 'jobs'
   | 'invoices'
   | 'payments'
+  | 'receipts'
   | 'warranties';
 
 export type OperationField = {
@@ -191,11 +192,12 @@ export const operationModules: OperationModuleConfig[] = [
     primaryKey: 'invoice_id',
     route: '/service-operations/invoices',
     permission: 'write:finance',
-    columns: ['invoice_id', 'invoice_no', 'customer_id', 'job_id', 'total_amount', 'currency', 'due_date', 'status', 'created_at'],
+    columns: ['invoice_id', 'invoice_no', 'quotation_id', 'customer_id', 'job_id', 'total_amount', 'currency', 'due_date', 'status', 'source_json', 'created_at'],
     searchFields: ['invoice_no', 'currency', 'status'],
     statusOptions: ['draft', 'issued', 'partially_paid', 'paid', 'overdue', 'void'],
     formFields: [
       { name: 'invoice_no', label: 'Invoice No. / 发票号', required: true },
+      { name: 'quotation_id', label: 'Quotation ID / 报价ID', type: 'uuid' },
       { name: 'customer_id', label: 'Customer ID / 客户ID', type: 'uuid' },
       { name: 'job_id', label: 'Job ID / 工单ID', type: 'uuid' },
       { name: 'total_amount', label: 'Total Amount / 总额', type: 'number' },
@@ -226,6 +228,27 @@ export const operationModules: OperationModuleConfig[] = [
       { name: 'currency', label: 'Currency / 币种', placeholder: 'SGD' }
     ],
     summaryFields: ['gateway', 'transaction_id', 'amount', 'currency', 'status', 'created_at'],
+    boardLane: 'Finance'
+  },
+  {
+    key: 'receipts',
+    title: 'Receipts',
+    zh: '收据',
+    table: 'receipts',
+    objectType: 'receipt',
+    primaryKey: 'receipt_id',
+    route: '/service-operations/receipts',
+    permission: 'write:finance',
+    columns: ['receipt_id', 'receipt_no', 'payment_id', 'invoice_id', 'status', 'issued_at', 'created_at'],
+    searchFields: ['receipt_no', 'status'],
+    statusOptions: ['draft', 'issued', 'void'],
+    formFields: [
+      { name: 'receipt_no', label: 'Receipt No. / 收据号', required: true },
+      { name: 'payment_id', label: 'Payment ID / 付款ID', type: 'uuid' },
+      { name: 'invoice_id', label: 'Invoice ID / 发票ID', type: 'uuid' },
+      { name: 'issued_at', label: 'Issued At / 开具时间', type: 'datetime-local' }
+    ],
+    summaryFields: ['receipt_no', 'payment_id', 'invoice_id', 'status', 'issued_at', 'created_at'],
     boardLane: 'Finance'
   },
   {
