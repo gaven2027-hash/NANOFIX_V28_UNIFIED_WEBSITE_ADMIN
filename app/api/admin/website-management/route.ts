@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/nanofix/auth';
+import { getWebsiteVisualEditorProvider, normaliseWebsiteVisualEditorProvider, websiteVisualEditorOptionsForClient } from '@/lib/nanofix/websiteVisualEditorProviders';
 
 export const dynamic = 'force-dynamic';
 
 type Payload = Record<string, unknown>;
 
 const pageColumns = 'page_id,route_path,title,description,status,metadata,created_by,updated_by,published_at,created_at,updated_at';
-const blockColumns = 'block_id,route_path,locale,block_key,content_type,content_json,status,published_version,updated_by,reviewed_by,published_at,created_at,updated_at';
+const blockColumns = 'block_id,route_path,locale,block_key,content_type,content_json,status,published_version,visual_editor_provider,visual_asset_type,visual_editor_status,visual_prompt,visual_template_id,visual_model,visual_output_url,visual_output_storage_path,visual_alt_text,visual_preview_json,visual_cost_estimate,updated_by,reviewed_by,published_at,created_at,updated_at';
 const versionColumns = 'version_id,route_path,locale,version_no,snapshot_json,published_by,published_at';
 const pageStatuses = ['draft', 'published', 'archived'];
 const blockStatuses = ['draft', 'pending_review', 'published', 'archived'];
 const contentTypes = ['hero', 'section', 'card_grid', 'faq', 'cta', 'seo', 'form', 'json'];
+const visualAssetTypes = ['image', 'gif', 'text_image', 'before_after', 'gallery', 'none'];
+const visualEditorStatuses = ['draft', 'queued', 'editing', 'edited', 'failed', 'approved', 'manual_upload'];
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
@@ -19,6 +22,15 @@ function jsonError(message: string, status = 400) {
 
 function cleanText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim().slice(0, 5000) : fallback;
+}
+
+function cleanLongText(value: unknown, fallback = '') {
+  return typeof value === 'string' ? value.trim().slice(0, 12000) : fallback;
+}
+
+function cleanNumber(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function validUuid(value: unknown) {
@@ -44,6 +56,55 @@ function safeJson(value: unknown, fallback: Payload | unknown[] = {}) {
   return fallback;
 }
 
+function visualProviderSummary(providerKey: unknown) {
+  const provider = getWebsiteVisualEditorProvider(providerKey);
+  return {
+    visual_editor_provider: provider.key,
+    visual_editor_provider_label: provider.label,
+    visual_editor_provider_label_zh: provider.label_zh,
+    visual_editor_provider_note: provider.short_note,
+    visual_editor_provider_note_zh: provider.short_note_zh,
+    visual_editor_provider_priority: provider.priority,
+    visual_editor_provider_category: provider.category,
+    visual_editor_supports_worker: provider.supports_worker,
+    visual_editor_supports_gif: provider.supports_gif,
+    visual_editor_supports_text_image: provider.supports_text_image,
+    visual_editor_requires_external_endpoint: provider.requires_external_endpoint
+  };
+}
+
+function buildSamePositionPreview(body: Payload, contentJson: Payload | unknown[]) {
+  const provider = visualProviderSummary(body.visual_editor_provider);
+  const routePath = cleanRoutePath(body.route_path);
+  const blockKey = cleanText(body.block_key, 'main').replace(/\s+/g, '_').slice(0, 120) || 'main';
+  const contentType = contentTypes.includes(String(body.content_type)) ? String(body.content_type) : 'section';
+  const outputUrl = cleanText(body.visual_output_url, '', 2000) || null;
+  const outputPath = cleanText(body.visual_output_storage_path, '', 2000) || null;
+  const existingPreview = safeJson(body.visual_preview_json, {}) as Payload;
+  return {
+    ...existingPreview,
+    preview_version: 'v28.1.3-website-same-position-preview-1',
+    route_path: routePath,
+    locale: cleanText(body.locale, 'en').slice(0, 12) || 'en',
+    block_key: blockKey,
+    content_type: contentType,
+    same_position_preview_required: true,
+    preview_position: existingPreview.preview_position || blockKey,
+    preview_context: existingPreview.preview_context || `${routePath}#${blockKey}`,
+    visual_asset_type: visualAssetTypes.includes(String(body.visual_asset_type)) ? String(body.visual_asset_type) : 'image',
+    visual_output_url: outputUrl,
+    visual_output_storage_path: outputPath,
+    visual_alt_text: cleanText(body.visual_alt_text, '', 500) || null,
+    content_snapshot: contentJson,
+    ...provider,
+    admin_review_required: true,
+    ai_auto_publish_allowed: false,
+    final_approval_completed_before_schedule: false,
+    publish_ready_after_schedule: false,
+    updated_at: new Date().toISOString()
+  };
+}
+
 function buildPagePayload(body: Payload, actorId?: string) {
   const status = pageStatuses.includes(String(body.status)) ? String(body.status) : 'draft';
   const payload: Payload = {
@@ -61,13 +122,41 @@ function buildPagePayload(body: Payload, actorId?: string) {
 function buildBlockPayload(body: Payload, actorId?: string) {
   const status = blockStatuses.includes(String(body.status)) ? String(body.status) : 'draft';
   const contentType = contentTypes.includes(String(body.content_type)) ? String(body.content_type) : 'section';
+  const provider = getWebsiteVisualEditorProvider(body.visual_editor_provider);
+  const contentJson = safeJson(body.content_json, {}) as Payload | unknown[];
+  const visualPreview = buildSamePositionPreview({ ...body, visual_editor_provider: provider.key }, contentJson);
   const payload: Payload = {
     route_path: cleanRoutePath(body.route_path),
     locale: cleanText(body.locale, 'en').slice(0, 12) || 'en',
     block_key: cleanText(body.block_key, 'main').replace(/\s+/g, '_').slice(0, 120) || 'main',
     content_type: contentType,
-    content_json: safeJson(body.content_json, {}),
-    status
+    content_json: {
+      ...(Array.isArray(contentJson) ? { items: contentJson } : contentJson),
+      visual_editor_provider: provider.key,
+      visual_editor_provider_label: provider.label,
+      visual_editor_provider_label_zh: provider.label_zh,
+      visual_editor_provider_note: provider.short_note,
+      visual_editor_provider_note_zh: provider.short_note_zh,
+      visual_asset_type: visualAssetTypes.includes(String(body.visual_asset_type)) ? String(body.visual_asset_type) : 'image',
+      visual_output_url: cleanText(body.visual_output_url, '', 2000) || null,
+      visual_output_storage_path: cleanText(body.visual_output_storage_path, '', 2000) || null,
+      visual_alt_text: cleanText(body.visual_alt_text, '', 500) || null,
+      same_position_preview_required: true,
+      admin_review_required: true,
+      ai_auto_publish_allowed: false
+    },
+    status,
+    visual_editor_provider: provider.key,
+    visual_asset_type: visualAssetTypes.includes(String(body.visual_asset_type)) ? String(body.visual_asset_type) : 'image',
+    visual_editor_status: visualEditorStatuses.includes(String(body.visual_editor_status)) ? String(body.visual_editor_status) : provider.key === 'manual_final_asset_upload' ? 'manual_upload' : 'draft',
+    visual_prompt: cleanLongText(body.visual_prompt, ''),
+    visual_template_id: cleanText(body.visual_template_id, '', 240) || null,
+    visual_model: cleanText(body.visual_model, '', 240) || null,
+    visual_output_url: cleanText(body.visual_output_url, '', 2000) || null,
+    visual_output_storage_path: cleanText(body.visual_output_storage_path, '', 2000) || null,
+    visual_alt_text: cleanText(body.visual_alt_text, '', 500) || null,
+    visual_preview_json: visualPreview,
+    visual_cost_estimate: cleanNumber(body.visual_cost_estimate)
   };
   if (validUuid(actorId)) payload.updated_by = actorId;
   if (status === 'published') payload.published_at = new Date().toISOString();
@@ -125,30 +214,31 @@ export async function GET(request: Request) {
   const search = url.searchParams.get('search');
   const status = url.searchParams.get('status');
   const routePath = url.searchParams.get('route_path');
+  const visualEditorProviders = websiteVisualEditorOptionsForClient();
 
   if (mode === 'pages') {
     const pages = await getPages(search, status);
     if (!pages.ok) return jsonError(pages.error, pages.status);
-    return NextResponse.json({ ok: true, pages: pages.data, pageStatuses, blockStatuses, contentTypes });
+    return NextResponse.json({ ok: true, pages: pages.data, pageStatuses, blockStatuses, contentTypes, visualAssetTypes, visualEditorStatuses, visualEditorProviders });
   }
 
   if (mode === 'blocks') {
     const blocks = await getBlocks(routePath, search, status);
     if (!blocks.ok) return jsonError(blocks.error, blocks.status);
-    return NextResponse.json({ ok: true, blocks: blocks.data, pageStatuses, blockStatuses, contentTypes });
+    return NextResponse.json({ ok: true, blocks: blocks.data, pageStatuses, blockStatuses, contentTypes, visualAssetTypes, visualEditorStatuses, visualEditorProviders });
   }
 
   if (mode === 'versions') {
     const versions = await getVersions(routePath);
     if (!versions.ok) return jsonError(versions.error, versions.status);
-    return NextResponse.json({ ok: true, versions: versions.data });
+    return NextResponse.json({ ok: true, versions: versions.data, visualEditorProviders });
   }
 
   const [pages, blocks, versions] = await Promise.all([getPages(search, null), getBlocks(routePath, null, null), getVersions(routePath)]);
   if (!pages.ok) return jsonError(pages.error, pages.status);
   if (!blocks.ok) return jsonError(blocks.error, blocks.status);
   if (!versions.ok) return jsonError(versions.error, versions.status);
-  return NextResponse.json({ ok: true, pages: pages.data, blocks: blocks.data, versions: versions.data, pageStatuses, blockStatuses, contentTypes });
+  return NextResponse.json({ ok: true, pages: pages.data, blocks: blocks.data, versions: versions.data, pageStatuses, blockStatuses, contentTypes, visualAssetTypes, visualEditorStatuses, visualEditorProviders });
 }
 
 export async function POST(request: Request) {
@@ -229,7 +319,26 @@ export async function PATCH(request: Request) {
       .limit(1);
     if (versionError) return jsonError(versionError.message, 500);
     const versionNo = Number(existingVersions?.[0]?.version_no || 0) + 1;
-    const snapshot = { route_path: routePath, locale, version_no: versionNo, blocks: blocks ?? [], published_at: new Date().toISOString() };
+    const snapshot = {
+      route_path: routePath,
+      locale,
+      version_no: versionNo,
+      blocks: blocks ?? [],
+      website_same_position_previews: (blocks ?? []).map((block) => ({
+        block_id: block.block_id,
+        block_key: block.block_key,
+        content_type: block.content_type,
+        visual_editor_provider: block.visual_editor_provider,
+        visual_asset_type: block.visual_asset_type,
+        visual_output_url: block.visual_output_url,
+        visual_output_storage_path: block.visual_output_storage_path,
+        visual_preview_json: block.visual_preview_json
+      })),
+      final_approval_completed_before_schedule: true,
+      publish_ready_after_schedule: true,
+      ai_auto_publish_allowed: false,
+      published_at: new Date().toISOString()
+    };
 
     const { data: version, error } = await supabase
       .from('website_publish_versions')
@@ -240,7 +349,7 @@ export async function PATCH(request: Request) {
 
     await supabase.from('website_content_blocks').update({ status: 'published', published_version: versionNo, published_at: new Date().toISOString(), updated_by: validUuid(context?.actorId) ? context?.actorId : null }).eq('route_path', routePath).eq('locale', locale);
     await supabase.from('website_pages').update({ status: 'published', published_at: new Date().toISOString(), updated_by: validUuid(context?.actorId) ? context?.actorId : null }).eq('route_path', routePath);
-    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'publish', object_type: 'website_route', after_data: version });
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'publish_after_pre_publish_review', object_type: 'website_route', after_data: version });
 
     return NextResponse.json({ ok: true, version });
   }
