@@ -7,10 +7,12 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 const requiredFiles = [
   'lib/nanofix/socialVideoRenderPlan.ts',
+  'lib/nanofix/socialVideoRendererContract.ts',
   'app/api/admin/social-media/render-jobs/route.ts',
   'app/api/system/social-video-render-worker/route.ts',
   'components/SocialVideoRenderJobsWorkspace.tsx',
   'components/SocialMultiPlatformPreviewWorkspace.tsx',
+  'docs/NANOFIX_V28_1_3_SOCIAL_VIDEO_RENDERER_CONTRACT.md',
   'supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql'
 ];
 
@@ -21,6 +23,8 @@ for (const file of requiredFiles) {
 
 if (!failures.length) {
   const planner = read('lib/nanofix/socialVideoRenderPlan.ts');
+  const contract = read('lib/nanofix/socialVideoRendererContract.ts');
+  const contractDoc = read('docs/NANOFIX_V28_1_3_SOCIAL_VIDEO_RENDERER_CONTRACT.md');
   const api = read('app/api/admin/social-media/render-jobs/route.ts');
   const worker = read('app/api/system/social-video-render-worker/route.ts');
   const workspace = read('components/SocialVideoRenderJobsWorkspace.tsx');
@@ -48,6 +52,39 @@ if (!failures.length) {
     if (!planner.includes(needle)) failures.push(`Render planner missing: ${needle}`);
   }
 
+  const contractNeedles = [
+    'validateSocialVideoRendererResult',
+    'SocialVideoRendererResult',
+    'renderer_name',
+    'render_job_id',
+    'output_video_url',
+    'output_storage_path',
+    'output_mime_type',
+    'video/',
+    'rendered_at',
+    'admin_review_required: true',
+    'ai_auto_publish_allowed: false',
+    'renderer result failed',
+    'socialVideoRendererContractExample'
+  ];
+  for (const needle of contractNeedles) {
+    if (!contract.includes(needle)) failures.push(`Renderer contract missing: ${needle}`);
+  }
+
+  const contractDocNeedles = [
+    'NANOFIX V28.1.3 Social Video Renderer Contract',
+    'Required renderer success response',
+    'output_video_url',
+    'output_storage_path',
+    'admin_review_required',
+    'ai_auto_publish_allowed',
+    'validation fails',
+    'not marked as rendered'
+  ];
+  for (const needle of contractDocNeedles) {
+    if (!contractDoc.includes(needle)) failures.push(`Renderer contract document missing: ${needle}`);
+  }
+
   const apiNeedles = [
     'buildSocialVideoRenderPlan',
     'generate_render_plan',
@@ -63,6 +100,11 @@ if (!failures.length) {
   }
 
   const workerNeedles = [
+    'validateSocialVideoRendererResult',
+    'v28.1.3-renderer-contract-1',
+    'required_result_fields',
+    'required_output_reference',
+    'renderer_contract_valid',
     'CRON_SECRET',
     'NANOFIX_SYSTEM_WORKER_TOKEN',
     'NANOFIX_VIDEO_RENDERER_ENDPOINT',
@@ -113,4 +155,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX social video render plan verification passed.');
-console.log('Checked render plan builder, API action, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
+console.log('Checked render plan builder, renderer contract, API action, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
