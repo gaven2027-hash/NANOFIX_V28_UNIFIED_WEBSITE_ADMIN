@@ -35,8 +35,8 @@ function parseJson(value: string) {
 
 function tone(status: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan' {
   const s = String(status || '');
-  if (/(rendered|approved|scheduled)/i.test(s)) return 'green';
-  if (/(queued|processing|draft)/i.test(s)) return 'amber';
+  if (/(rendered|approved|scheduled|ready_for_worker)/i.test(s)) return 'green';
+  if (/(queued|processing|draft|needs_material_review)/i.test(s)) return 'amber';
   if (/(failed|cancelled)/i.test(s)) return 'red';
   return 'blue';
 }
@@ -57,6 +57,19 @@ function defaultSettings() {
 
 function countArray(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
+}
+
+function getRenderPlan(row: Row | null) {
+  const output = row?.output_json && typeof row.output_json === 'object' ? row.output_json as Record<string, unknown> : {};
+  return output.render_plan && typeof output.render_plan === 'object' ? output.render_plan as Record<string, unknown> : null;
+}
+
+function getWarnings(plan: Record<string, unknown> | null) {
+  return Array.isArray(plan?.warnings) ? plan.warnings.map((item) => String(item)) : [];
+}
+
+function getTimeline(plan: Record<string, unknown> | null) {
+  return Array.isArray(plan?.timeline) ? plan.timeline as Array<Record<string, unknown>> : [];
 }
 
 export function SocialVideoRenderJobsWorkspace() {
@@ -129,6 +142,33 @@ export function SocialVideoRenderJobsWorkspace() {
     edit(json.row || null);
   }
 
+  async function generateRenderPlan() {
+    if (!selected?.render_job_id) {
+      setMessage('Save the render job before generating a render plan. / 请先保存渲染任务，再生成渲染方案。');
+      return;
+    }
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/social-media/render-jobs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ render_job_id: selected.render_job_id, action: 'generate_render_plan' })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Render plan generation failed. / 生成渲染方案失败。');
+      return;
+    }
+    setMessage(`Render plan generated: ${json.render_plan?.plan_status || '—'} / 已生成渲染方案。`);
+    await loadRows();
+    edit(json.row || null);
+  }
+
+  const selectedPlan = getRenderPlan(selected);
+  const warnings = getWarnings(selectedPlan);
+  const timeline = getTimeline(selectedPlan);
+
   return (
     <div className="space-y-5">
       <SectionCard title="Social Video Render Jobs / 社媒视频渲染任务" subtitle="Queue and audit foundation for future MP4 rendering, subtitles, watermark, voiceover and transcoding. It does not auto-publish. / 这是未来 MP4 渲染、字幕、水印、配音、转码的任务队列与审计基础，不自动发布。">
@@ -144,51 +184,29 @@ export function SocialVideoRenderJobsWorkspace() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
         <SectionCard title="Render Job Queue / 渲染任务队列" subtitle="Create, approve, queue and review rendering requests before future worker execution. / 在未来 worker 执行前，创建、批准、排队和审核渲染请求。">
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => edit(null)} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700">New Render Job / 新建任务</button>
-            <button type="button" onClick={loadRows} disabled={loading} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-60">Refresh / 刷新</button>
-          </div>
+          <div className="mb-4 flex flex-wrap gap-2"><button type="button" onClick={() => edit(null)} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700">New Render Job / 新建任务</button><button type="button" onClick={loadRows} disabled={loading} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-60">Refresh / 刷新</button></div>
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="min-w-[980px] w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Status</th><th className="p-3">Title</th><th className="p-3">Platform</th><th className="p-3">Type</th><th className="p-3">Materials</th><th className="p-3">Updated</th><th className="p-3">Action</th></tr></thead>
+            <table className="min-w-[980px] w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Status</th><th className="p-3">Title</th><th className="p-3">Platform</th><th className="p-3">Type</th><th className="p-3">Materials</th><th className="p-3">Plan</th><th className="p-3">Action</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((row) => {
                   const material = typeof row.material_pack === 'object' && row.material_pack ? row.material_pack as Record<string, unknown> : {};
-                  return (
-                    <tr key={String(row.render_job_id)}>
-                      <td className="p-3"><Badge tone={tone(row.render_status)}>{formatValue(row.render_status)}</Badge></td>
-                      <td className="p-3 font-black text-slate-900">{formatValue(row.title)}</td>
-                      <td className="p-3 font-semibold text-slate-700">{formatValue(row.platform)}</td>
-                      <td className="p-3 font-semibold text-slate-700">{formatValue(row.render_type)}</td>
-                      <td className="p-3 text-xs font-semibold text-slate-500">source {countArray(material.source_video_urls)} · ref {countArray(material.reference_video_urls)} · clips {countArray(material.video_clip_urls)}</td>
-                      <td className="p-3 text-xs font-semibold text-slate-500">{formatValue(row.updated_at)}</td>
-                      <td className="p-3"><button type="button" onClick={() => edit(row)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open / 打开</button></td>
-                    </tr>
-                  );
+                  const plan = getRenderPlan(row);
+                  return <tr key={String(row.render_job_id)}><td className="p-3"><Badge tone={tone(row.render_status)}>{formatValue(row.render_status)}</Badge></td><td className="p-3 font-black text-slate-900">{formatValue(row.title)}</td><td className="p-3 font-semibold text-slate-700">{formatValue(row.platform)}</td><td className="p-3 font-semibold text-slate-700">{formatValue(row.render_type)}</td><td className="p-3 text-xs font-semibold text-slate-500">source {countArray(material.source_video_urls)} · ref {countArray(material.reference_video_urls)} · clips {countArray(material.video_clip_urls)}</td><td className="p-3"><Badge tone={tone(plan?.plan_status)}>{plan ? formatValue(plan.plan_status) : 'no plan'}</Badge></td><td className="p-3"><button type="button" onClick={() => edit(row)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open / 打开</button></td></tr>;
                 })}
                 {!rows.length ? <tr><td colSpan={7} className="p-6 text-center text-sm font-bold text-slate-500">{loading ? 'Loading...' : 'No render jobs yet. / 暂无渲染任务。'}</td></tr> : null}
-              </tbody>
-            </table>
+              </tbody></table>
           </div>
         </SectionCard>
 
-        <SectionCard title={selected ? 'Edit Render Job / 编辑渲染任务' : 'Create Render Job / 创建渲染任务'} subtitle="Render jobs are queue records only until a worker is connected. / 在 worker 接入前，渲染任务只是队列记录。">
+        <SectionCard title={selected ? 'Edit Render Job / 编辑渲染任务' : 'Create Render Job / 创建渲染任务'} subtitle="Generate Render Plan prepares timeline and warnings. It does not export final MP4. / 生成渲染方案只准备时间线和提醒，不导出最终 MP4。">
           <div className="space-y-4">
             <label><span className={labelClass}>Title / 标题</span><input className={inputClass} value={String(form.title || '')} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} /></label>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label><span className={labelClass}>Platform / 平台</span><select className={inputClass} value={String(form.platform || 'all')} onChange={(event) => setForm((current) => ({ ...current, platform: event.target.value }))}>{platforms.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label><span className={labelClass}>Status / 状态</span><select className={inputClass} value={String(form.render_status || 'draft')} onChange={(event) => setForm((current) => ({ ...current, render_status: event.target.value }))}>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label><span className={labelClass}>Render Type / 渲染类型</span><select className={inputClass} value={String(form.render_type || 'short_video')} onChange={(event) => setForm((current) => ({ ...current, render_type: event.target.value }))}>{renderTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label><span className={labelClass}>Scheduled At / 排期时间</span><input className={inputClass} type="datetime-local" value={String(form.scheduled_at || '').slice(0, 16)} onChange={(event) => setForm((current) => ({ ...current, scheduled_at: event.target.value }))} /></label>
-            </div>
+            <div className="grid gap-3 md:grid-cols-2"><label><span className={labelClass}>Platform / 平台</span><select className={inputClass} value={String(form.platform || 'all')} onChange={(event) => setForm((current) => ({ ...current, platform: event.target.value }))}>{platforms.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>Status / 状态</span><select className={inputClass} value={String(form.render_status || 'draft')} onChange={(event) => setForm((current) => ({ ...current, render_status: event.target.value }))}>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>Render Type / 渲染类型</span><select className={inputClass} value={String(form.render_type || 'short_video')} onChange={(event) => setForm((current) => ({ ...current, render_type: event.target.value }))}>{renderTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label><span className={labelClass}>Scheduled At / 排期时间</span><input className={inputClass} type="datetime-local" value={String(form.scheduled_at || '').slice(0, 16)} onChange={(event) => setForm((current) => ({ ...current, scheduled_at: event.target.value }))} /></label></div>
             <label><span className={labelClass}>Material Pack JSON / 素材包 JSON</span><textarea className={`${inputClass} min-h-36 font-mono text-xs`} value={materialJson} onChange={(event) => setMaterialJson(event.target.value)} /></label>
             <label><span className={labelClass}>Render Settings JSON / 渲染设置 JSON</span><textarea className={`${inputClass} min-h-32 font-mono text-xs`} value={settingsJson} onChange={(event) => setSettingsJson(event.target.value)} /></label>
             <label><span className={labelClass}>Output JSON / 输出 JSON</span><textarea className={`${inputClass} min-h-24 font-mono text-xs`} value={outputJson} onChange={(event) => setOutputJson(event.target.value)} /></label>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={saving} onClick={() => void save()} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60">Save / 保存</button>
-              <button type="button" disabled={saving} onClick={() => void save('queued')} className="rounded-2xl bg-amber-500 px-4 py-2 text-sm font-black text-white hover:bg-amber-600 disabled:opacity-60">Queue / 加入队列</button>
-              <button type="button" disabled={saving} onClick={() => void save('approved')} className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60">Approve / 批准</button>
-            </div>
+            {selectedPlan ? <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="flex flex-wrap items-center gap-2"><Badge tone={tone(selectedPlan.plan_status)}>{formatValue(selectedPlan.plan_status)}</Badge><Badge tone="blue">{formatValue((selectedPlan.output as Record<string, unknown> | undefined)?.aspect_ratio)}</Badge><Badge tone="cyan">{formatValue((selectedPlan.output as Record<string, unknown> | undefined)?.duration_seconds)}s</Badge></div>{warnings.length ? <div className="mt-3 space-y-1">{warnings.map((warning) => <div key={warning} className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 ring-1 ring-amber-100">{warning}</div>)}</div> : null}<div className="mt-3 space-y-2">{timeline.map((item) => <div key={String(item.segment)} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"><span className="font-black text-slate-900">{formatValue(item.segment)}</span> · {formatValue(item.start_second)}s–{formatValue(item.end_second)}s · {formatValue(item.overlay)}</div>)}</div></div> : null}
+            <div className="flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void save()} className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60">Save / 保存</button><button type="button" disabled={saving || !selected} onClick={generateRenderPlan} className="rounded-2xl bg-purple-600 px-4 py-2 text-sm font-black text-white hover:bg-purple-700 disabled:opacity-60">Generate Render Plan / 生成渲染方案</button><button type="button" disabled={saving} onClick={() => void save('queued')} className="rounded-2xl bg-amber-500 px-4 py-2 text-sm font-black text-white hover:bg-amber-600 disabled:opacity-60">Queue / 加入队列</button><button type="button" disabled={saving} onClick={() => void save('approved')} className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60">Approve / 批准</button></div>
           </div>
         </SectionCard>
       </div>
