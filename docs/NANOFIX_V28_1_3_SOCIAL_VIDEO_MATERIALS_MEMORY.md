@@ -26,7 +26,7 @@ The old ambiguous single `video_url` concept must not be reintroduced as the onl
 
 The intended workflow is now:
 
-`Upload / enter source videos → Upload / enter reference videos → Upload video clips → Add keywords / CTA / notes → Select target platforms → Generate platform-specific drafts → Side-by-side preview → Admin review → Schedule snapshot / publish record`
+`Upload / enter source videos → Upload / enter reference videos → Upload video clips → Add keywords / CTA / notes → Select target platforms → Generate platform-specific drafts → Side-by-side preview → Admin review → Create video render job → Queue / approve / schedule snapshot`
 
 AI safety rule remains unchanged:
 
@@ -155,7 +155,91 @@ must include the structured material pack fields above.
 
 ---
 
-## 8. Verification and deployment gates
+## 8. Video render job queue foundation
+
+Implemented migration:
+
+`supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql`
+
+Implemented API:
+
+`app/api/admin/social-media/render-jobs/route.ts`
+
+Implemented workspace:
+
+`components/SocialVideoRenderJobsWorkspace.tsx`
+
+Implemented route:
+
+`/social-media/social-video-render-jobs`
+
+Purpose:
+
+This is a queue/audit foundation for future video rendering workers. It stores render job requests, material pack JSON, render settings, output metadata and status. It does not render final MP4 files by itself yet.
+
+Table:
+
+`social_video_render_jobs`
+
+Important columns:
+
+- `render_job_id`
+- `content_id`
+- `platform`
+- `render_status`
+- `render_type`
+- `title`
+- `material_pack`
+- `render_settings`
+- `output_json`
+- `error_message`
+- `admin_review_required`
+- `ai_auto_publish_allowed`
+- `requested_by`
+- `approved_by`
+- `scheduled_at`
+- `started_at`
+- `finished_at`
+
+Allowed statuses:
+
+- `draft`
+- `queued`
+- `processing`
+- `rendered`
+- `failed`
+- `cancelled`
+- `approved`
+- `scheduled`
+
+Allowed render types:
+
+- `short_video`
+- `long_video`
+- `story`
+- `reel`
+- `listing_video`
+- `blog_embed`
+
+Safety rules:
+
+- Render job API must force `admin_review_required: true`.
+- Render job API must force `ai_auto_publish_allowed: false`.
+- Render job create/update actions must write audit logs.
+- Render job table must keep RLS enabled.
+- Only authorized admin/editor/manager roles may manage render jobs.
+
+Multi-platform preview integration:
+
+`components/SocialMultiPlatformPreviewWorkspace.tsx` now allows a selected platform draft to create a video render job through:
+
+`POST /api/admin/social-media/render-jobs`
+
+The render job copies the draft's structured `source_media` material pack from `source_references` when available.
+
+---
+
+## 9. Verification and deployment gates
 
 Updated verification files:
 
@@ -166,18 +250,25 @@ The checks must ensure:
 
 - `SocialMaterialPackBuilder.tsx` exists.
 - `material-upload/route.ts` exists.
+- `render-jobs/route.ts` exists.
+- `SocialVideoRenderJobsWorkspace.tsx` exists.
 - `source_video_urls`, `reference_video_urls`, `video_clip_urls`, `cover_image_url`, `image_urls`, `reference_notes`, `uploaded_materials` exist.
 - Upload kinds `source_video`, `reference_video`, `video_clip`, `cover_image`, `image` exist.
 - The private bucket `nanofix-social-materials` exists.
 - Upload API has 500MB limit.
 - Upload API writes audit logs.
+- `social_video_render_jobs` table exists.
+- Render job API writes create/update audit logs.
+- Render job API forces AI auto-publish off and admin review on.
+- `/social-media/social-video-render-jobs` is routed to the dedicated workspace.
+- Multi-platform preview can create video render jobs from selected drafts.
 - AI draft-only and admin review safety flags remain enforced.
 
 ---
 
-## 9. Current limitation
+## 10. Current limitation
 
-This enhancement implements structured materials and uploads for AI/social content generation, but it is not yet a full video-rendering engine.
+This enhancement implements structured materials, uploads and a render job queue foundation for AI/social content generation, but it is not yet a full video-rendering engine.
 
 Still not implemented:
 
@@ -189,12 +280,14 @@ Still not implemented:
 - Full transcode pipeline
 - Thumbnail extraction from uploaded video
 - Batch multi-file upload in a single request
+- Background render worker / queue worker execution
+- Actual MP4 output generation
 
 These should be handled as a later V28.1.4 / V28.2 video rendering module if needed.
 
 ---
 
-## 10. Must not regress
+## 11. Must not regress
 
 Future development must not:
 
@@ -204,10 +297,12 @@ Future development must not:
 - Allow AI to auto-publish or auto-approve generated content.
 - Remove audit logging for uploads.
 - Remove admin review requirements.
+- Remove the `social_video_render_jobs` queue/audit table without replacing it with an equivalent render job system.
+- Trigger actual rendering/publishing without an approved admin-controlled workflow.
 
 ---
 
-## 11. Related platform preview context
+## 12. Related platform preview context
 
 The multi-platform preview center currently includes:
 
