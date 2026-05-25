@@ -26,7 +26,7 @@ The old ambiguous single `video_url` concept must not be reintroduced as the onl
 
 The intended workflow is now:
 
-`Upload / enter source videos → Upload / enter reference videos → Upload video clips → Add keywords / CTA / notes → Select target platforms → Generate platform-specific drafts → Side-by-side preview → Admin review → Create video render job → Generate render plan → Queue / approve / schedule snapshot`
+`Upload / enter source videos → Upload / enter reference videos → Upload video clips → Add keywords / CTA / notes → Select target platforms → Generate platform-specific drafts → Side-by-side preview → Admin review → Create video render job → Generate render plan → Queue / approve → Internal worker processes queued jobs when renderer is configured → schedule snapshot`
 
 AI safety rule remains unchanged:
 
@@ -304,7 +304,54 @@ Generating a render plan must not create a final MP4 and must not publish anythi
 
 ---
 
-## 10. Verification and deployment gates
+## 10. Internal social video render worker
+
+Implemented worker endpoint:
+
+`app/api/system/social-video-render-worker/route.ts`
+
+Endpoint:
+
+`/api/system/social-video-render-worker`
+
+Authorization:
+
+- Requires `CRON_SECRET` or `NANOFIX_SYSTEM_WORKER_TOKEN` in production.
+- Accepts either `Authorization: Bearer <token>` or `x-system-worker-token`.
+- Must not be public-facing.
+
+Renderer handoff environment variables:
+
+- `NANOFIX_VIDEO_RENDERER_ENDPOINT`
+- `NANOFIX_VIDEO_RENDERER_TOKEN`
+
+Important current behavior:
+
+- The worker only processes jobs with `render_status = queued`.
+- The worker moves a job to `processing` before contacting the renderer.
+- The worker requires `output_json.render_plan` to exist.
+- If render_plan is missing, it marks the job as `failed` with reason `missing_render_plan`.
+- If `NANOFIX_VIDEO_RENDERER_ENDPOINT` is not configured, the worker marks the job as `failed` and explicitly records that it refused to fake-render a video.
+- If an external renderer returns success, the worker marks the job as `rendered` and stores the renderer result in `output_json.renderer_result`.
+- If an external renderer fails, the worker marks the job as `failed` and stores the error in `output_json.worker_result`.
+- The worker always preserves `admin_review_required: true` and `ai_auto_publish_allowed: false`.
+
+Audit actions:
+
+- `social_video_render_worker_started`
+- `social_video_render_worker_failed_missing_plan`
+- `social_video_render_worker_failed`
+- `social_video_render_worker_rendered`
+
+Cron status:
+
+- This worker is not yet added to `vercel.json` cron.
+- Do not add it to cron until a real renderer endpoint is connected, tested, and approved.
+- Manual/internal calls are allowed only with the system worker token.
+
+---
+
+## 11. Verification and deployment gates
 
 Updated verification files:
 
@@ -326,6 +373,7 @@ The checks must ensure:
 - `material-upload/route.ts` exists.
 - `render-jobs/route.ts` exists.
 - `socialVideoRenderPlan.ts` exists.
+- `social-video-render-worker/route.ts` exists.
 - `SocialVideoRenderJobsWorkspace.tsx` exists.
 - `source_video_urls`, `reference_video_urls`, `video_clip_urls`, `cover_image_url`, `image_urls`, `reference_notes`, `uploaded_materials` exist.
 - Upload kinds `source_video`, `reference_video`, `video_clip`, `cover_image`, `image` exist.
@@ -335,7 +383,10 @@ The checks must ensure:
 - `social_video_render_jobs` table exists.
 - Render job API writes create/update audit logs.
 - Render job API supports audited render plan generation.
-- Render job API forces AI auto-publish off and admin review on.
+- Render worker requires `CRON_SECRET` / `NANOFIX_SYSTEM_WORKER_TOKEN`.
+- Render worker refuses fake rendering if no renderer endpoint exists.
+- Render worker audits start/fail/rendered status changes.
+- Render job API and worker force AI auto-publish off and admin review on.
 - `/social-media/social-video-render-jobs` is routed to the dedicated workspace.
 - Multi-platform preview can create video render jobs from selected drafts.
 - Render jobs workspace can generate and display render plans.
@@ -343,28 +394,28 @@ The checks must ensure:
 
 ---
 
-## 11. Current limitation
+## 12. Current limitation
 
-This enhancement implements structured materials, uploads, a render job queue foundation and render plan generation for AI/social content generation, but it is not yet a full video-rendering engine.
+This enhancement implements structured materials, uploads, a render job queue foundation, render plan generation and an internal worker handoff endpoint for AI/social content generation, but it is not yet a full video-rendering engine.
 
 Still not implemented:
 
 - Automatic video timeline editor
-- Auto cut/merge/export final MP4
-- Subtitle burn-in
-- Voiceover/TTS rendering
-- Background music mixing
-- Full transcode pipeline
+- Auto cut/merge/export final MP4 inside this Next.js app
+- Subtitle burn-in inside this Next.js app
+- Voiceover/TTS rendering inside this Next.js app
+- Background music mixing inside this Next.js app
+- Full transcode pipeline inside this Next.js app
 - Thumbnail extraction from uploaded video
 - Batch multi-file upload in a single request
-- Background render worker / queue worker execution
-- Actual MP4 output generation
+- A deployed external renderer service
+- Actual MP4 output generation without a renderer endpoint
 
 These should be handled as a later V28.1.4 / V28.2 video rendering module if needed.
 
 ---
 
-## 12. Must not regress
+## 13. Must not regress
 
 Future development must not:
 
@@ -377,10 +428,12 @@ Future development must not:
 - Remove the `social_video_render_jobs` queue/audit table without replacing it with an equivalent render job system.
 - Remove render plan generation without replacing it with an equivalent timeline/material validation system.
 - Trigger actual rendering/publishing without an approved admin-controlled workflow.
+- Mark render jobs as `rendered` without an actual external renderer success response.
+- Add `/api/system/social-video-render-worker` to cron before a real renderer endpoint is configured and tested.
 
 ---
 
-## 13. Related platform preview context
+## 14. Related platform preview context
 
 The multi-platform preview center currently includes:
 
