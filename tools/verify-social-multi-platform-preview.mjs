@@ -9,10 +9,13 @@ const requiredFiles = [
   'components/SocialMultiPlatformPreviewBoard.tsx',
   'components/SocialMultiPlatformPreviewWorkspace.tsx',
   'components/SocialExpandedAccountsBindingWorkspace.tsx',
+  'components/SocialMaterialPackBuilder.tsx',
   'app/social-media/[section]/page.tsx',
   'app/api/admin/social-media/route.ts',
+  'app/api/admin/social-media/material-upload/route.ts',
   'app/api/admin/social-accounts/route.ts',
-  'lib/nanofix/socialMediaConfig.ts'
+  'lib/nanofix/socialMediaConfig.ts',
+  'supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql'
 ];
 
 const requiredPlatforms = [
@@ -49,6 +52,17 @@ const requiredPreviewLabels = [
   'Website Blog Preview'
 ];
 
+const requiredMaterialFields = [
+  'script_keywords',
+  'source_video_urls',
+  'reference_video_urls',
+  'video_clip_urls',
+  'cover_image_url',
+  'image_urls',
+  'reference_notes',
+  'uploaded_materials'
+];
+
 const failures = [];
 for (const file of requiredFiles) {
   if (!exists(file)) failures.push(`Missing required file: ${file}`);
@@ -58,12 +72,16 @@ if (!failures.length) {
   const board = read('components/SocialMultiPlatformPreviewBoard.tsx');
   const workspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
   const accountWorkspace = read('components/SocialExpandedAccountsBindingWorkspace.tsx');
+  const materialBuilder = read('components/SocialMaterialPackBuilder.tsx');
+  const uploadApi = read('app/api/admin/social-media/material-upload/route.ts');
+  const storageMigration = read('supabase/migrations/20260526009000_v28_1_3_social_video_material_storage.sql');
   const page = read('app/social-media/[section]/page.tsx');
   const socialApi = read('app/api/admin/social-media/route.ts');
   const accountsApi = read('app/api/admin/social-accounts/route.ts');
   const config = read('lib/nanofix/socialMediaConfig.ts');
 
   if (!board.includes('SOCIAL_PREVIEW_PLATFORMS')) failures.push('SOCIAL_PREVIEW_PLATFORMS registry is missing.');
+  if (!board.includes('SocialMaterialPackBuilder') || !board.includes('defaultSocialMaterialPack')) failures.push('Multi-platform preview board must render the structured material pack builder.');
   if (!workspace.includes('SocialMultiPlatformPreviewBoard')) failures.push('SocialMultiPlatformPreviewWorkspace does not render preview board.');
   if (!page.includes('SocialMultiPlatformPreviewWorkspace') || !page.includes("section.key === 'multi-platform-preview-review'")) {
     failures.push('multi-platform-preview-review route is not wired to the dedicated workspace.');
@@ -87,6 +105,20 @@ if (!failures.length) {
     if (!board.includes(label)) failures.push(`Preview board missing label: ${label}`);
   }
 
+  for (const field of requiredMaterialFields) {
+    if (!materialBuilder.includes(field)) failures.push(`Structured material builder missing field: ${field}`);
+  }
+
+  for (const uploadKind of ['source_video', 'reference_video', 'video_clip', 'cover_image', 'image']) {
+    if (!materialBuilder.includes(uploadKind)) failures.push(`Structured material builder missing upload kind: ${uploadKind}`);
+    if (!uploadApi.includes(uploadKind)) failures.push(`Material upload API missing upload kind: ${uploadKind}`);
+  }
+
+  if (!uploadApi.includes('nanofix-social-materials') || !storageMigration.includes('nanofix-social-materials')) failures.push('Private social material storage bucket is missing.');
+  if (!uploadApi.includes('maxFileSize') || !uploadApi.includes('500 * 1024 * 1024')) failures.push('Material upload API must enforce 500MB max file size.');
+  if (!uploadApi.includes('auditLog') || !uploadApi.includes('upload_social_material')) failures.push('Material upload API must write audit logs.');
+  if (!storageMigration.includes('public = excluded.public') || !storageMigration.includes('false')) failures.push('Social material storage bucket must remain private.');
+
   const requiredConfigKeys = [
     'forum-preview',
     'linkedin-preview',
@@ -109,4 +141,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX social multi-platform preview verification passed.');
-console.log('Checked preview windows, route wiring, API draft generation, account binding platforms and AI draft-only safety flags.');
+console.log('Checked preview windows, structured source/reference video material inputs, upload API, private storage bucket, route wiring, API draft generation, account binding platforms and AI draft-only safety flags.');
