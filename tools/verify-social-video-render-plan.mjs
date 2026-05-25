@@ -8,6 +8,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const requiredFiles = [
   'lib/nanofix/socialVideoRenderPlan.ts',
   'app/api/admin/social-media/render-jobs/route.ts',
+  'app/api/system/social-video-render-worker/route.ts',
   'components/SocialVideoRenderJobsWorkspace.tsx',
   'components/SocialMultiPlatformPreviewWorkspace.tsx',
   'supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql'
@@ -21,6 +22,7 @@ for (const file of requiredFiles) {
 if (!failures.length) {
   const planner = read('lib/nanofix/socialVideoRenderPlan.ts');
   const api = read('app/api/admin/social-media/render-jobs/route.ts');
+  const worker = read('app/api/system/social-video-render-worker/route.ts');
   const workspace = read('components/SocialVideoRenderJobsWorkspace.tsx');
   const previewWorkspace = read('components/SocialMultiPlatformPreviewWorkspace.tsx');
   const migration = read('supabase/migrations/20260526009100_v28_1_3_social_video_render_jobs.sql');
@@ -60,6 +62,28 @@ if (!failures.length) {
     if (!api.includes(needle)) failures.push(`Render jobs API missing: ${needle}`);
   }
 
+  const workerNeedles = [
+    'CRON_SECRET',
+    'NANOFIX_SYSTEM_WORKER_TOKEN',
+    'NANOFIX_VIDEO_RENDERER_ENDPOINT',
+    'NANOFIX_VIDEO_RENDERER_TOKEN',
+    'render_status',
+    'queued',
+    'processing',
+    'rendered',
+    'failed',
+    'missing_render_plan',
+    'Worker marked this job failed instead of fake-rendering a video',
+    'ai_auto_publish_allowed: false',
+    'admin_review_required: true',
+    'social_video_render_worker_started',
+    'social_video_render_worker_failed',
+    'social_video_render_worker_rendered'
+  ];
+  for (const needle of workerNeedles) {
+    if (!worker.includes(needle)) failures.push(`Render worker missing: ${needle}`);
+  }
+
   const workspaceNeedles = [
     'Generate Render Plan',
     'generateRenderPlan',
@@ -89,4 +113,4 @@ if (failures.length) {
 }
 
 console.log('NANOFIX social video render plan verification passed.');
-console.log('Checked render plan builder, API action, workspace controls, selected-draft handoff, queue schema and safety flags.');
+console.log('Checked render plan builder, API action, internal worker, workspace controls, selected-draft handoff, queue schema and safety flags.');
