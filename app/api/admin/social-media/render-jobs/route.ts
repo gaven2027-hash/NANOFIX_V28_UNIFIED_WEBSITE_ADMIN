@@ -40,6 +40,22 @@ function platform(value: unknown) {
   return cleanText(value, 'all', 80).toLowerCase().replace(/[^a-z0-9_ -]/g, '').replace(/\s+/g, '_').replace(/-/g, '_') || 'all';
 }
 
+function getOutput(row: Payload) {
+  return row.output_json && typeof row.output_json === 'object' ? row.output_json as Payload : {};
+}
+
+function getRendererResult(row: Payload) {
+  const output = getOutput(row);
+  return output.renderer_result && typeof output.renderer_result === 'object' ? output.renderer_result as Payload : null;
+}
+
+function hasRenderableOutput(row: Payload) {
+  const output = getOutput(row);
+  const result = getRendererResult(row);
+  const outputRef = result && (cleanText(result.output_video_url, '', 2000) || cleanText(result.output_storage_path, '', 2000));
+  return row.render_status === 'rendered' && output.renderer_contract_valid === true && !!outputRef;
+}
+
 function payload(body: Payload, actorId?: string) {
   const renderStatus = statuses.includes(String(body.render_status)) ? String(body.render_status) : 'draft';
   const renderType = renderTypes.includes(String(body.render_type)) ? String(body.render_type) : 'short_video';
@@ -117,7 +133,9 @@ export async function PATCH(request: Request) {
   if (beforeError) return jsonError(beforeError.message, 500);
   if (!before) return jsonError('Render job not found.', 404);
 
-  if (String(body.action || '') === 'generate_render_plan') {
+  const action = String(body.action || '');
+
+  if (action === 'generate_render_plan') {
     const plan = buildSocialVideoRenderPlan({
       platform: String(before.platform || 'all'),
       title: String(before.title || 'NANOFIX video render plan'),
@@ -125,7 +143,7 @@ export async function PATCH(request: Request) {
       render_settings: before.render_settings
     });
     const nextOutput = {
-      ...(before.output_json && typeof before.output_json === 'object' ? before.output_json as Record<string, unknown> : {}),
+      ...getOutput(before),
       render_plan: plan,
       render_plan_generated_at: new Date().toISOString(),
       admin_review_required: true,
@@ -141,6 +159,59 @@ export async function PATCH(request: Request) {
     if (error) return jsonError(error.message, 500);
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'generate_social_video_render_plan', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
     return NextResponse.json({ ok: true, row: data, render_plan: plan });
+  }
+
+  if (action === 'approve_rendered_output') {
+    if (!hasRenderableOutput(before)) return jsonError('Only rendered jobs with a valid renderer contract and output video reference can be approved.', 409);
+    const now = new Date().toISOString();
+    const nextOutput = {
+      ...getOutput(before),
+      rendered_output_review: {
+        status: 'approved',
+        approved_at: now,
+        approved_by: validUuid(context?.actorId) ? context?.actorId : null,
+        review_notes: cleanText(body.review_notes, '', 2000),
+        admin_review_required: true,
+        ai_auto_publish_allowed: false
+      },
+      admin_review_required: true,
+      ai_auto_publish_allowed: false
+    };
+    const { data, error } = await supabase
+      .from('social_video_render_jobs')
+      .update({ render_status: 'approved', approved_by: validUuid(context?.actorId) ? context?.actorId : null, output_json: nextOutput, updated_at: now, admin_review_required: true, ai_auto_publish_allowed: false })
+      .eq('render_job_id', id)
+      .select(columns)
+      .single();
+    if (error) return jsonError(error.message, 500);
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'approve_social_video_rendered_output', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
+    return NextResponse.json({ ok: true, row: data });
+  }
+
+  if (action === 'request_render_revision') {
+    const now = new Date().toISOString();
+    const nextOutput = {
+      ...getOutput(before),
+      rendered_output_review: {
+        status: 'revision_requested',
+        requested_at: now,
+        requested_by: validUuid(context?.actorId) ? context?.actorId : null,
+        review_notes: cleanText(body.review_notes, 'Revision requested by admin.', 2000),
+        admin_review_required: true,
+        ai_auto_publish_allowed: false
+      },
+      admin_review_required: true,
+      ai_auto_publish_allowed: false
+    };
+    const { data, error } = await supabase
+      .from('social_video_render_jobs')
+      .update({ render_status: 'draft', error_message: cleanText(body.review_notes, 'Revision requested by admin.', 2000), output_json: nextOutput, updated_at: now, admin_review_required: true, ai_auto_publish_allowed: false })
+      .eq('render_job_id', id)
+      .select(columns)
+      .single();
+    if (error) return jsonError(error.message, 500);
+    await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'request_social_video_render_revision', object_type: 'social_video_render_job', object_id: id, before_data: before, after_data: data });
+    return NextResponse.json({ ok: true, row: data });
   }
 
   const job = payload({ ...before, ...body }, context?.actorId);
