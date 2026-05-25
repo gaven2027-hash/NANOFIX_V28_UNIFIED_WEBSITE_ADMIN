@@ -110,6 +110,26 @@ function SourceMessageCard({ row, config }: { row: Row | null; config: PublicMod
   );
 }
 
+function LeadConversionCard({ row, config, saving, onConvert }: { row: Row | null; config: PublicModuleConfig; saving: boolean; onConvert: () => void }) {
+  if (!row || config.key !== 'leads') return null;
+  return (
+    <div className="mb-5 rounded-3xl bg-green-50 p-4 ring-1 ring-green-100">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-green-700">Lead Conversion / 线索转换</div>
+      <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+        Convert this lead into a Service Request for booking, inspection and quotation workflow. / 将此线索转换为报修单，进入预约、查验和报价流程。
+      </p>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={onConvert}
+        className="mt-4 rounded-2xl bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700 disabled:opacity-60"
+      >
+        Create Service Request / 创建报修单
+      </button>
+    </div>
+  );
+}
+
 function ModuleTabs({ activeKey }: { activeKey?: OperationModuleKey }) {
   return (
     <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -192,6 +212,29 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
     onSaved();
   }
 
+  async function convertLeadToServiceRequest() {
+    if (!row?.lead_id) return;
+    setSaving(true);
+    setMessage('');
+    const response = await fetch('/api/admin/lead-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_service_request', lead_id: row.lead_id })
+    });
+    const json = await response.json().catch(() => ({}));
+    setSaving(false);
+    if (!response.ok || !json.ok) {
+      setMessage(json.error || 'Failed to create service request. / 创建报修单失败。');
+      return;
+    }
+    const serviceRequestId = json.service_request?.service_request_id;
+    setMessage(json.existing ? 'Existing service request opened. / 已打开现有报修单。' : 'Service request created. / 报修单已创建。');
+    onSaved();
+    if (serviceRequestId && typeof window !== 'undefined') {
+      window.location.assign(`/service-operations/service-requests?open=${encodeURIComponent(String(serviceRequestId))}`);
+    }
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -206,6 +249,7 @@ function DetailPanel({ config, row, onClose, onSaved }: { config: PublicModuleCo
       {message ? <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}
 
       <SourceMessageCard row={row} config={config} />
+      <LeadConversionCard row={row} config={config} saving={saving} onConvert={convertLeadToServiceRequest} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {config.formFields.map((field) => (
