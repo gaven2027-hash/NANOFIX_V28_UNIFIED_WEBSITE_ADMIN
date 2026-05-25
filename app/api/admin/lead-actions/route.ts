@@ -21,6 +21,22 @@ function cleanText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim().slice(0, 8000) : fallback;
 }
 
+function isUniqueConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message || '');
+}
+
+async function findExistingServiceRequest(supabase: ReturnType<typeof createSupabaseAdminClient>, leadId: string) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('service_requests')
+    .select(requestColumns)
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 function asObject(value: unknown): Payload {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value as Payload;
   if (typeof value === 'string') {
@@ -83,14 +99,7 @@ export async function POST(request: Request) {
   if (leadError) return jsonError(leadError.message, 500);
   if (!lead) return jsonError('Lead not found.', 404);
 
-  const { data: existing, error: existingError } = await supabase
-    .from('service_requests')
-    .select(requestColumns)
-    .eq('lead_id', leadId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return jsonError(existingError.message, 500);
+  const existing = await findExistingServiceRequest(supabase, leadId);
   if (existing) {
     await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_service_request_from_lead', object_type: 'service_request', object_id: existing.service_request_id, after_data: { lead_id: leadId, service_request_id: existing.service_request_id } });
     return NextResponse.json({ ok: true, service_request: existing, existing: true });
@@ -98,7 +107,16 @@ export async function POST(request: Request) {
 
   const payload = serviceRequestFromLead(lead as Payload, context?.actorId);
   const { data: serviceRequest, error: createError } = await supabase.from('service_requests').insert(payload).select(requestColumns).single();
-  if (createError) return jsonError(createError.message, 500);
+  if (createError) {
+    if (isUniqueConflict(createError)) {
+      const concurrentExisting = await findExistingServiceRequest(supabase, leadId);
+      if (concurrentExisting) {
+        await auditLog({ actor_id: context?.actorId, actor_role: context?.role, action: 'open_existing_service_request_from_lead_conflict', object_type: 'service_request', object_id: concurrentExisting.service_request_id, after_data: { lead_id: leadId, service_request_id: concurrentExisting.service_request_id } });
+        return NextResponse.json({ ok: true, service_request: concurrentExisting, existing: true, recovered_from_conflict: true });
+      }
+    }
+    return jsonError(createError.message, 500);
+  }
 
   const { data: updatedLead } = await supabase
     .from('leads')
