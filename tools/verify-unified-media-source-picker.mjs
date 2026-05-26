@@ -6,11 +6,17 @@ function read(path) { return existsSync(path) ? readFileSync(path, 'utf8') : '';
 function must(condition, label) { checks.push({ ok: Boolean(condition), label }); }
 
 const migration = read('supabase/migrations/20260526010200_v28_1_3_unified_media_library.sql');
+const publishMigration = read('supabase/migrations/20260526010300_v28_1_3_publish_center_media_packages.sql');
 const api = read('app/api/admin/media-library/route.ts');
+const publishApi = read('app/api/admin/publish-center/route.ts');
 const picker = read('components/MediaSourcePicker.tsx');
 const website = read('components/WebsiteManagementWorkspace.tsx');
 const social = read('components/SocialMediaManagementWorkspace.tsx');
 const messages = read('components/SocialMessagesWorkspace.tsx');
+const publishPanel = read('components/PublishCenterMediaPanel.tsx');
+const publishWorkspace = read('components/PublishCenterMediaPackageWorkspace.tsx');
+const publishPage = read('app/admin/publish-center/media-package/page.tsx');
+const publishEntry = read('app/admin/publish-center/page.tsx');
 const replyWorker = read('app/api/system/social-message-reply-dispatch-worker/route.ts');
 const pkg = read('package.json');
 
@@ -43,6 +49,12 @@ must(messages.includes('reply_media_assets') && messages.includes('reply_has_med
 must(messages.includes('Selected Reply Media / 已选择回复素材') && messages.includes('Remove'), 'messages inbox can display/remove selected reply media');
 must(replyWorker.includes('reply_media_assets') && replyWorker.includes('reply_has_media_assets'), 'reply dispatch worker forwards media attachments');
 must(replyWorker.includes('contract_version: \'v28.1.3-social-message-reply-dispatch-2\''), 'reply dispatch contract version includes attachment support');
+must(publishMigration.includes('media_assets_json') && publishMigration.includes('publish_center_items'), 'publish center items have media package columns');
+must(publishApi.includes('media_assets_json') && publishApi.includes('media_package_ok'), 'publish center API stores media package and gate state');
+must(publishPanel.includes('Publish Package Media Source / 发布素材包来源'), 'publish center media panel has picker');
+must(publishWorkspace.includes('PublishCenterMediaPanel') && publishWorkspace.includes('Save Media Package / 保存素材包'), 'publish media package workspace can save packages');
+must(publishPage.includes('PublishCenterMediaPackageWorkspace'), 'publish media package page exists');
+must(publishEntry.includes('/admin/publish-center/media-package'), 'main publish center links to media package page');
 must(pkg.includes('verify:media-source-picker'), 'package script includes verify:media-source-picker');
 must(pkg.includes('verify:media-source-picker') && pkg.includes('validate:predeploy'), 'predeploy includes media source validation');
 
