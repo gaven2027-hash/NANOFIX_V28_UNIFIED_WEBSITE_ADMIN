@@ -25,6 +25,7 @@
     "verify:message-inbox": "node tools/verify-message-inbox-reply-workflow.mjs",
     "verify:media-source-picker": "node tools/verify-unified-media-source-picker.mjs",
     "verify:engineer-field-media": "node tools/verify-engineer-field-media-api.mjs",
+    "verify:app-domain-routing": "node tools/verify-app-domain-routing.mjs",
     "verify:auth-welcome": "node tools/verify-auth-welcome-pages.mjs",
     "verify:registration-review": "node tools/verify-registration-review.mjs",
     "verify:field-rls": "node tools/verify-field-work-rls.mjs",
@@ -53,7 +54,7 @@
     "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
-    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:service-flow && npm run verify:social-accounts && npm run verify:social-video-render-plan && npm run verify:social-video-renderer-provider-selection && npm run verify:social-render-schedule-handoff && npm run verify:global-publish-approval-before-schedule && npm run verify:social-scheduled-publisher-worker && npm run verify:website-visual-editor-preview && npm run verify:website-social-links && npm run verify:message-inbox && npm run verify:media-source-picker && npm run verify:engineer-field-media && npm run verify:auth-welcome && npm run verify:registration-review && npm run verify:field-rls && npm run verify:security-definer && npm run verify:core-rls && npm run verify:module-rls && npm run verify:oa-readiness && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:service-flow && npm run verify:social-accounts && npm run verify:social-video-render-plan && npm run verify:social-video-renderer-provider-selection && npm run verify:social-render-schedule-handoff && npm run verify:global-publish-approval-before-schedule && npm run verify:social-scheduled-publisher-worker && npm run verify:website-visual-editor-preview && npm run verify:website-social-links && npm run verify:message-inbox && npm run verify:media-source-picker && npm run verify:engineer-field-media && npm run verify:app-domain-routing && npm run verify:auth-welcome && npm run verify:registration-review && npm run verify:field-rls && npm run verify:security-definer && npm run verify:core-rls && npm run verify:module-rls && npm run verify:oa-readiness && npm run validate:package && npm run audit:v28 && npm run validate:platform",
     "check:staging": "node tools/staging-supabase-check.mjs",
     "validate:platform": "node tools/deploy-readiness-check.mjs"
   },
