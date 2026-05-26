@@ -8,9 +8,11 @@ function must(condition, label) { checks.push({ ok: Boolean(condition), label })
 const migration = read('supabase/migrations/20260526010200_v28_1_3_unified_media_library.sql');
 const publishMigration = read('supabase/migrations/20260526010300_v28_1_3_publish_center_media_packages.sql');
 const fieldMigration = read('supabase/migrations/20260526010400_v28_1_3_field_media_links.sql');
+const aiMigration = read('supabase/migrations/20260526010500_v28_1_3_ai_media_links.sql');
 const api = read('app/api/admin/media-library/route.ts');
 const publishApi = read('app/api/admin/publish-center/route.ts');
 const fieldApi = read('app/api/admin/field-media/route.ts');
+const aiApi = read('app/api/admin/ai-media/route.ts');
 const picker = read('components/MediaSourcePicker.tsx');
 const website = read('components/WebsiteManagementWorkspace.tsx');
 const social = read('components/SocialMediaManagementWorkspace.tsx');
@@ -21,6 +23,8 @@ const publishPage = read('app/admin/publish-center/media-package/page.tsx');
 const publishEntry = read('app/admin/publish-center/page.tsx');
 const fieldWorkspace = read('components/FieldMediaCenterWorkspace.tsx');
 const fieldPage = read('app/admin/field-media/page.tsx');
+const aiWorkspace = read('components/AiMediaCenterWorkspace.tsx');
+const aiPage = read('app/admin/ai-media/page.tsx');
 const replyWorker = read('app/api/system/social-message-reply-dispatch-worker/route.ts');
 const pkg = read('package.json');
 
@@ -66,6 +70,13 @@ must(fieldWorkspace.includes('Field Attachment Source / 现场附件素材来源
 must(fieldWorkspace.includes('customer_before_submit') && fieldWorkspace.includes('engineer_after') && fieldWorkspace.includes('warranty_proof'), 'field media workspace covers customer, engineer and warranty stages');
 must(fieldWorkspace.includes('customer_visible') && fieldWorkspace.includes('engineer_visible'), 'field media workspace supports customer and engineer visibility');
 must(fieldPage.includes('FieldMediaCenterWorkspace'), 'field media center page exists');
+must(aiMigration.includes('create table if not exists public.ai_media_links'), 'AI media links table exists');
+must(aiMigration.includes('quotation_assistant') && aiMigration.includes('material_suggestion') && aiMigration.includes('report_generator'), 'AI media modules cover quotation, material and reports');
+must(aiApi.includes("requireAdmin(request, 'write:content')") && aiApi.includes('create_ai_media_link'), 'AI media API requires admin write and audit logs');
+must(aiWorkspace.includes('AI Attachment Source / AI 附件素材来源'), 'AI media workspace has attachment picker');
+must(aiWorkspace.includes('approved_for_ai') && aiWorkspace.includes('blocked_for_ai') && aiWorkspace.includes('used_in_ai'), 'AI media workspace controls AI readiness');
+must(aiWorkspace.includes('sensitive_restricted') && aiWorkspace.includes('privacy_scope'), 'AI media workspace supports privacy scope');
+must(aiPage.includes('AiMediaCenterWorkspace'), 'AI media center page exists');
 must(pkg.includes('verify:media-source-picker'), 'package script includes verify:media-source-picker');
 must(pkg.includes('verify:media-source-picker') && pkg.includes('validate:predeploy'), 'predeploy includes media source validation');
 
