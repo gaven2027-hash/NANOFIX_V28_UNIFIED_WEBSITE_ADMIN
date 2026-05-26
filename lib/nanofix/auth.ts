@@ -19,11 +19,19 @@ export type AdminContext = {
 };
 
 export const rolePermissions: Record<AdminRole, string[]> = {
+  // Super Admin / 总管理员:
+  // Owns every backend function and every role capability. Can create ads, publish videos,
+  // modify website content, approve budgets, override workflow ownership, and take over any process.
   super_admin: ["*"],
   operations_admin: [
     "read:*",
     "write:operations",
     "write:customers",
+    "read:advertising",
+    "write:advertising_strategy",
+    "ad_campaign.read",
+    "ad_campaign.draft",
+    "ad_approval.request",
     "service_request.read",
     "service_request.update",
     "customer.read",
@@ -31,10 +39,43 @@ export const rolePermissions: Record<AdminRole, string[]> = {
     "module_health.read",
     "entity_event.write"
   ],
-  finance: ["read:*", "read:finance", "write:finance", "invoice.update", "payment.update", "audit.read"],
-  content_admin: ["read:*", "read:content", "write:content", "read:ai", "write:ai", "website.update", "social.update", "ai_draft.review"],
-  support: ["read:*", "read:customers", "write:customers", "read:operations", "lead.read", "lead.update", "entity_event.write"],
-  engineer: ["read:operations", "write:operations", "job.assigned.read", "job.assigned.update", "entity_event.write"],
+  finance: [
+    "read:*",
+    "read:finance",
+    "write:finance",
+    "read:advertising",
+    "read:ad_budget",
+    "read:ad_roi",
+    "ad_budget.review",
+    "invoice.update",
+    "payment.update",
+    "audit.read"
+  ],
+  content_admin: [
+    "read:*",
+    "read:content",
+    "write:content",
+    "read:ai",
+    "write:ai",
+    "read:advertising",
+    "write:ad_creative",
+    "write:ad_copy",
+    "ad_approval.request",
+    "website.update",
+    "social.update",
+    "ai_draft.review"
+  ],
+  support: [
+    "read:*",
+    "read:customers",
+    "write:customers",
+    "read:operations",
+    "read:advertising_leads",
+    "lead.read",
+    "lead.update",
+    "entity_event.write"
+  ],
+  engineer: ["read:operations", "write:operations", "job.assigned.read", "job.assigned.update", "entity_event.write", "read:assigned_ad_source"],
   customer: ["customer.portal.read", "customer.portal.write"]
 };
 
@@ -80,6 +121,14 @@ export function permissionAllowed(context: AdminContext, permission: string) {
     return context.permissions.includes(`${scopeOrAction}:*`) || context.permissions.includes(`read:${objectOrScope}`) || context.permissions.includes("read:*");
   }
   return context.permissions.includes(`${scopeOrAction}.*`) || context.permissions.includes(`${objectOrScope}.${scopeOrAction}`);
+}
+
+export function isSuperAdmin(context: AdminContext | null | undefined) {
+  return Boolean(context && context.role === "super_admin" && context.permissions.includes("*"));
+}
+
+export function requireSuperAdminTakeover(context: AdminContext | null | undefined) {
+  return isSuperAdmin(context);
 }
 
 export function requireAdmin(request: Request, permission = "read:*") {
