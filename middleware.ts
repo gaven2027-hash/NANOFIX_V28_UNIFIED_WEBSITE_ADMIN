@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { NANOFIX_ADMIN_APP_URL, isNanofixAdminAppHost, isNanofixProductionHost } from "@/lib/nanofix/domains";
 
 type NanofixRole =
   | "super_admin"
@@ -17,6 +18,8 @@ type VerifiedActor = {
   authMode: "supabase" | "internal_secret" | "preview";
 };
 
+type PortalContext = "admin" | "customer" | "engineer";
+
 const adminRoutes = [
   "/admin",
   "/dashboard",
@@ -28,6 +31,21 @@ const adminRoutes = [
   "/system-settings"
 ];
 
+const loginRoutes = ["/login"];
+const loginAliases: Record<string, PortalContext> = {
+  "/admin-login": "admin",
+  "/adminb": "admin",
+  "/customer": "customer",
+  "/customerlb": "customer",
+  "/customer-login": "customer",
+  "/engineer-login": "engineer",
+  "/member-sign-up-login": "customer"
+};
+const registerAliases: Record<string, PortalContext> = {
+  "/admin-register": "admin",
+  "/customer-register": "customer",
+  "/member-register": "customer"
+};
 const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests"];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
 const engineerRoutes = ["/engineer-portal", "/api/portal/engineer"];
@@ -38,6 +56,10 @@ const customerRoles: NanofixRole[] = ["customer", ...adminRoles];
 
 function startsWithAny(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function isLoginPath(pathname: string) {
+  return startsWithAny(pathname, loginRoutes);
 }
 
 function isProtectedPath(pathname: string) {
@@ -77,6 +99,25 @@ function normalizeRole(input: unknown): NanofixRole | null {
     return role as NanofixRole;
   }
   return null;
+}
+
+function adminAppUrl(pathname: string, search = "") {
+  const url = new URL(NANOFIX_ADMIN_APP_URL);
+  url.pathname = pathname;
+  url.search = search;
+  return url;
+}
+
+function redirectToAdminApp(request: NextRequest, pathname: string, search = request.nextUrl.search) {
+  return NextResponse.redirect(adminAppUrl(pathname, search));
+}
+
+function shouldForceAdminAppHost(pathname: string, searchParams: URLSearchParams) {
+  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return true;
+  if (pathname === "/admin-login" || pathname === "/admin-register" || pathname === "/adminb") return true;
+  if (pathname === "/login") return searchParams.get("role") === "admin";
+  if (pathname === "/register") return searchParams.get("role") === "admin";
+  return false;
 }
 
 function readBearerToken(request: NextRequest) {
@@ -152,7 +193,6 @@ async function fetchProfileActor(authUserId: string, email?: string): Promise<Ve
     }
   }
 
-  // Compatibility bridge for older website packages that used admin_profiles before profiles became canonical.
   const adminParams = new URLSearchParams({
     select: "admin_id,auth_user_id,email,role,status",
     auth_user_id: `eq.${authUserId}`,
@@ -180,7 +220,6 @@ async function actorFromSupabaseSession(request: NextRequest): Promise<VerifiedA
 }
 
 function actorFromInternalSecret(request: NextRequest): VerifiedActor | null {
-  // Disabled by default. Intended only for controlled server-to-server maintenance, CI health checks and migration windows.
   if (process.env.NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED !== "true") return null;
   const expected = process.env.NANOFIX_ADMIN_API_TOKEN;
   const provided = readBearerToken(request) || request.cookies.get("nanofix_admin_session")?.value || "";
@@ -222,13 +261,30 @@ function apiUnauthorized(message: string, status = 401) {
   return NextResponse.json({ ok: false, error: message }, { status, headers: { "X-Robots-Tag": "noindex, nofollow" } });
 }
 
+function loginRoleForPath(pathname: string): PortalContext | null {
+  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return "admin";
+  if (startsWithAny(pathname, customerRoutes)) return "customer";
+  if (startsWithAny(pathname, engineerRoutes)) return "engineer";
+  return null;
+}
+
 function redirectToLogin(request: NextRequest, reason?: string) {
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = "/login";
   loginUrl.search = "";
+  const role = loginRoleForPath(request.nextUrl.pathname);
+  if (role) loginUrl.searchParams.set("role", role);
   loginUrl.searchParams.set("next", request.nextUrl.pathname);
   if (reason) loginUrl.searchParams.set("reason", reason);
   return NextResponse.redirect(loginUrl);
+}
+
+function redirectPortalAlias(request: NextRequest, pathname: "/login" | "/register", role: PortalContext) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  url.searchParams.set("role", role);
+  return NextResponse.redirect(url);
 }
 
 function redirectByRole(request: NextRequest, role: NanofixRole) {
@@ -239,20 +295,35 @@ function redirectByRole(request: NextRequest, role: NanofixRole) {
 }
 
 function refreshSupabaseCookies(request: NextRequest) {
-  // Keep middleware stateless for Vercel/Next build stability.
-  // Supabase session refresh is handled by the login/client flow; middleware only verifies existing sessions.
   return NextResponse.next({ request });
 }
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.nextUrl.hostname;
+  const productionHost = isNanofixProductionHost(host);
+
+  if (productionHost && isNanofixAdminAppHost(host) && pathname === "/") {
+    return redirectToAdminApp(request, "/login", "?role=admin");
+  }
+  if (productionHost && !isNanofixAdminAppHost(host) && shouldForceAdminAppHost(pathname, request.nextUrl.searchParams)) {
+    return redirectToAdminApp(request, pathname, request.nextUrl.search);
+  }
+
+  const loginAliasRole = loginAliases[pathname];
+  if (loginAliasRole) return redirectPortalAlias(request, "/login", loginAliasRole);
+  const registerAliasRole = registerAliases[pathname];
+  if (registerAliasRole) return redirectPortalAlias(request, "/register", registerAliasRole);
+
+  const loginPath = isLoginPath(pathname);
   const protectedPath = isProtectedPath(pathname);
   const isProtectedApi = startsWithAny(pathname, [...apiAdminRoutes, ...customerRoutes.filter((r) => r.startsWith("/api")), ...engineerRoutes.filter((r) => r.startsWith("/api"))]);
 
-  if (!protectedPath && pathname !== "/login") return NextResponse.next();
+  if (!protectedPath && !loginPath) return NextResponse.next();
 
   const actor = (await actorFromSupabaseSession(request)) ?? actorFromInternalSecret(request) ?? actorFromLocalPreview();
 
-  if (pathname === "/login") {
+  if (loginPath) {
     if (!actor) return refreshSupabaseCookies(request);
     return redirectByRole(request, actor.role);
   }
@@ -272,7 +343,18 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/login",
+    "/",
+    "/login/:path*",
+    "/admin-login/:path*",
+    "/adminb/:path*",
+    "/customer/:path*",
+    "/customerlb/:path*",
+    "/customer-login/:path*",
+    "/engineer-login/:path*",
+    "/member-sign-up-login/:path*",
+    "/admin-register/:path*",
+    "/customer-register/:path*",
+    "/member-register/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
     "/service-operations/:path*",
