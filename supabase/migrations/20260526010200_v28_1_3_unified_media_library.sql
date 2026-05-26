@@ -1,16 +1,17 @@
 -- NANOFIX V28.1.3 Unified Media Library
 -- Provides one media intake model for admin modules: local upload, URL import, and library selection.
+-- Storage bucket is private by default; public website assets should be exposed only through approved publish/CMS paths or signed URLs.
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'nanofix-media-library',
   'nanofix-media-library',
-  true,
+  false,
   52428800,
   array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','application/pdf']::text[]
 )
 on conflict (id) do update set
-  public = excluded.public,
+  public = false,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
@@ -58,9 +59,8 @@ create policy media_assets_admin_all on public.media_assets for all
 using (exists (select 1 from public.profiles p where p.auth_user_id = auth.uid() and p.is_active = true and p.role in ('super_admin','content_admin','operations_admin','support')))
 with check (exists (select 1 from public.profiles p where p.auth_user_id = auth.uid() and p.is_active = true and p.role in ('super_admin','content_admin','operations_admin','support')));
 
--- Public website may need to read published/active website images, but admin routes still use service role.
+-- Public website may read approved/active website asset metadata, but private Storage files still require server-generated signed URLs.
 drop policy if exists media_assets_public_active_select on public.media_assets;
 create policy media_assets_public_active_select on public.media_assets for select using (status = 'active' and module_key in ('website','website_management','public_website'));
 
--- Storage policies are intentionally narrow: public bucket read is allowed by Supabase public bucket behavior;
--- admin writes are performed by Next.js server routes using service_role, not directly from browser clients.
+-- Browser clients must not write directly to Storage. Next.js server routes use service_role and return signed preview URLs when needed.
