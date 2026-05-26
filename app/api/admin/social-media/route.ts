@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 type Payload = Record<string, unknown>;
 
 const recordColumns = 'record_id,section_key,platform,title,body,config_json,status,created_by,updated_by,created_at,updated_at';
-const messageColumns = 'message_id,lead_id,customer_id,channel,external_message_id,direction,body,risk_level,created_at';
+const messageColumns = 'message_id,lead_id,customer_id,channel,external_message_id,external_thread_id,direction,body,risk_level,risk_score_percent,handling_status,reply_status,sla_status,sla_due_at,message_kind,platform_message_type,contact_name,contact_phone,contact_whatsapp,contact_email,ai_intent,ai_summary,ai_reply_suggestion,ai_confidence_percent,created_at,updated_at';
 const draftColumns = 'content_id,module,platform,title,body,prompt_version,model,source_references,approval_status,reviewer_id,created_at';
 const versionColumns = 'version_id,content_id,record_id,platform,version_no,status,snapshot_json,scheduled_at,published_at,published_by,created_at';
 const recordStatuses = ['draft', 'active', 'pending_review', 'approved', 'scheduled', 'published', 'archived', 'disabled'];
@@ -57,34 +57,25 @@ function finalApprovalReadySnapshot(value: unknown) {
 function normalizedPublishSnapshot(value: unknown, p: string, status: string) {
   const now = new Date().toISOString();
   const snapshot = safeJson(value, { platform: p, status, source: 'manual social admin publish snapshot', created_at: now, ai_auto_publish_allowed: false }) as Payload;
-  return {
-    ...snapshot,
-    platform: snapshot.platform || p,
-    status: snapshot.status || status,
-    final_approval_completed_before_schedule: snapshot.final_approval_completed_before_schedule === true,
-    publish_ready_after_schedule: requiresFinalApprovalBeforeSchedule(status) ? true : snapshot.publish_ready_after_schedule === true,
-    platform_api_called: snapshot.platform_api_called === true ? true : false,
-    admin_review_required: true,
-    ai_auto_publish_allowed: false,
-    created_at: snapshot.created_at || now
-  };
+  return { ...snapshot, platform: snapshot.platform || p, status: snapshot.status || status, final_approval_completed_before_schedule: snapshot.final_approval_completed_before_schedule === true, publish_ready_after_schedule: requiresFinalApprovalBeforeSchedule(status) ? true : snapshot.publish_ready_after_schedule === true, platform_api_called: snapshot.platform_api_called === true ? true : false, admin_review_required: true, ai_auto_publish_allowed: false, created_at: snapshot.created_at || now };
+}
+function buildAiReplySuggestion(bodyText: string, risk: string) {
+  const textValue = bodyText.toLowerCase();
+  if (/(complain|refund|bad|angry|lawyer|police)/.test(textValue)) return 'Hi, thank you for reaching out. We are sorry to hear about this. Our team will review the case details carefully and follow up with you directly. Could you please share your contact number, service address, and any photos or videos so we can check properly?';
+  if (/(price|quote|cost|how much)/.test(textValue)) return 'Hi, thank you for contacting NANOFIX. We can assist with a site check and quotation. Please send photos/videos of the affected area, your location, and your preferred inspection time. Our team will review and advise the next step.';
+  return risk === 'high' ? 'Hi, thank you for contacting NANOFIX. This looks urgent, and our team will review it carefully. Please share your contact number, location and photos/videos so we can assist properly.' : 'Hi, thank you for contacting NANOFIX. Please share photos/videos of the issue, your address or building type, and your preferred timing. Our team will review and get back to you shortly.';
 }
 
 function recordPayload(body: Payload, actorId?: string) {
   const section = getSocialMediaSection(text(body.section_key));
-  const payload: Payload = {
-    section_key: section?.key || text(body.section_key, 'social-accounts'),
-    platform: platform(body.platform, section?.platform || 'general'),
-    title: text(body.title, section?.title || 'Social Media Record'),
-    body: text(body.body),
-    config_json: safeJson(body.config_json, {}),
-    status: recordStatuses.includes(String(body.status)) ? String(body.status) : 'draft'
-  };
+  const payload: Payload = { section_key: section?.key || text(body.section_key, 'social-accounts'), platform: platform(body.platform, section?.platform || 'general'), title: text(body.title, section?.title || 'Social Media Record'), body: text(body.body), config_json: safeJson(body.config_json, {}), status: recordStatuses.includes(String(body.status)) ? String(body.status) : 'draft' };
   if (validUuid(actorId)) payload.updated_by = actorId;
   return payload;
 }
 function messagePayload(body: Payload) {
-  return { lead_id: nullableUuid(body.lead_id), customer_id: nullableUuid(body.customer_id), channel: platform(body.channel || body.platform, 'manual'), external_message_id: text(body.external_message_id), direction: messageDirections.includes(String(body.direction)) ? String(body.direction) : 'inbound', body: text(body.body), risk_level: text(body.risk_level, 'normal') };
+  const messageBody = text(body.body);
+  const risk = text(body.risk_level, 'normal');
+  return { lead_id: nullableUuid(body.lead_id), customer_id: nullableUuid(body.customer_id), channel: platform(body.channel || body.platform, 'manual'), external_message_id: text(body.external_message_id), external_thread_id: text(body.external_thread_id), direction: messageDirections.includes(String(body.direction)) ? String(body.direction) : 'inbound', body: messageBody, risk_level: risk, risk_score_percent: Number(body.risk_score_percent || (risk === 'high' ? 85 : risk === 'medium' ? 55 : 20)), message_kind: text(body.message_kind, 'private_message'), platform_message_type: text(body.platform_message_type), contact_name: text(body.contact_name), contact_phone: text(body.contact_phone), contact_whatsapp: text(body.contact_whatsapp), contact_email: text(body.contact_email), ai_intent: text(body.ai_intent, 'manual_admin_entry'), ai_summary: text(body.ai_summary, messageBody.slice(0, 300)), ai_reply_suggestion: text(body.ai_reply_suggestion, buildAiReplySuggestion(messageBody, risk)), ai_confidence_percent: Number(body.ai_confidence_percent || 70), handling_status: risk === 'high' ? 'pending_review' : 'new', reply_status: 'drafted' };
 }
 function draftPayload(body: Payload, actorId?: string) {
   const section = getSocialMediaSection(text(body.section_key));
@@ -118,7 +109,7 @@ async function listMessages(search: string | null, sectionKey: string | null, p:
   const supabase = createSupabaseAdminClient(); if (!supabase) return { ok: false as const, status: 503, error: 'Supabase server client is not configured.' };
   const section = getSocialMediaSection(sectionKey || undefined); let query = supabase.from('social_messages').select(messageColumns).order('created_at', { ascending: false }).limit(120);
   const channel = p && p !== 'all' ? p : section?.platform && section.platform !== 'all' ? section.platform : ''; if (channel) query = query.eq('channel', channel);
-  const q = cleanSearch(search); if (q) query = query.or(`channel.ilike.%${q}%,body.ilike.%${q}%,risk_level.ilike.%${q}%,direction.ilike.%${q}%`);
+  const q = cleanSearch(search); if (q) query = query.or(`channel.ilike.%${q}%,body.ilike.%${q}%,risk_level.ilike.%${q}%,direction.ilike.%${q}%,message_kind.ilike.%${q}%,reply_status.ilike.%${q}%,sla_status.ilike.%${q}%`);
   const { data, error } = await query; return error ? { ok: false as const, status: 500, error: error.message } : { ok: true as const, data: data ?? [] };
 }
 async function listDrafts(search: string | null, status: string | null, sectionKey: string | null, p: string | null) {
