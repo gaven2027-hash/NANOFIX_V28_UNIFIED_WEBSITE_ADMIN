@@ -34,10 +34,14 @@ must(migration.includes('create table if not exists public.media_assets'), 'medi
 must(migration.includes("source_type text not null default 'url_import'"), 'media_assets source_type default is valid');
 must(migration.includes("alter table public.media_assets alter column source_type set default 'url_import'"), 'media_assets existing default is corrected');
 must(migration.includes('nanofix-media-library'), 'Supabase storage bucket is declared');
+must(migration.includes("'nanofix-media-library',\n  false") && migration.includes('public = false'), 'media storage bucket is private');
+must(migration.includes('private Storage files still require server-generated signed URLs'), 'migration documents signed URL access for private storage');
 must(migration.includes("source_type in ('local_upload','url_import','library_selected','system_generated')"), 'source types cover local, URL, library, system');
 must(migration.includes('media_assets_admin_all'), 'admin RLS policy exists for media assets');
 must(api.includes("requireAdmin(request, 'write:content')"), 'media API requires admin write permission');
 must(api.includes('multipart/form-data') && api.includes('supabase.storage.from(bucket).upload'), 'local computer upload route exists');
+must(api.includes('createSignedUrl') && api.includes('signed_asset_url') && api.includes('signed_url_expires_in'), 'media API returns signed preview URLs for private storage');
+must(api.includes('asset_url: null') && api.includes('storage_path: storagePath'), 'local uploads store private storage path instead of permanent public URL');
 must(api.includes('createUrlAsset(body') && api.includes('createLibrarySelection(body'), 'media API removes unused request parameters from helper functions');
 must(api.includes('create_url_asset') && api.includes('asset_url'), 'URL import route exists');
 must(api.includes('select_library_asset'), 'media library selection route exists');
@@ -74,6 +78,8 @@ must(publishPage.includes('PublishCenterMediaPackageWorkspace'), 'publish media 
 must(publishEntry.includes('/admin/publish-center/media-package'), 'main publish center links to media package page');
 must(fieldMigration.includes('create table if not exists public.field_media_links'), 'field media links table exists');
 must(fieldMigration.includes('service_request') && fieldMigration.includes('engineer_inspection') && fieldMigration.includes('warranty'), 'field media object types cover service request, engineer inspection and warranty');
+must(fieldMigration.includes("p.role in ('super_admin','content_admin','operations_admin','support')") && !fieldMigration.includes("'support','engineer')"), 'field media direct RLS excludes broad engineer all-access');
+must(fieldMigration.includes('Customer and engineer portals must use dedicated server-side API routes'), 'field media documents portal server API boundary');
 must(fieldApi.includes("requireAdmin(request, 'write:content')") && fieldApi.includes('create_field_media_link'), 'field media API requires admin write and audit logs');
 must(fieldWorkspace.includes('Field Attachment Source / 现场附件素材来源'), 'field media workspace has attachment picker');
 must(!fieldWorkspace.includes("import Link from 'next/link'"), 'field media workspace has no unused Link import');
