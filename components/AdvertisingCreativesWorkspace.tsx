@@ -1,0 +1,40 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { SectionCard } from './SectionCard';
+import { Badge } from './Badge';
+
+type Row = Record<string, unknown>;
+const inputClass = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-activeBlue focus:ring-2 focus:ring-blue-100';
+function text(value: unknown, fallback = '—') { return value === null || value === undefined || value === '' ? fallback : String(value); }
+function tone(value: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan' { const t = String(value || '').toLowerCase(); if (t.includes('approved')) return 'green'; if (t.includes('draft') || t.includes('review')) return 'amber'; if (t.includes('rejected')) return 'red'; if (t.includes('video') || t.includes('image')) return 'cyan'; return 'blue'; }
+
+export function AdvertisingCreativesWorkspace() {
+  const [creatives, setCreatives] = useState<Row[]>([]);
+  const [message, setMessage] = useState('');
+  const [form, setForm] = useState({
+    platform: 'google_ads',
+    creative_type: 'image',
+    title: 'No-Hacking Leak Repair Creative A',
+    headline: 'No-Hacking Leak Repair in Singapore',
+    primary_text: 'Send leakage photos on WhatsApp. NANOFIX checks the source before hacking tiles.',
+    description: 'Transparent inspection, clear quotation and repair tracking.',
+    cta: 'WhatsApp Us',
+    landing_page_url: 'https://www.nanofixsg.com/leak-detection',
+    media_url: '',
+    media_asset_id: '',
+    version_label: 'A',
+    editable_text: 'Headline: No-Hacking Leak Repair in Singapore\nPrimary Text: Send leakage photos on WhatsApp. NANOFIX checks the source before hacking tiles.\nCTA: WhatsApp Us'
+  });
+  async function loadData() { const response = await fetch('/api/admin/advertising-center/creatives', { cache: 'no-store' }); const json = await response.json().catch(() => ({})); if (json.ok) setCreatives(json.creatives || []); }
+  useEffect(() => { void loadData(); }, []);
+  async function saveCreative() {
+    setMessage('');
+    const response = await fetch('/api/admin/advertising-center/creatives', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, ai_generated: true, status: 'draft' }) });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.ok) return setMessage(json.error || 'Save creative failed. / 保存素材文案失败。');
+    setMessage('Creative and copy draft saved. / 广告素材与文案草稿已保存。');
+    await loadData();
+  }
+  return <div className="space-y-5"><SectionCard title="Creatives & Copy / 广告素材与文案" subtitle="Create editable ad creative and copy drafts for Google, Meta, TikTok, YouTube, Xiaohongshu or manual campaigns. No external publishing in this phase. / 创建可编辑广告素材和文案草稿；本阶段不直接发布到外部平台。"><div className="grid gap-3 md:grid-cols-4"><div className="rounded-2xl bg-blue-50 p-4 ring-1 ring-blue-100"><div className="text-2xl font-black text-blue-900">{creatives.length}</div><div className="text-xs font-bold text-blue-700">Creative Drafts / 素材草稿</div></div><div className="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-100"><div className="text-2xl font-black text-amber-900">{creatives.filter((c) => c.status === 'draft').length}</div><div className="text-xs font-bold text-amber-700">Draft / 草稿</div></div><div className="rounded-2xl bg-green-50 p-4 ring-1 ring-green-100"><div className="text-2xl font-black text-green-900">{creatives.filter((c) => c.status === 'approved').length}</div><div className="text-xs font-bold text-green-700">Approved / 已批准</div></div><div className="rounded-2xl bg-slate-950 p-4 text-white"><div className="text-sm font-black">No auto-publish</div><div className="text-xs font-bold text-slate-300">不自动发布</div></div></div></SectionCard>{message ? <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800 ring-1 ring-blue-100">{message}</div> : null}<div className="grid gap-5 xl:grid-cols-[430px_minmax(0,1fr)]"><SectionCard title="Create Draft / 创建草稿" subtitle="Supports URL media, backend media asset ID and editable AI copy. / 支持 URL 素材、后台素材 ID 和可编辑 AI 文案。"><div className="space-y-3"><select className={inputClass} value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}><option value="google_ads">Google Ads</option><option value="meta_ads">Meta Ads</option><option value="tiktok_ads">TikTok Ads</option><option value="youtube_ads">YouTube Ads</option><option value="xiaohongshu">Xiaohongshu</option><option value="manual_import">Manual</option></select><select className={inputClass} value={form.creative_type} onChange={(e) => setForm({ ...form, creative_type: e.target.value })}><option value="image">Image</option><option value="video">Video</option><option value="short_video">Short Video</option><option value="carousel">Carousel</option><option value="text">Text</option><option value="landing_page">Landing Page</option></select><input className={inputClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" /><input className={inputClass} value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} placeholder="Headline" /><textarea className={`${inputClass} min-h-20`} value={form.primary_text} onChange={(e) => setForm({ ...form, primary_text: e.target.value })} placeholder="Primary Text" /><input className={inputClass} value={form.cta} onChange={(e) => setForm({ ...form, cta: e.target.value })} placeholder="CTA" /><input className={inputClass} value={form.landing_page_url} onChange={(e) => setForm({ ...form, landing_page_url: e.target.value })} placeholder="Landing Page URL" /><input className={inputClass} value={form.media_url} onChange={(e) => setForm({ ...form, media_url: e.target.value })} placeholder="Media URL / 素材URL" /><input className={inputClass} value={form.media_asset_id} onChange={(e) => setForm({ ...form, media_asset_id: e.target.value })} placeholder="Backend Media Asset ID / 后台素材ID" /><input className={inputClass} value={form.version_label} onChange={(e) => setForm({ ...form, version_label: e.target.value })} placeholder="A/B Version" /><textarea className={`${inputClass} min-h-32 font-mono text-xs`} value={form.editable_text} onChange={(e) => setForm({ ...form, editable_text: e.target.value })} placeholder="Editable AI copy" /><button type="button" onClick={saveCreative} className="w-full rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700">Save Creative Draft / 保存素材文案草稿</button></div></SectionCard><SectionCard title="Creative Library / 广告素材库" subtitle="Drafts can be reviewed and approved before platform publishing. / 草稿可先审核批准，再进入平台发布流程。"><div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="min-w-[900px] w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">Title</th><th className="p-3">Platform</th><th className="p-3">Type</th><th className="p-3">Version</th><th className="p-3">Status</th><th className="p-3">CTA</th></tr></thead><tbody className="divide-y divide-slate-100">{creatives.map((item) => <tr key={String(item.creative_id)}><td className="p-3"><div className="font-black text-slate-900">{text(item.title)}</div><div className="text-xs font-semibold text-slate-500">{text(item.headline)}</div></td><td className="p-3"><Badge tone={tone(item.platform)}>{text(item.platform)}</Badge></td><td className="p-3"><Badge tone={tone(item.creative_type)}>{text(item.creative_type)}</Badge></td><td className="p-3 font-bold">{text(item.version_label)}</td><td className="p-3"><Badge tone={tone(item.status)}>{text(item.status)}</Badge></td><td className="p-3 font-bold">{text(item.cta)}</td></tr>)}{!creatives.length ? <tr><td colSpan={6} className="p-6 text-center text-sm font-bold text-slate-500">No creative drafts yet. / 暂无广告素材草稿。</td></tr> : null}</tbody></table></div></SectionCard></div></div>;
+}
