@@ -9,14 +9,13 @@ const middleware = read('middleware.ts');
 const domains = read('lib/nanofix/domains.ts');
 const registerForm = read('app/register/RegisterForm.tsx');
 const registerShell = read('app/register/RegisterShell.tsx');
-const engineerRegisterPage = read('app/register/engineer/page.tsx');
 const publicRegistrationApi = read('app/api/public/registration-requests/route.ts');
 const adminRegistrationApi = read('app/api/admin/registration-requests/route.ts');
 const fieldMediaApi = read('app/api/admin/field-media/route.ts');
 const fieldMediaWorkspace = read('components/FieldMediaCenterWorkspace.tsx');
 const fieldMediaPanel = read('components/FieldMediaAccessControlPanel.tsx');
 const registrationWorkspace = read('components/RegistrationReviewWorkspace.tsx');
-const fieldMigration = read('supabase/migrations/20260526010400_v28_1_3_field_media_links.sql');
+const fieldMigration = read('supabase/migrations/20260526010400_v28_1_3_field_media_acl_schema.sql');
 const regMigration = read('supabase/migrations/20260526003000_v28_1_2_portal_registration_requests.sql');
 
 must(domains.includes('https://www.nanofixsg.com') && domains.includes('https://app.nanofixsg.com'), 'public and app domains are defined', failures);
@@ -25,7 +24,7 @@ must(middleware.includes('shouldForceAdminAppHost') && middleware.includes('isNa
 
 must(registerForm.includes("type RegisterContext = 'admin' | 'customer'"), 'register form only supports admin/customer contexts', failures);
 must(registerShell.includes("type RegisterContext = 'admin' | 'customer'"), 'register shell only supports admin/customer contexts', failures);
-must(engineerRegisterPage.includes("redirect('/register?role=admin')"), 'old engineer register page redirects to admin registration', failures);
+must(!existsSync('app/register/engineer/page.tsx'), 'old standalone engineer registration page is deleted', failures);
 must(!registerForm.includes("'engineer'") && !registerShell.includes("'engineer'"), 'standalone engineer register type is removed', failures);
 must(publicRegistrationApi.includes("const allowedRequestedRoles = ['customer', 'admin']"), 'public registration API allows only customer/admin', failures);
 for (const group of ['total_management','management','inspection_repair','operations','finance']) {
@@ -38,6 +37,8 @@ must(!existsSync('app/api/engineer/field-media/route.ts'), 'engineer field media
 must(!existsSync('app/api/customer/field-media/route.ts'), 'customer field media API route is not exposed', failures);
 must(fieldMediaPanel.includes('Access Control / 素材权限控制'), 'field media access panel exists', failures);
 must(fieldMediaWorkspace.includes('FieldMediaAccessControlPanel'), 'field media workspace uses access panel', failures);
+must(fieldMediaWorkspace.includes('Client portals cannot read this center directly'), 'field media workspace states backend-only boundary', failures);
+must(!fieldMediaWorkspace.includes('MediaSourcePicker'), 'field media workspace does not depend on media picker upload module', failures);
 must(fieldMediaApi.includes('allowed_view_actor_ids') && fieldMediaApi.includes('canView') && fieldMediaApi.includes('loadPeople'), 'field media API enforces role/person filtering', failures);
 must(fieldMigration.includes('allowed_view_actor_ids') && fieldMigration.includes('allowed_use_actor_ids'), 'field media migration has person ACL fields', failures);
 
