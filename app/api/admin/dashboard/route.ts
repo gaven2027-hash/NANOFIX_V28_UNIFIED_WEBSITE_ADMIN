@@ -51,7 +51,7 @@ async function getDashboardData(search: string) {
   const todayStart = singaporeDayStartIso();
   const profileColumns = 'profile_id,auth_user_id,email,full_name,role,is_active,password_status,username,mobile_phone,whatsapp_phone,profile_status,review_status,created_at,updated_at';
   const aiColumns = 'draft_id,module,record_id,task,human_review_status,ai_risk_level,admin_note,reviewed_by,reviewed_at,approved_at,rejected_at,created_at';
-  const socialColumns = 'message_id,lead_id,customer_id,channel,direction,body,risk_level,handling_status,follow_up_note,handled_by,handled_at,lead_conversion_status,created_at';
+  const socialColumns = 'message_id,lead_id,customer_id,channel,external_message_id,external_thread_id,direction,body,risk_level,risk_score_percent,handling_status,reply_status,sla_status,sla_due_at,message_kind,platform_message_type,contact_name,contact_phone,contact_whatsapp,contact_email,source_url,follow_up_note,handled_by,handled_at,lead_conversion_status,ai_intent,ai_summary,ai_reply_suggestion,ai_confidence_percent,created_at,updated_at';
 
   const [
     leads,
@@ -107,12 +107,16 @@ async function getDashboardData(search: string) {
 
   const unpaidAmount = unpaidInvoices.rows.reduce((sum, row) => sum + Number(row.total_amount || 0), 0);
   const degradedModules = modules.rows.filter((row) => String(row.health_status || '').toLowerCase() !== 'healthy');
+  const overdueMessages = filtered.channel_alerts.filter((row) => String(row.sla_status || '').toLowerCase() === 'overdue');
+  const highRiskMessages = filtered.channel_alerts.filter((row) => /high|critical/i.test(String(row.risk_level || '')));
   const healthPercent = modules.rows.length ? Math.max(0, Math.round(((modules.rows.length - degradedModules.length) / modules.rows.length) * 100)) : 100;
 
   const kpis = [
     { key: 'new_members', label: 'New Members Today', zh: '今日新增会员', value: filtered.new_members.length, trend: 'today', tone: 'green' },
     { key: 'new_engineers', label: 'New Engineers Today', zh: '今日新增工程师', value: filtered.new_engineers.length, trend: 'today', tone: 'green' },
     { key: 'pending_accounts', label: 'Pending Account Review', zh: '待审核账号', value: filtered.pending_accounts.length, trend: 'review', tone: 'amber' },
+    { key: 'channel_alerts', label: 'Channel Messages', zh: '渠道消息', value: filtered.channel_alerts.length, trend: `${overdueMessages.length} overdue`, tone: overdueMessages.length ? 'red' : 'blue' },
+    { key: 'message_risk', label: 'High Risk Messages', zh: '高风险消息', value: highRiskMessages.length, trend: 'human review', tone: highRiskMessages.length ? 'red' : 'green' },
     { key: 'blocked_accounts', label: 'Disabled / Blocked Accounts', zh: '停用/冻结/拉黑账号', value: filtered.blocked_accounts.length, trend: 'control', tone: 'red' },
     { key: 'new_leads', label: 'New Leads', zh: '新线索', value: filtered.new_leads.length, trend: '+ live', tone: 'blue' },
     { key: 'pending_inspections', label: 'Pending Inspection', zh: '待查验', value: filtered.pending_inspections.length, trend: 'urgent', tone: 'amber' },
@@ -124,6 +128,8 @@ async function getDashboardData(search: string) {
 
   const tasks = [
     ...filtered.pending_accounts,
+    ...overdueMessages,
+    ...highRiskMessages,
     ...filtered.new_leads,
     ...filtered.pending_binding,
     ...filtered.pending_inspections,
