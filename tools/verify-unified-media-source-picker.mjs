@@ -36,9 +36,11 @@ must(migration.includes("source_type in ('local_upload','url_import','library_se
 must(migration.includes('media_assets_admin_all'), 'admin RLS policy exists for media assets');
 must(api.includes("requireAdmin(request, 'write:content')"), 'media API requires admin write permission');
 must(api.includes('multipart/form-data') && api.includes('supabase.storage.from(bucket).upload'), 'local computer upload route exists');
+must(api.includes('createUrlAsset(body') && api.includes('createLibrarySelection(body'), 'media API removes unused request parameters from helper functions');
 must(api.includes('create_url_asset') && api.includes('asset_url'), 'URL import route exists');
 must(api.includes('select_library_asset'), 'media library selection route exists');
 must(api.includes('auditLog'), 'media API writes audit logs');
+must(picker.includes('/* eslint-disable @next/next/no-img-element */'), 'picker documents raw image preview for arbitrary media URLs');
 must(picker.includes('Local Computer / 本地上传'), 'picker has local upload tab');
 must(picker.includes('URL Link / 链接导入'), 'picker has URL import tab');
 must(picker.includes('Media Library / 素材库'), 'picker has backend library tab');
@@ -69,6 +71,7 @@ must(fieldMigration.includes('create table if not exists public.field_media_link
 must(fieldMigration.includes('service_request') && fieldMigration.includes('engineer_inspection') && fieldMigration.includes('warranty'), 'field media object types cover service request, engineer inspection and warranty');
 must(fieldApi.includes("requireAdmin(request, 'write:content')") && fieldApi.includes('create_field_media_link'), 'field media API requires admin write and audit logs');
 must(fieldWorkspace.includes('Field Attachment Source / 现场附件素材来源'), 'field media workspace has attachment picker');
+must(!fieldWorkspace.includes("import Link from 'next/link'"), 'field media workspace has no unused Link import');
 must(fieldWorkspace.includes('customer_before_submit') && fieldWorkspace.includes('engineer_after') && fieldWorkspace.includes('warranty_proof'), 'field media workspace covers customer, engineer and warranty stages');
 must(fieldWorkspace.includes('customer_visible') && fieldWorkspace.includes('engineer_visible'), 'field media workspace supports customer and engineer visibility');
 must(fieldPage.includes('FieldMediaCenterWorkspace'), 'field media center page exists');
