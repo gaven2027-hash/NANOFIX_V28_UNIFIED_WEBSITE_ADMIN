@@ -36,6 +36,11 @@ function tone(status: unknown): 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'c
   return 'blue';
 }
 
+function asConversionStatus(value: unknown, fallback: ConversionStatus): ConversionStatus {
+  const status = String(value || fallback);
+  return conversionStatuses.includes(status as ConversionStatus) ? status as ConversionStatus : fallback;
+}
+
 function replyType(mode: ReplyMode) {
   if (mode === 'manual_sent') return 'manual_sent';
   if (mode === 'api_queued') return 'api_queued';
@@ -85,7 +90,7 @@ export function SocialMessagesWorkspace() {
   function selectRow(row: Row | null) {
     setSelected(row);
     setHandlingStatus(String(row?.handling_status || 'in_progress') as HandlingStatus);
-    setConversionStatus(String(row?.lead_conversion_status || 'not_converted') as ConversionStatus);
+    setConversionStatus(asConversionStatus(row?.lead_conversion_status, 'not_converted'));
     setFollowUpNote(String(row?.follow_up_note || ''));
     setReplyBody(String(row?.ai_reply_suggestion || ''));
     void loadReplies(row);
@@ -134,7 +139,7 @@ export function SocialMessagesWorkspace() {
     }
     setSelected(json.record || selected);
     setHandlingStatus(String(json.record?.handling_status || finalStatus) as HandlingStatus);
-    setConversionStatus(String(json.record?.lead_conversion_status || conversionStatus));
+    setConversionStatus(asConversionStatus(json.record?.lead_conversion_status, conversionStatus));
     setFollowUpNote(String(json.record?.follow_up_note || followUpNote));
     setMessage('Message handling status saved and audit log recorded. / 消息处理状态已保存并写入审计日志。');
     await load();
