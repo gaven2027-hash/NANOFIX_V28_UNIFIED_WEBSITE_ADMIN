@@ -151,6 +151,31 @@ export const adminCenters: AdminCenter[] = [
   },
   {
     order: "5",
+    title: bi("Advertising & Promotion Center", "广告投放与推广中心"),
+    subtitle: bi("Unified paid acquisition center for Google Ads, social promotion, ROI, budget, creatives, UTM, AI suggestions and approval.", "统一管理谷歌广告、社媒推广、ROI、预算、素材、UTM、AI 建议与审批。"),
+    icon: "fa-bullhorn",
+    accent: "#F97316",
+    metrics: [
+      { label: bi("Ad spend", "广告花费"), value: "$950", tone: "amber" },
+      { label: bi("Paid leads", "广告线索"), value: "38", tone: "blue" },
+      { label: bi("Bookings", "预约查验"), value: "14", tone: "green" },
+      { label: bi("ROI alerts", "ROI 预警"), value: "2", tone: "red" }
+    ],
+    functions: [
+      bi("Google Ads and social promotion management", "谷歌广告与社媒推广管理"),
+      bi("Campaigns, creatives, copy and UTM links", "广告活动、素材、文案与 UTM 链接"),
+      bi("Budget requests and finance review", "预算申请与财务审核"),
+      bi("ROI, ROAS, CPL and attribution analytics", "ROI、ROAS、CPL 与归因分析"),
+      bi("AI ad suggestions and editable drafts", "AI 广告建议与可编辑草稿")
+    ],
+    controls: [
+      bi("Super Admin can take over any ad workflow", "总管理员可接管任何广告流程"),
+      bi("No automatic publishing or budget increase", "不自动发布或自动加预算"),
+      bi("All approvals and corrections are audit logged", "所有审批与修正写入审计日志")
+    ]
+  },
+  {
+    order: "6",
     title: bi("AI Intelligence Center", "AI 智能中心"),
     subtitle: bi("AI assistants, rules, content generation, conversation intelligence and cost logs.", "AI 助手、规则、内容生成、会话智能与成本日志。"),
     icon: "fa-wand-magic-sparkles",
@@ -175,7 +200,7 @@ export const adminCenters: AdminCenter[] = [
     ]
   },
   {
-    order: "6",
+    order: "7",
     title: bi("Customer Center", "客户中心"),
     subtitle: bi("Customer 360, portal records, binding, repair tracking and warranty history.", "客户 360、客户中心记录、客户绑定、报修追踪与保修历史。"),
     icon: "fa-user-shield",
@@ -200,14 +225,14 @@ export const adminCenters: AdminCenter[] = [
     ]
   },
   {
-    order: "7",
+    order: "8",
     title: bi("Website & System Settings", "网站与系统设置"),
     subtitle: bi("Company, branding, integrations, permissions, backups, QR backend and audit logs.", "公司资料、品牌、集成、权限、备份、后台 QR 与审计日志。"),
     icon: "fa-sliders",
     accent: "#64748B",
     metrics: [
-      { label: bi("Healthy modules", "健康模块"), value: "9/10", tone: "green" },
-      { label: bi("Backups", "备份"), value: "7", tone: "blue" },
+      { label: bi("Healthy modules", "健康模块"), value: "10/11", tone: "green" },
+      { label: bi("Backups", "备份"), value: "8", tone: "blue" },
       { label: bi("Secrets due", "待处理密钥"), value: "2", tone: "amber" },
       { label: bi("Failed jobs", "失败任务"), value: "1", tone: "red" }
     ],
@@ -276,6 +301,12 @@ export const workflowSteps: WorkflowStep[] = [
     guardrail: bi("Receipt is issued after payment allocation only.", "收据只能在付款分配后开具。")
   },
   {
+    name: bi("Advertising Campaign", "广告活动"),
+    status: bi("draft / submitted / finance_review / super_admin_review / approved / paused", "草稿 / 已提交 / 财务审核 / 总管理审核 / 已批准 / 已暂停"),
+    owner: bi("Operations + Finance + Super Admin", "运营 + 财务 + 总管理员"),
+    guardrail: bi("No automatic publishing or budget increase; Super Admin can take over any campaign workflow.", "不自动发布或自动加预算；总管理员可接管任何广告流程。")
+  },
+  {
     name: bi("Warranty / Claim", "保修 / 保修申请"),
     status: bi("active / expired / claim_opened / approved / rejected / resolved", "有效 / 已过期 / 已提交申请 / 已批准 / 已拒绝 / 已解决"),
     owner: bi("Operations Admin", "运营管理员"),
@@ -301,6 +332,15 @@ export const intakeRecords: IntakeRecord[] = [
     priority: "P1",
     status: bi("Customer account linked", "客户账户已绑定"),
     nextAction: bi("Schedule inspection and keep portal updated", "安排勘查并同步客户中心")
+  },
+  {
+    id: "AD-5001",
+    source: bi("Google Ads", "谷歌广告"),
+    customer: "Paid Search Lead",
+    issue: bi("High-intent HDB ceiling leak search converted to WhatsApp consult", "高意向 HDB 天花漏水搜索转为 WhatsApp 咨询"),
+    priority: "P1",
+    status: bi("Advertising attribution linked", "已绑定广告归因"),
+    nextAction: bi("Track booking, quotation and ROI", "追踪预约、报价和 ROI")
   },
   {
     id: "GM-1292",
@@ -352,17 +392,17 @@ export const successMessageRules: SuccessMessageRule[] = [
 export const slaRules: Array<[BilingualText, BilingualText, BilingualText, BilingualText]> = [
   [bi("P0 Critical", "P0 紧急"), bi("Urgent leak, bad review, angry complaint, payment issue, job emergency", "紧急漏水、差评、强烈投诉、付款问题、工单紧急情况"), bi("WhatsApp admin push + red dashboard alert", "WhatsApp 管理员推送 + 红色仪表盘预警"), bi("Acknowledge within 5 minutes", "5 分钟内确认")],
   [bi("P1 High", "P1 高优先级"), bi("High-intent booking, urgent inspection, warranty risk, same-day request", "高意向预约、紧急勘查、保修风险、当天请求"), bi("Notification bell + owner assignment", "通知铃 + 负责人分配"), bi("Acknowledge within 30 minutes", "30 分钟内确认")],
-  [bi("P2 Normal", "P2 普通"), bi("General form/message, normal request, content draft", "普通表单 / 消息、常规请求、内容草稿"), bi("Unified intake and module badge", "统一获客入口与模块角标"), bi("Respond within 1 business day", "1 个工作日内回复")],
+  [bi("P2 Normal", "P2 普通"), bi("General form/message, normal request, content draft, normal ad draft", "普通表单 / 消息、常规请求、内容草稿、普通广告草稿"), bi("Unified intake and module badge", "统一获客入口与模块角标"), bi("Respond within 1 business day", "1 个工作日内回复")],
   [bi("P3 Low", "P3 低优先级"), bi("Reports, archived logs, low-intent leads", "报表、归档日志、低意向线索"), bi("Logs and reports only", "仅日志与报表"), bi("Review in scheduled report", "在定期报表中查看")]
 ];
 
 export const rbacRows: Array<[BilingualText, BilingualText, BilingualText, BilingualText]> = [
-  [bi("Super Admin", "超级管理员"), bi("All modules", "全部模块"), bi("Full create/read/update/delete/export/approve/publish/backup/restore", "完整新增 / 查看 / 修改 / 删除 / 导出 / 审批 / 发布 / 备份 / 恢复"), bi("Danger actions audited", "高风险操作需要审计")],
-  [bi("Operations Admin", "运营管理员"), bi("Service, dispatch, customer operations", "服务、派工、客户运营"), bi("Assign jobs, bind customers, resolve P0/P1", "分配工单、绑定客户、处理 P0/P1"), bi("No secrets or finance voids by default", "默认不能操作密钥或财务作废")],
-  [bi("Finance", "财务"), bi("Quotes, invoices, payments, receipts", "报价、发票、付款、收据"), bi("Approve quotes, issue invoices, reconcile payments", "审批报价、开具发票、核对付款"), bi("No content publishing", "不能发布内容")],
-  [bi("Content Admin", "内容管理员"), bi("Website, social, AI drafts", "网站、社媒、AI 草稿"), bi("Review, schedule and publish approved content", "审核、排程并发布已批准内容"), bi("No finance exports", "不能导出财务数据")],
-  [bi("Support", "客服"), bi("Inbox and limited customer context", "收件箱和有限客户上下文"), bi("Reply, handoff, convert to lead", "回复、转人工、转为线索"), bi("No invoices or settings", "不能操作发票或设置")],
-  [bi("Engineer", "工程师"), bi("Assigned jobs", "已分配工单"), bi("Checklist, photos, status updates", "清单、照片、状态更新"), bi("No unassigned jobs", "不能查看未分配工单")],
+  [bi("Super Admin", "超级管理员"), bi("All modules", "全部模块"), bi("Full create/read/update/delete/export/approve/publish/backup/restore/takeover", "完整新增 / 查看 / 修改 / 删除 / 导出 / 审批 / 发布 / 备份 / 恢复 / 接管"), bi("Danger actions audited", "高风险操作需要审计")],
+  [bi("Operations Admin", "运营管理员"), bi("Service, dispatch, customer operations, ad strategy draft", "服务、派工、客户运营、广告策略草稿"), bi("Assign jobs, bind customers, resolve P0/P1, submit ad strategy", "分配工单、绑定客户、处理 P0/P1、提交广告策略"), bi("No secrets or finance voids by default", "默认不能操作密钥或财务作废")],
+  [bi("Finance", "财务"), bi("Quotes, invoices, payments, receipts, ad budget ROI", "报价、发票、付款、收据、广告预算 ROI"), bi("Approve quotes, issue invoices, reconcile payments, review ad budget", "审批报价、开具发票、核对付款、审核广告预算"), bi("No content publishing", "不能发布内容")],
+  [bi("Content Admin", "内容管理员"), bi("Website, social, AI drafts, ad creatives", "网站、社媒、AI 草稿、广告素材"), bi("Review, schedule and publish approved content; create ad copy drafts", "审核、排程并发布已批准内容；创建广告文案草稿"), bi("No finance exports", "不能导出财务数据")],
+  [bi("Support", "客服"), bi("Inbox and limited customer/ad source context", "收件箱和有限客户 / 广告来源上下文"), bi("Reply, handoff, convert to lead, view lead source", "回复、转人工、转为线索、查看线索来源"), bi("No invoices or settings", "不能操作发票或设置")],
+  [bi("Engineer", "工程师"), bi("Assigned jobs", "已分配工单"), bi("Checklist, photos, status updates", "清单、照片、状态更新"), bi("No unassigned jobs or ad budget", "不能查看未分配工单或广告预算")],
   [bi("Customer", "客户"), bi("Own portal", "自己的客户中心"), bi("View own requests, quotes, invoices, receipts, warranties", "查看自己的请求、报价、发票、收据和保修"), bi("No internal notes", "不能查看内部备注")]
 ];
 
@@ -370,6 +410,7 @@ export const backupModules: BilingualText[] = [
   bi("Central DB", "中央数据库"),
   bi("Website Management", "网站管理"),
   bi("Social / GMB / WhatsApp", "社媒 / GMB / WhatsApp"),
+  bi("Advertising & Promotion Center", "广告投放与推广中心"),
   bi("AI Logs", "AI 日志"),
   bi("Service & Orders", "服务与订单"),
   bi("Customer Center", "客户中心"),
@@ -383,6 +424,12 @@ export const editableContentBlocks = [
     label: bi("Dashboard notice", "仪表盘公告"),
     english: "P0 leakage and negative-review items require immediate human review before any external reply.",
     chinese: "P0 漏水与负面评论事项必须先由人工审核，之后才可对外回复。"
+  },
+  {
+    key: "advertising_center_notice",
+    label: bi("Advertising center notice", "广告中心公告"),
+    english: "Advertising drafts, AI suggestions and budget changes require human approval. Super Admin may take over any campaign workflow at any time.",
+    chinese: "广告草稿、AI 建议和预算调整必须经过人工审批。总管理员可随时接管任何广告活动流程。"
   },
   {
     key: "website_homepage_hero",
