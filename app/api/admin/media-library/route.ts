@@ -6,7 +6,16 @@ export const dynamic = 'force-dynamic';
 
 type Payload = Record<string, unknown>;
 
+type AssetRow = Payload & {
+  asset_id?: string;
+  asset_url?: string | null;
+  storage_bucket?: string | null;
+  storage_path?: string | null;
+  metadata_json?: Payload | null;
+};
+
 const bucket = 'nanofix-media-library';
+const signedUrlSeconds = 60 * 30;
 const assetColumns = 'asset_id,source_type,module_key,usage_context,title,alt_text,description,asset_url,storage_bucket,storage_path,original_filename,mime_type,size_bytes,width,height,duration_seconds,checksum,tags,metadata_json,status,created_by,updated_by,created_at,updated_at';
 const allowedSourceTypes = ['local_upload','url_import','library_selected','system_generated'];
 const allowedStatuses = ['draft','active','archived','blocked','deleted'];
@@ -46,6 +55,25 @@ function guessExtension(filename: string, mime: string) {
 }
 function validMime(mime: string) { return allowedMimePrefixes.some((prefix) => mime.startsWith(prefix)); }
 
+async function withSignedPreviewUrls(supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>, rows: AssetRow | AssetRow[] | null) {
+  const list = Array.isArray(rows) ? rows : rows ? [rows] : [];
+  const hydrated = await Promise.all(list.map(async (asset) => {
+    const storagePath = text(asset.storage_path, '', 2000);
+    const storageBucket = text(asset.storage_bucket, bucket, 200);
+    if (!storagePath) return asset;
+    const { data, error } = await supabase.storage.from(storageBucket).createSignedUrl(storagePath, signedUrlSeconds);
+    if (error || !data?.signedUrl) return { ...asset, signed_url_error: error?.message || 'signed_url_unavailable' };
+    return {
+      ...asset,
+      asset_url: data.signedUrl,
+      signed_asset_url: data.signedUrl,
+      signed_url_expires_in: signedUrlSeconds,
+      metadata_json: { ...(safeJson(asset.metadata_json, {})), private_storage: true, signed_url_expires_in: signedUrlSeconds }
+    };
+  }));
+  return Array.isArray(rows) ? hydrated : hydrated[0] || null;
+}
+
 function baseAssetPayload(body: Payload, actorId?: string) {
   return {
     source_type: safeSourceType(body.source_type),
@@ -79,7 +107,8 @@ async function listAssets(request: Request) {
   if (search) query = query.or(`title.ilike.%${search}%,alt_text.ilike.%${search}%,description.ilike.%${search}%,asset_url.ilike.%${search}%,storage_path.ilike.%${search}%`);
   const { data, error } = await query;
   if (error) return jsonError(error.message, 500);
-  return NextResponse.json({ ok: true, assets: data || [] });
+  const assets = await withSignedPreviewUrls(supabase, (data || []) as AssetRow[]);
+  return NextResponse.json({ ok: true, assets });
 }
 
 async function createUrlAsset(body: Payload, actorId?: string, actorRole?: string) {
@@ -106,8 +135,9 @@ async function createLibrarySelection(body: Payload, actorId?: string, actorRole
   delete (payload as Payload).asset_id;
   const { data, error } = await supabase.from('media_assets').insert(payload).select(assetColumns).single();
   if (error) return jsonError(error.message, 500);
+  const asset = await withSignedPreviewUrls(supabase, data as AssetRow);
   await auditLog({ actor_id: actorId, actor_role: actorRole, action: 'select_media_asset_from_library', object_type: 'media_asset', object_id: data.asset_id, after_data: data });
-  return NextResponse.json({ ok: true, asset: data });
+  return NextResponse.json({ ok: true, asset });
 }
 
 async function createLocalUpload(request: Request, actorId?: string, actorRole?: string) {
@@ -124,7 +154,7 @@ async function createLocalUpload(request: Request, actorId?: string, actorRole?:
   const storagePath = `${moduleKey}/${usage}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
   const { error: uploadError } = await supabase.storage.from(bucket).upload(storagePath, file, { contentType: file.type, upsert: false });
   if (uploadError) return jsonError(uploadError.message, 500);
-  const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+  const { data: signedData } = await supabase.storage.from(bucket).createSignedUrl(storagePath, signedUrlSeconds);
   const body: Payload = {
     source_type: 'local_upload',
     module_key: moduleKey,
@@ -133,14 +163,15 @@ async function createLocalUpload(request: Request, actorId?: string, actorRole?:
     alt_text: text(form.get('alt_text'), '', 500),
     description: text(form.get('description'), '', 2000),
     tags: text(form.get('tags'), '', 1000),
-    metadata_json: safeJson(text(form.get('metadata_json'), '{}', 8000), {}),
+    metadata_json: { ...safeJson(text(form.get('metadata_json'), '{}', 8000), {}), private_storage: true, signed_url_expires_in: signedUrlSeconds },
     status: 'active'
   };
-  const payload = { ...baseAssetPayload(body, actorId), asset_url: publicUrlData.publicUrl, storage_bucket: bucket, storage_path: storagePath, original_filename: file.name, mime_type: file.type, size_bytes: file.size, created_by: validUuid(actorId) ? actorId : null, created_at: new Date().toISOString() };
+  const payload = { ...baseAssetPayload(body, actorId), asset_url: null, storage_bucket: bucket, storage_path: storagePath, original_filename: file.name, mime_type: file.type, size_bytes: file.size, created_by: validUuid(actorId) ? actorId : null, created_at: new Date().toISOString() };
   const { data, error } = await supabase.from('media_assets').insert(payload).select(assetColumns).single();
   if (error) return jsonError(error.message, 500);
-  await auditLog({ actor_id: actorId, actor_role: actorRole, action: 'upload_media_asset_local', object_type: 'media_asset', object_id: data.asset_id, after_data: { ...data, file_size: file.size, mime_type: file.type } });
-  return NextResponse.json({ ok: true, asset: data });
+  const asset = { ...data, asset_url: signedData?.signedUrl || null, signed_asset_url: signedData?.signedUrl || null, signed_url_expires_in: signedUrlSeconds };
+  await auditLog({ actor_id: actorId, actor_role: actorRole, action: 'upload_media_asset_local', object_type: 'media_asset', object_id: data.asset_id, after_data: { ...data, file_size: file.size, mime_type: file.type, private_storage: true } });
+  return NextResponse.json({ ok: true, asset });
 }
 
 export async function GET(request: Request) { return listAssets(request); }
