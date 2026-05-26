@@ -25,6 +25,8 @@ const fieldWorkspace = read('components/FieldMediaCenterWorkspace.tsx');
 const fieldPage = read('app/admin/field-media/page.tsx');
 const aiWorkspace = read('components/AiMediaCenterWorkspace.tsx');
 const aiPage = read('app/admin/ai-media/page.tsx');
+const adminHome = read('app/admin/page.tsx');
+const adminData = read('lib/admin-data.ts');
 const replyWorker = read('app/api/system/social-message-reply-dispatch-worker/route.ts');
 const pkg = read('package.json');
 
@@ -77,6 +79,10 @@ must(aiWorkspace.includes('AI Attachment Source / AI 附件素材来源'), 'AI m
 must(aiWorkspace.includes('approved_for_ai') && aiWorkspace.includes('blocked_for_ai') && aiWorkspace.includes('used_in_ai'), 'AI media workspace controls AI readiness');
 must(aiWorkspace.includes('sensitive_restricted') && aiWorkspace.includes('privacy_scope'), 'AI media workspace supports privacy scope');
 must(aiPage.includes('AiMediaCenterWorkspace'), 'AI media center page exists');
+must(adminHome.includes('Unified Media Quick Access') && adminHome.includes('/admin/field-media') && adminHome.includes('/admin/ai-media') && adminHome.includes('/admin/publish-center/media-package'), 'admin home has unified media quick access links');
+must(adminHome.includes('Unified Media') && adminHome.includes('Upload / URL / Library'), 'admin sidebar has unified media anchor');
+must(adminData.includes('Field Media Center') && adminData.includes('AI Media Center') && adminData.includes('Publish Media Package'), 'admin data includes unified media centers');
+must(adminData.includes('Unified Media Library') && adminData.includes('现场素材中心') && adminData.includes('AI 素材中心'), 'backup/settings data covers media centers');
 must(pkg.includes('verify:media-source-picker'), 'package script includes verify:media-source-picker');
 must(pkg.includes('verify:media-source-picker') && pkg.includes('validate:predeploy'), 'predeploy includes media source validation');
 
