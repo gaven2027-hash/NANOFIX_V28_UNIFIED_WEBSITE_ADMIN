@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { auditActor, isSuperAdmin, requireAdmin } from '@/lib/nanofix/auth';
-import { sampleAdCampaignRows } from '@/lib/nanofix/advertising-center';
+import { sampleAdAccounts, sampleAdCampaignRows, sampleAdSuggestions } from '@/lib/nanofix/advertising-center';
 
 export const dynamic = 'force-dynamic';
 
 type Payload = Record<string, unknown>;
 
 const campaignColumns = 'campaign_id,platform,campaign_name,service_category,status,approval_status,daily_budget,monthly_budget,spend_amount,leads_count,bookings_count,quotations_count,jobs_count,revenue_amount,gross_profit_amount,landing_page_url,utm_source,utm_medium,utm_campaign,headline,primary_text,owner_id,created_by,approved_by,created_at,updated_at';
+const accountColumns = 'ad_account_id,platform,account_name,platform_account_id,currency,timezone,connection_status,sync_mode,last_sync_at,token_status,metadata_json,created_at,updated_at';
 const suggestionColumns = 'suggestion_id,campaign_id,suggestion_type,title,summary,editable_text,status,created_by,created_at,updated_at';
+const approvalColumns = 'approval_request_id,campaign_id,request_type,status,requested_by,finance_reviewer_id,super_admin_reviewer_id,request_note,decision_note,created_at,updated_at';
+const budgetColumns = 'budget_change_id,campaign_id,current_daily_budget,requested_daily_budget,current_monthly_budget,requested_monthly_budget,reason,status,requested_by,finance_reviewed_by,super_admin_approved_by,rejected_by,decision_note,created_at,updated_at';
+const syncLogColumns = 'sync_log_id,platform,sync_mode,status,rows_imported,error_message,started_at,finished_at,created_by,metadata_json';
+const takeoverColumns = 'takeover_id,object_type,object_id,previous_owner_id,takeover_by,takeover_reason,created_at';
 const platforms = ['google_ads','ga4','google_business_profile','meta_ads','tiktok_ads','youtube_ads','xiaohongshu','manual_import'];
 const statuses = ['draft','pending_review','approved','active','paused','rejected','archived'];
 const approvalStatuses = ['draft','submitted','finance_review','super_admin_review','approved','rejected'];
@@ -35,17 +40,26 @@ function sampleRows() {
   }));
 }
 
+async function safeSelect(supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>, table: string, columns: string, limit = 50) {
+  const { data, error } = await supabase.from(table).select(columns).order('created_at', { ascending: false }).limit(limit);
+  return error ? { data: [], error: error.message } : { data: data || [], error: null };
+}
+
 export async function GET(request: Request) {
   const { context, response } = requireAdmin(request, 'read:advertising');
   if (response) return response;
   const supabase = createSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ ok: true, campaigns: sampleRows(), suggestions: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'supabase_not_configured' });
-  const { data: campaigns, error } = await supabase.from('ad_campaigns').select(campaignColumns).order('created_at', { ascending: false }).limit(100);
-  if (error) {
-    return NextResponse.json({ ok: true, campaigns: sampleRows(), suggestions: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'ad_tables_not_ready', table_error: error.message });
-  }
-  const { data: suggestions } = await supabase.from('ad_ai_suggestions').select(suggestionColumns).order('created_at', { ascending: false }).limit(20);
-  return NextResponse.json({ ok: true, campaigns: campaigns || [], suggestions: suggestions || [], context, super_admin_full_access: isSuperAdmin(context), fallback: null });
+  if (!supabase) return NextResponse.json({ ok: true, campaigns: sampleRows(), accounts: sampleAdAccounts, suggestions: sampleAdSuggestions, approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'supabase_not_configured' });
+
+  const campaigns = await safeSelect(supabase, 'ad_campaigns', campaignColumns, 100);
+  if (campaigns.error) return NextResponse.json({ ok: true, campaigns: sampleRows(), accounts: sampleAdAccounts, suggestions: sampleAdSuggestions, approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'ad_tables_not_ready', table_error: campaigns.error });
+  const accounts = await safeSelect(supabase, 'ad_platform_accounts', accountColumns, 50);
+  const suggestions = await safeSelect(supabase, 'ad_ai_suggestions', suggestionColumns, 50);
+  const approvals = await safeSelect(supabase, 'ad_approval_requests', approvalColumns, 50);
+  const budgetRequests = await safeSelect(supabase, 'ad_budget_change_requests', budgetColumns, 50);
+  const syncLogs = await safeSelect(supabase, 'ad_sync_logs', syncLogColumns, 30);
+  const takeovers = await safeSelect(supabase, 'ad_super_admin_takeovers', takeoverColumns, 30);
+  return NextResponse.json({ ok: true, campaigns: campaigns.data, accounts: accounts.data.length ? accounts.data : sampleAdAccounts, suggestions: suggestions.data.length ? suggestions.data : sampleAdSuggestions, approvals: approvals.data, budgetRequests: budgetRequests.data, syncLogs: syncLogs.data, takeovers: takeovers.data, context, super_admin_full_access: isSuperAdmin(context), fallback: null });
 }
 
 export async function POST(request: Request) {
@@ -55,6 +69,15 @@ export async function POST(request: Request) {
   if (!supabase || !context) return jsonError('Supabase server client is not configured.', 503);
   const body = (await request.json().catch(() => ({}))) as Payload;
   const action = cleanText(body.action, 'create_campaign', 80);
+  if (action === 'create_budget_request') {
+    const campaignId = String(body.campaign_id || '');
+    if (!validUuid(campaignId)) return jsonError('Valid campaign_id is required.');
+    const payload = { campaign_id: campaignId, current_daily_budget: num(body.current_daily_budget), requested_daily_budget: num(body.requested_daily_budget), current_monthly_budget: num(body.current_monthly_budget), requested_monthly_budget: num(body.requested_monthly_budget), reason: cleanText(body.reason, '', 2000) || null, status: 'submitted', requested_by: context.actorId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const { data, error } = await supabase.from('ad_budget_change_requests').insert(payload).select(budgetColumns).single();
+    if (error) return jsonError(error.message, 500);
+    await auditLog({ ...auditActor(context), action: 'create_ad_budget_change_request', object_type: 'ad_budget_change_request', object_id: data.budget_change_id, after_data: data });
+    return NextResponse.json({ ok: true, budgetRequest: data });
+  }
   if (action !== 'create_campaign') return jsonError('Unsupported advertising action.');
   const payload = {
     platform: oneOf(body.platform, platforms, 'manual_import'),
@@ -101,12 +124,17 @@ export async function PATCH(request: Request) {
   if (!before) return jsonError('Campaign not found.', 404);
   let patch: Payload;
   if (action === 'submit_for_review') patch = { approval_status: 'submitted', status: 'pending_review', updated_at: new Date().toISOString() };
-  else if (action === 'super_admin_approve') {
+  else if (action === 'finance_review') patch = { approval_status: 'finance_review', updated_at: new Date().toISOString() };
+  else if (action === 'pause_campaign') patch = { status: 'paused', updated_at: new Date().toISOString() };
+  else if (action === 'super_admin_approve' || action === 'super_admin_takeover') {
     if (!isSuperAdmin(context)) return jsonError('Only Super Admin can approve or take over advertising campaigns.', 403);
-    patch = { approval_status: 'approved', status: 'approved', approved_by: context.actorId, updated_at: new Date().toISOString() };
+    patch = { approval_status: 'approved', status: action === 'super_admin_approve' ? 'approved' : before.status, approved_by: context.actorId, owner_id: context.actorId, updated_at: new Date().toISOString() };
   } else return jsonError('Unsupported advertising update action.');
   const { data, error } = await supabase.from('ad_campaigns').update(patch).eq('campaign_id', campaignId).select(campaignColumns).single();
   if (error) return jsonError(error.message, 500);
+  if (action === 'super_admin_takeover') {
+    await supabase.from('ad_super_admin_takeovers').insert({ object_type: 'ad_campaign', object_id: campaignId, previous_owner_id: before.owner_id || null, takeover_by: context.actorId, takeover_reason: cleanText(body.takeover_reason, 'Super Admin takeover', 1000), before_data: before, after_data: data });
+  }
   await auditLog({ ...auditActor(context), action: `advertising_${action}`, object_type: 'ad_campaign', object_id: campaignId, before_data: before, after_data: data });
   return NextResponse.json({ ok: true, campaign: data });
 }
