@@ -1,6 +1,7 @@
 -- NANOFIX V28.1.3 Field Media Links
 -- Connects media_assets to customer, service request, job and engineer field-work records.
 -- This keeps customer uploads, engineer inspection photos/videos and service/job attachments in the unified media library.
+-- Direct customer/engineer reads are intentionally NOT granted here; portal access must go through server APIs that enforce customer_id/job assignment.
 
 create table if not exists public.field_media_links (
   link_id uuid primary key default gen_random_uuid(),
@@ -37,9 +38,11 @@ create index if not exists field_media_links_metadata_idx on public.field_media_
 
 drop policy if exists field_media_links_admin_all on public.field_media_links;
 create policy field_media_links_admin_all on public.field_media_links for all
-using (exists (select 1 from public.profiles p where p.auth_user_id = auth.uid() and p.is_active = true and p.role in ('super_admin','content_admin','operations_admin','support','engineer')))
-with check (exists (select 1 from public.profiles p where p.auth_user_id = auth.uid() and p.is_active = true and p.role in ('super_admin','content_admin','operations_admin','support','engineer')));
+using (exists (select 1 from public.profiles p where p.auth_user_id = auth.uid() and p.is_active = true and p.role in ('super_admin','content_admin','operations_admin','support')))
+with check (exists (select 1 from public.profiles p where p.auth_user_id = auth.uid() and p.is_active = true and p.role in ('super_admin','content_admin','operations_admin','support')));
 
+-- Customer and engineer portals must use dedicated server-side API routes, not broad direct RLS policies.
+-- The visibility field is a business flag consumed by those routes after ownership / assignment checks.
 grant select, insert, update on public.field_media_links to authenticated;
 
 create or replace function public.nanofix_field_media_link_timestamp()
