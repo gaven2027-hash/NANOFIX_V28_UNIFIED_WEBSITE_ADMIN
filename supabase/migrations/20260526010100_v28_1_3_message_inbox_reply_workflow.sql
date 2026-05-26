@@ -74,9 +74,18 @@ create table if not exists public.social_message_replies (
 
 alter table public.social_message_replies enable row level security;
 
-alter table public.social_messages add constraint if not exists social_messages_message_kind_chk check (message_kind in ('private_message','public_comment','public_review','whatsapp_message','website_live_chat','forum_reply','system_alert','manual_note'));
-alter table public.social_messages add constraint if not exists social_messages_reply_status_chk check (reply_status in ('not_started','drafted','pending_human_review','manual_required','queued','sent','failed','not_needed'));
-alter table public.social_messages add constraint if not exists social_messages_sla_status_chk check (sla_status in ('on_track','due_soon','overdue','closed','paused'));
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'social_messages_message_kind_chk') then
+    alter table public.social_messages add constraint social_messages_message_kind_chk check (message_kind in ('private_message','public_comment','public_review','whatsapp_message','website_live_chat','forum_reply','system_alert','manual_note'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'social_messages_reply_status_chk') then
+    alter table public.social_messages add constraint social_messages_reply_status_chk check (reply_status in ('not_started','drafted','pending_human_review','manual_required','queued','sent','failed','not_needed'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'social_messages_sla_status_chk') then
+    alter table public.social_messages add constraint social_messages_sla_status_chk check (sla_status in ('on_track','due_soon','overdue','closed','paused'));
+  end if;
+end $$;
 
 create index if not exists social_messages_channel_idx on public.social_messages(channel);
 create index if not exists social_messages_external_message_id_idx on public.social_messages(external_message_id);
