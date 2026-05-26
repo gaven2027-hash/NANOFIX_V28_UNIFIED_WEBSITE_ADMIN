@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { NANOFIX_ADMIN_APP_URL, isNanofixAdminAppHost } from "@/lib/nanofix/domains";
 
 type NanofixRole =
   | "super_admin"
@@ -40,8 +41,7 @@ const loginAliases: Record<string, PortalContext> = {
 const registerAliases: Record<string, PortalContext> = {
   "/admin-register": "admin",
   "/customer-register": "customer",
-  "/member-register": "customer",
-  "/engineer-register": "engineer"
+  "/member-register": "customer"
 };
 const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests"];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
@@ -96,6 +96,21 @@ function normalizeRole(input: unknown): NanofixRole | null {
     return role as NanofixRole;
   }
   return null;
+}
+
+function adminAppUrl(pathname: string, search = "") {
+  const url = new URL(NANOFIX_ADMIN_APP_URL);
+  url.pathname = pathname;
+  url.search = search;
+  return url;
+}
+
+function redirectToAdminApp(request: NextRequest, pathname: string, search = request.nextUrl.search) {
+  return NextResponse.redirect(adminAppUrl(pathname, search));
+}
+
+function shouldForceAdminAppHost(pathname: string) {
+  return startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes]) || pathname === "/login" || pathname === "/admin-login" || pathname === "/admin-register";
 }
 
 function readBearerToken(request: NextRequest) {
@@ -269,6 +284,15 @@ function refreshSupabaseCookies(request: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.nextUrl.hostname;
+
+  if (isNanofixAdminAppHost(host) && pathname === "/") {
+    return redirectToAdminApp(request, "/login", "?role=admin");
+  }
+  if (!isNanofixAdminAppHost(host) && shouldForceAdminAppHost(pathname)) {
+    return redirectToAdminApp(request, pathname, request.nextUrl.search);
+  }
+
   const loginAliasRole = loginAliases[pathname];
   if (loginAliasRole) return redirectPortalAlias(request, "/login", loginAliasRole);
   const registerAliasRole = registerAliases[pathname];
@@ -302,6 +326,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/login/:path*",
     "/admin-login/:path*",
     "/customer-login/:path*",
@@ -310,7 +335,6 @@ export const config = {
     "/admin-register/:path*",
     "/customer-register/:path*",
     "/member-register/:path*",
-    "/engineer-register/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
     "/service-operations/:path*",
