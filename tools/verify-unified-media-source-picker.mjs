@@ -7,8 +7,10 @@ function must(condition, label) { checks.push({ ok: Boolean(condition), label })
 
 const migration = read('supabase/migrations/20260526010200_v28_1_3_unified_media_library.sql');
 const publishMigration = read('supabase/migrations/20260526010300_v28_1_3_publish_center_media_packages.sql');
+const fieldMigration = read('supabase/migrations/20260526010400_v28_1_3_field_media_links.sql');
 const api = read('app/api/admin/media-library/route.ts');
 const publishApi = read('app/api/admin/publish-center/route.ts');
+const fieldApi = read('app/api/admin/field-media/route.ts');
 const picker = read('components/MediaSourcePicker.tsx');
 const website = read('components/WebsiteManagementWorkspace.tsx');
 const social = read('components/SocialMediaManagementWorkspace.tsx');
@@ -17,6 +19,8 @@ const publishPanel = read('components/PublishCenterMediaPanel.tsx');
 const publishWorkspace = read('components/PublishCenterMediaPackageWorkspace.tsx');
 const publishPage = read('app/admin/publish-center/media-package/page.tsx');
 const publishEntry = read('app/admin/publish-center/page.tsx');
+const fieldWorkspace = read('components/FieldMediaCenterWorkspace.tsx');
+const fieldPage = read('app/admin/field-media/page.tsx');
 const replyWorker = read('app/api/system/social-message-reply-dispatch-worker/route.ts');
 const pkg = read('package.json');
 
@@ -55,6 +59,13 @@ must(publishPanel.includes('Publish Package Media Source / 发布素材包来源
 must(publishWorkspace.includes('PublishCenterMediaPanel') && publishWorkspace.includes('Save Media Package / 保存素材包'), 'publish media package workspace can save packages');
 must(publishPage.includes('PublishCenterMediaPackageWorkspace'), 'publish media package page exists');
 must(publishEntry.includes('/admin/publish-center/media-package'), 'main publish center links to media package page');
+must(fieldMigration.includes('create table if not exists public.field_media_links'), 'field media links table exists');
+must(fieldMigration.includes('service_request') && fieldMigration.includes('engineer_inspection') && fieldMigration.includes('warranty'), 'field media object types cover service request, engineer inspection and warranty');
+must(fieldApi.includes("requireAdmin(request, 'write:content')") && fieldApi.includes('create_field_media_link'), 'field media API requires admin write and audit logs');
+must(fieldWorkspace.includes('Field Attachment Source / 现场附件素材来源'), 'field media workspace has attachment picker');
+must(fieldWorkspace.includes('customer_before_submit') && fieldWorkspace.includes('engineer_after') && fieldWorkspace.includes('warranty_proof'), 'field media workspace covers customer, engineer and warranty stages');
+must(fieldWorkspace.includes('customer_visible') && fieldWorkspace.includes('engineer_visible'), 'field media workspace supports customer and engineer visibility');
+must(fieldPage.includes('FieldMediaCenterWorkspace'), 'field media center page exists');
 must(pkg.includes('verify:media-source-picker'), 'package script includes verify:media-source-picker');
 must(pkg.includes('verify:media-source-picker') && pkg.includes('validate:predeploy'), 'predeploy includes media source validation');
 
