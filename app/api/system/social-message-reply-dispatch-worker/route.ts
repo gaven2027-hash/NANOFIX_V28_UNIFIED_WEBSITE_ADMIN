@@ -42,6 +42,11 @@ function safePayload(value: unknown) {
   return value && typeof value === 'object' ? value as Row : {};
 }
 
+function replyMediaAssets(reply: Row) {
+  const payload = safePayload(reply.provider_payload);
+  return Array.isArray(payload.reply_media_assets) ? payload.reply_media_assets : [];
+}
+
 async function loadAccount(channel: string, provider: string) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) throw new Error('Supabase server client is not configured.');
@@ -64,6 +69,7 @@ async function callReplyProvider(reply: Row, message: Row, account: Row) {
   const provider = text(reply.provider, 'manual');
   const settings = safePayload(account.settings_json);
   const replyPayload = safePayload(reply.provider_payload);
+  const mediaAssets = replyMediaAssets(reply);
   const endpoint = text(replyPayload.dispatch_endpoint)
     || text(settings.reply_dispatch_endpoint)
     || text(account.webhook_url)
@@ -83,7 +89,7 @@ async function callReplyProvider(reply: Row, message: Row, account: Row) {
       'x-nanofix-dispatch-type': 'social-message-reply'
     },
     body: JSON.stringify({
-      contract_version: 'v28.1.3-social-message-reply-dispatch-1',
+      contract_version: 'v28.1.3-social-message-reply-dispatch-2',
       reply_id: reply.reply_id,
       message_id: reply.message_id,
       provider,
@@ -91,6 +97,9 @@ async function callReplyProvider(reply: Row, message: Row, account: Row) {
       external_message_id: reply.external_message_id || message.external_message_id,
       external_thread_id: message.external_thread_id,
       reply_body: reply.reply_body,
+      reply_media_assets: mediaAssets,
+      reply_has_media_assets: mediaAssets.length > 0,
+      media_source_picker_required: true,
       human_approved: true,
       ai_auto_reply_allowed: false,
       account: {
@@ -149,7 +158,7 @@ async function markSent(reply: Row, message: Row, result: Row) {
   const { data: updatedMessage, error: messageError } = await supabase.from('social_messages').update({ reply_status: 'sent', handling_status: 'replied', handled_at: sentAt, last_reply_id: reply.reply_id, updated_at: new Date().toISOString() }).eq('message_id', message.message_id).select(messageColumns).single();
   if (messageError) throw new Error(messageError.message);
   await auditLog({ action: 'social_message_reply_dispatched', actor_role: 'system_worker', object_type: 'social_message_reply', object_id: String(reply.reply_id), before_data: reply, after_data: { reply: updatedReply, message: updatedMessage } });
-  return { reply_id: reply.reply_id, status: 'sent', external_reply_id: result.external_reply_id || null };
+  return { reply_id: reply.reply_id, status: 'sent', external_reply_id: result.external_reply_id || null, media_assets_count: replyMediaAssets(reply).length };
 }
 
 async function dispatchReply(reply: Row) {
