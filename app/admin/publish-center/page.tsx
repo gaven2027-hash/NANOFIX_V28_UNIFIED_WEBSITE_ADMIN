@@ -28,6 +28,7 @@ export default function AdminPublishCenterPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Link href="/admin/publish-center/media-package" className="rounded-2xl bg-activeBlue px-4 py-2 text-sm font-black text-white hover:bg-blue-700">Media Package / 发布素材包</Link>
               <Link href="/admin" className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-700">Back Admin / 返回后台</Link>
               <Link href="/" className="rounded-2xl bg-white px-4 py-2 text-sm font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Open Website / 打开官网</Link>
             </div>
