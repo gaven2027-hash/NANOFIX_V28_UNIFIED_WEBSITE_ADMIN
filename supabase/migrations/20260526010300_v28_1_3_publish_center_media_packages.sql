@@ -1,7 +1,20 @@
--- NANOFIX V28.1.3 Publish Center Media Packages
--- Final publish hub for website, social, message and campaign content packages.
--- Supports local upload / URL import / media library selected assets through media_assets references.
+-- NANOFIX V28.1.3 Publish Center Media Package Enhancements
+-- Adds media package support to the existing publish_center_items workflow.
+-- Keeps the current final publish gate model and adds local upload / URL import / media library asset references.
 
+alter table if exists public.publish_center_items
+  add column if not exists media_assets_json jsonb not null default '[]'::jsonb;
+
+alter table if exists public.publish_center_items
+  add column if not exists media_source_summary text;
+
+alter table if exists public.publish_center_items
+  add column if not exists publish_package_json jsonb not null default '{}'::jsonb;
+
+create index if not exists publish_center_items_media_assets_idx on public.publish_center_items using gin(media_assets_json);
+create index if not exists publish_center_items_publish_package_idx on public.publish_center_items using gin(publish_package_json);
+
+-- Optional standalone package table for future cross-module publish bundles.
 create table if not exists public.publish_center_packages (
   package_id uuid primary key default gen_random_uuid(),
   module_key text not null default 'publish_center',
