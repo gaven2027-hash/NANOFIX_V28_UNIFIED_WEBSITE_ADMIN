@@ -1,6 +1,6 @@
 import { RegisterForm } from './RegisterForm';
 
-type RegisterContext = 'admin' | 'customer' | 'engineer';
+type RegisterContext = 'admin' | 'customer';
 
 export function RegisterShell({ forcedContext }: { forcedContext?: RegisterContext }) {
   return (
