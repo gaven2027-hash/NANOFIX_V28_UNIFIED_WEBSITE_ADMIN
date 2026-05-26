@@ -109,8 +109,12 @@ function redirectToAdminApp(request: NextRequest, pathname: string, search = req
   return NextResponse.redirect(adminAppUrl(pathname, search));
 }
 
-function shouldForceAdminAppHost(pathname: string) {
-  return startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes]) || pathname === "/login" || pathname === "/admin-login" || pathname === "/admin-register";
+function shouldForceAdminAppHost(pathname: string, searchParams: URLSearchParams) {
+  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return true;
+  if (pathname === "/admin-login" || pathname === "/admin-register") return true;
+  if (pathname === "/login") return searchParams.get("role") === "admin";
+  if (pathname === "/register") return searchParams.get("role") === "admin";
+  return false;
 }
 
 function readBearerToken(request: NextRequest) {
@@ -290,7 +294,7 @@ export async function middleware(request: NextRequest) {
   if (productionHost && isNanofixAdminAppHost(host) && pathname === "/") {
     return redirectToAdminApp(request, "/login", "?role=admin");
   }
-  if (productionHost && !isNanofixAdminAppHost(host) && shouldForceAdminAppHost(pathname)) {
+  if (productionHost && !isNanofixAdminAppHost(host) && shouldForceAdminAppHost(pathname, request.nextUrl.searchParams)) {
     return redirectToAdminApp(request, pathname, request.nextUrl.search);
   }
 
