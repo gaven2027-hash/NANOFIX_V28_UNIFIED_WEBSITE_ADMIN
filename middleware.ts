@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { NANOFIX_ADMIN_APP_URL, isNanofixAdminAppHost } from "@/lib/nanofix/domains";
+import { NANOFIX_ADMIN_APP_URL, isNanofixAdminAppHost, isNanofixProductionHost } from "@/lib/nanofix/domains";
 
 type NanofixRole =
   | "super_admin"
@@ -285,11 +285,12 @@ function refreshSupabaseCookies(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const host = request.nextUrl.hostname;
+  const productionHost = isNanofixProductionHost(host);
 
-  if (isNanofixAdminAppHost(host) && pathname === "/") {
+  if (productionHost && isNanofixAdminAppHost(host) && pathname === "/") {
     return redirectToAdminApp(request, "/login", "?role=admin");
   }
-  if (!isNanofixAdminAppHost(host) && shouldForceAdminAppHost(pathname)) {
+  if (productionHost && !isNanofixAdminAppHost(host) && shouldForceAdminAppHost(pathname)) {
     return redirectToAdminApp(request, pathname, request.nextUrl.search);
   }
 
