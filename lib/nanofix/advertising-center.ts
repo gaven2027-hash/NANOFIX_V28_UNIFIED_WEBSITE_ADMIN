@@ -1,5 +1,5 @@
 export type AdPlatform = 'google_ads' | 'ga4' | 'google_business_profile' | 'meta_ads' | 'tiktok_ads' | 'youtube_ads' | 'xiaohongshu' | 'manual_import';
-export type AdApprovalStatus = 'draft' | 'pending_review' | 'finance_review' | 'approved' | 'rejected' | 'paused' | 'archived';
+export type AdApprovalStatus = 'draft' | 'pending_review' | 'finance_review' | 'super_admin_review' | 'approved' | 'rejected' | 'paused' | 'archived';
 export type AdRiskLevel = 'normal' | 'watch' | 'high' | 'critical';
 
 export const adPlatforms: Array<{ key: AdPlatform; label: string; status: string; syncMode: string }> = [
@@ -28,6 +28,15 @@ export const adCenterSections = [
   ['Settings', '广告设置']
 ];
 
+export const adServiceCategories = [
+  'Leak Detection / 漏水检测',
+  'No-Hacking Repair / 免敲砖维修',
+  'Waterproofing Works / 防水工程',
+  'Commercial & Industrial / 商业与工业',
+  'Warranty Trust / 保修信任',
+  'Remarketing / 再营销'
+];
+
 export const superAdminAdvertisingCapabilities = [
   'View all advertising accounts, campaigns, creatives, budgets, ROI reports and attribution data / 查看所有广告账号、活动、素材、预算、ROI 与归因数据',
   'Create, edit, approve, pause, resume or archive any campaign / 创建、编辑、批准、暂停、恢复或归档任何广告活动',
@@ -47,11 +56,31 @@ export const adRoleMatrix = [
   { role: 'engineer', label: 'Inspection & Repair / 检修', permissions: 'Assigned job source visibility only, no ad spend or customer private campaign data / 只看分配工单来源，不看广告花费和客户隐私广告数据' }
 ];
 
+export const adApprovalGateRules = [
+  'AI suggestions are editable drafts only / AI 建议只作为可编辑草稿',
+  'Budget increases must go through finance review and Super Admin approval / 加预算必须经过财务审核和总管理员批准',
+  'External platform publishing remains disabled in Phase 1 / 第一阶段不自动发布到外部广告平台',
+  'Every approval, rejection, pause, takeover and ROI correction must be audit logged / 所有批准、驳回、暂停、接管和 ROI 修正必须写入审计日志',
+  'Super Admin can take over any role task at any time / 总管理员可以随时接管任何角色任务'
+];
+
+export const sampleAdAccounts = [
+  { platform: 'google_ads', account_name: 'NANOFIX Google Ads', status: 'planned_api_or_csv', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Pending / 待连接' },
+  { platform: 'meta_ads', account_name: 'NANOFIX Meta Ads', status: 'planned_api_or_csv', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Pending / 待连接' },
+  { platform: 'tiktok_ads', account_name: 'NANOFIX TikTok Ads', status: 'planned_api_or_csv', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Pending / 待连接' },
+  { platform: 'manual_import', account_name: 'Manual CSV Import', status: 'enabled_phase_1', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Manual / 手动' }
+];
+
 export const sampleAdCampaignRows = [
   { platform: 'Google Ads', campaign: 'HDB Ceiling Leak Emergency', service: 'Leak Detection', spend: 420, leads: 18, bookings: 7, revenue: 3800, roi: 8.05, status: 'pending_review', risk: 'watch' },
   { platform: 'Meta Ads', campaign: 'No-Hacking Toilet Repair', service: 'No-Hacking Repair', spend: 260, leads: 11, bookings: 4, revenue: 2200, roi: 7.46, status: 'draft', risk: 'normal' },
   { platform: 'TikTok Ads', campaign: 'Before After Waterproofing Video', service: 'Waterproofing Works', spend: 180, leads: 5, bookings: 1, revenue: 0, roi: -1, status: 'finance_review', risk: 'high' },
   { platform: 'Manual CSV', campaign: 'Xiaohongshu Condo Leak Post Boost', service: 'Condo Leak Repair', spend: 90, leads: 4, bookings: 2, revenue: 980, roi: 9.89, status: 'approved', risk: 'normal' }
+];
+
+export const sampleAdSuggestions = [
+  { suggestion_id: 'sample-ai-1', suggestion_type: 'budget', title: 'Shift budget from low-conversion video to high-intent search / 把预算从低转化视频转到高意向搜索', summary: 'Google HDB ceiling leak campaign has stronger booking conversion than TikTok video test.', editable_text: 'Reduce TikTok test budget by 20% and move it to Google high-intent leak detection keywords after Super Admin approval.' },
+  { suggestion_id: 'sample-ai-2', suggestion_type: 'copy', title: 'Use no-hacking trust phrase / 使用免敲砖信任表达', summary: 'No-Hacking Repair campaigns should highlight photo consultation and transparent inspection.', editable_text: 'Try headline: No-Hacking Leak Repair — Send Photos First, Inspect Before Hacking.' }
 ];
 
 export const adWorkflow = [
@@ -73,4 +102,8 @@ export function calculateRoas(revenue: number, spend: number) {
 
 export function calculateRoi(revenue: number, spend: number, grossProfit = revenue) {
   return spend > 0 ? Number(((grossProfit - spend) / spend).toFixed(2)) : 0;
+}
+
+export function calculateCpl(spend: number, leads: number) {
+  return leads > 0 ? Number((spend / leads).toFixed(2)) : 0;
 }
