@@ -16,7 +16,7 @@ on conflict (id) do update set
 
 create table if not exists public.media_assets (
   asset_id uuid primary key default gen_random_uuid(),
-  source_type text not null default 'url' check (source_type in ('local_upload','url_import','library_selected','system_generated')),
+  source_type text not null default 'url_import' check (source_type in ('local_upload','url_import','library_selected','system_generated')),
   module_key text not null default 'general',
   usage_context text not null default 'content_editor',
   title text,
@@ -40,6 +40,8 @@ create table if not exists public.media_assets (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.media_assets alter column source_type set default 'url_import';
 
 alter table public.media_assets enable row level security;
 
