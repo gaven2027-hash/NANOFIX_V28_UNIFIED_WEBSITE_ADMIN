@@ -10,6 +10,8 @@ const api = read('app/api/admin/media-library/route.ts');
 const picker = read('components/MediaSourcePicker.tsx');
 const website = read('components/WebsiteManagementWorkspace.tsx');
 const social = read('components/SocialMediaManagementWorkspace.tsx');
+const messages = read('components/SocialMessagesWorkspace.tsx');
+const replyWorker = read('app/api/system/social-message-reply-dispatch-worker/route.ts');
 const pkg = read('package.json');
 
 must(migration.includes('create table if not exists public.media_assets'), 'media_assets table exists');
@@ -35,6 +37,12 @@ must(social.includes("import { MediaSourcePicker } from './MediaSourcePicker'"),
 must(social.includes('Record Media Source / 记录素材来源'), 'social records/settings editor has media source picker');
 must(social.includes('AI Draft Material Source / AI 草稿素材来源'), 'social AI draft editor has media source picker');
 must(social.includes('selected_media_assets') && social.includes('source_references'), 'social media selection updates config JSON and source references');
+must(messages.includes("import { MediaSourcePicker } from './MediaSourcePicker'"), 'messages inbox imports media picker');
+must(messages.includes('Reply Attachment Source / 回复附件素材来源'), 'messages inbox reply editor has attachment picker');
+must(messages.includes('reply_media_assets') && messages.includes('reply_has_media_assets'), 'messages inbox saves selected reply media assets');
+must(messages.includes('Selected Reply Media / 已选择回复素材') && messages.includes('Remove'), 'messages inbox can display/remove selected reply media');
+must(replyWorker.includes('reply_media_assets') && replyWorker.includes('reply_has_media_assets'), 'reply dispatch worker forwards media attachments');
+must(replyWorker.includes('contract_version: \'v28.1.3-social-message-reply-dispatch-2\''), 'reply dispatch contract version includes attachment support');
 must(pkg.includes('verify:media-source-picker'), 'package script includes verify:media-source-picker');
 must(pkg.includes('verify:media-source-picker') && pkg.includes('validate:predeploy'), 'predeploy includes media source validation');
 
