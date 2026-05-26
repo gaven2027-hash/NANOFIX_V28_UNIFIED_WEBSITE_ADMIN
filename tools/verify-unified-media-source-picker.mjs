@@ -8,6 +8,8 @@ function must(condition, label) { checks.push({ ok: Boolean(condition), label })
 const migration = read('supabase/migrations/20260526010200_v28_1_3_unified_media_library.sql');
 const api = read('app/api/admin/media-library/route.ts');
 const picker = read('components/MediaSourcePicker.tsx');
+const website = read('components/WebsiteManagementWorkspace.tsx');
+const social = read('components/SocialMediaManagementWorkspace.tsx');
 const pkg = read('package.json');
 
 must(migration.includes('create table if not exists public.media_assets'), 'media_assets table exists');
@@ -25,6 +27,14 @@ must(picker.includes('Media Library / 素材库'), 'picker has backend library t
 must(picker.includes('Upload & Use / 上传并使用'), 'picker can upload and apply local files');
 must(picker.includes('Import URL & Use / 导入链接并使用'), 'picker can import and apply URL assets');
 must(picker.includes('selectLibrary'), 'picker can select backend library assets');
+must(website.includes("import { MediaSourcePicker } from './MediaSourcePicker'"), 'website management imports media picker');
+must(website.includes('Page SEO Media Source / 页面 SEO 素材来源'), 'website page SEO editor has media source picker');
+must(website.includes('Block Visual Media Source / 区块视觉素材来源'), 'website block visual editor has media source picker');
+must(website.includes('visual_output_url') && website.includes('visual_output_storage_path') && website.includes('same-position preview'), 'website media selection updates visual output and preview metadata');
+must(social.includes("import { MediaSourcePicker } from './MediaSourcePicker'"), 'social media management imports media picker');
+must(social.includes('Record Media Source / 记录素材来源'), 'social records/settings editor has media source picker');
+must(social.includes('AI Draft Material Source / AI 草稿素材来源'), 'social AI draft editor has media source picker');
+must(social.includes('selected_media_assets') && social.includes('source_references'), 'social media selection updates config JSON and source references');
 must(pkg.includes('verify:media-source-picker'), 'package script includes verify:media-source-picker');
 must(pkg.includes('verify:media-source-picker') && pkg.includes('validate:predeploy'), 'predeploy includes media source validation');
 
