@@ -68,11 +68,20 @@ create table if not exists public.social_message_replies (
   sent_by uuid,
   sent_at timestamptz,
   failure_reason text,
+  dispatch_attempt_count integer not null default 0,
+  last_dispatch_attempt_at timestamptz,
+  next_retry_at timestamptz,
+  provider_response_json jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 alter table public.social_message_replies enable row level security;
+
+alter table public.social_message_replies add column if not exists dispatch_attempt_count integer not null default 0;
+alter table public.social_message_replies add column if not exists last_dispatch_attempt_at timestamptz;
+alter table public.social_message_replies add column if not exists next_retry_at timestamptz;
+alter table public.social_message_replies add column if not exists provider_response_json jsonb not null default '{}'::jsonb;
 
 do $$
 begin
@@ -97,6 +106,7 @@ create index if not exists social_messages_sla_due_at_idx on public.social_messa
 create index if not exists social_messages_created_at_idx on public.social_messages(created_at);
 create index if not exists social_message_replies_message_id_idx on public.social_message_replies(message_id);
 create index if not exists social_message_replies_dispatch_status_idx on public.social_message_replies(dispatch_status);
+create index if not exists social_message_replies_next_retry_idx on public.social_message_replies(next_retry_at);
 create index if not exists social_message_replies_created_at_idx on public.social_message_replies(created_at);
 
 create or replace function public.nanofix_social_message_set_sla()
