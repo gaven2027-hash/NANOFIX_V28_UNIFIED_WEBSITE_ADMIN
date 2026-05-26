@@ -37,7 +37,10 @@ must(dispatchWorker.includes("eq('dispatch_status', 'queued')") && dispatchWorke
 must(dispatchWorker.includes('social_accounts') && dispatchWorker.includes("connection_status', 'connected'"), 'dispatch worker requires connected social account binding');
 must(dispatchWorker.includes('nextRetryIso') && dispatchWorker.includes('dispatch_attempt_count'), 'dispatch worker handles retry delay and attempt count');
 must(dispatchWorker.includes('ai_auto_reply_allowed: false') && dispatchWorker.includes('human_approved: true'), 'dispatch worker sends human-approved payload only');
-must(inbox.includes('Reply Workflow / 回复流程') && inbox.includes('AI Draft + Human Approval'), 'inbox UI includes reply workflow panel');
+must(inbox.includes('Editable AI Suggested Reply / 可编辑 AI 建议回复'), 'inbox UI clearly labels editable AI reply area');
+must(inbox.includes('Editable Reply Content / 可编辑回复内容') && inbox.includes('Use Original AI Suggestion'), 'AI suggestion can be loaded and edited before sending');
+must(inbox.includes('edited_from_ai_suggestion') && inbox.includes('original_ai_suggestion'), 'reply payload records edited AI suggestion provenance');
+must(inbox.includes('Save Edited Draft') && inbox.includes('Queue API Dispatch'), 'editable reply can be saved as draft or queued');
 must(inbox.includes('SLA / 时效') && inbox.includes('risk_score_percent'), 'inbox UI displays SLA and risk score');
 must(dashboard.includes('High Risk Messages') && dashboard.includes('Channel Messages'), 'dashboard KPIs include message risk and channel messages');
 must(socialMediaApi.includes('reply_status') && socialMediaApi.includes('ai_reply_suggestion'), 'social media API exposes enhanced message fields');
