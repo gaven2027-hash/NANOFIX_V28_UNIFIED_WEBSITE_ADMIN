@@ -91,12 +91,14 @@ export const adminCenters: AdminCenter[] = [
       bi("Inspection scheduling", "勘查排程"),
       bi("Quotation approval", "报价审批"),
       bi("Dispatch board and work execution", "派工板与现场施工"),
-      bi("Invoice, payment, receipt and warranty", "发票、付款、收据与保修")
+      bi("Invoice, payment, receipt and warranty", "发票、付款、收据与保修"),
+      bi("Field Media Center for customer photos, engineer inspection media and warranty proof", "现场素材中心：客户照片、工程师查验素材与保修证明")
     ],
     controls: [
       bi("Status machine guards", "状态机保护"),
       bi("Engineer assignment RLS", "工程师派工 RLS"),
-      bi("Finance approval logs", "财务审批日志")
+      bi("Finance approval logs", "财务审批日志"),
+      bi("Local upload / URL import / media library selection for field attachments", "现场附件支持本地上传 / URL 导入 / 素材库选择")
     ]
   },
   {
@@ -116,12 +118,14 @@ export const adminCenters: AdminCenter[] = [
       bi("Page content and guide library", "页面内容与指南库"),
       bi("SEO/AEO schema library", "SEO/AEO 结构化数据库"),
       bi("AI website content generator", "AI 网站内容生成器"),
-      bi("Preview and publish approval", "预览与发布审批")
+      bi("Preview and publish approval", "预览与发布审批"),
+      bi("Page SEO media and block visual media picker", "页面 SEO 素材与区块视觉素材选择器")
     ],
     controls: [
       bi("No public QR sections", "前台不显示 QR 区块"),
       bi("Version history", "版本历史"),
-      bi("Publish audit logs", "发布审计日志")
+      bi("Publish audit logs", "发布审计日志"),
+      bi("Website images/GIF/videos from local upload, URL import or media library", "官网图片/GIF/视频来自本地上传、URL 导入或素材库")
     ]
   },
   {
@@ -141,12 +145,14 @@ export const adminCenters: AdminCenter[] = [
       bi("GMB messages, reviews and Q&A", "GMB 消息、评论与问答"),
       bi("WhatsApp AI reply and human handoff", "WhatsApp AI 回复与转人工"),
       bi("Live chat / webhook collector", "在线聊天 / Webhook 收集器"),
-      bi("Multi-platform preview review", "多平台预览审核")
+      bi("Multi-platform preview review", "多平台预览审核"),
+      bi("Reply attachment picker and social AI draft media sources", "回复附件选择器与社媒 AI 草稿素材来源")
     ],
     controls: [
       bi("Official API/webhook policy", "官方 API / Webhook 政策"),
       bi("AI confidence threshold", "AI 置信度阈值"),
-      bi("Negative review approval", "负面评论审批")
+      bi("Negative review approval", "负面评论审批"),
+      bi("Human approval before sending messages with media assets", "带素材消息发送前必须人工批准")
     ]
   },
   {
@@ -166,12 +172,14 @@ export const adminCenters: AdminCenter[] = [
       bi("AI social assistant", "AI 社媒助手"),
       bi("AI conversation intelligence", "AI 会话智能"),
       bi("Lead discovery and scoring", "线索发现与评分"),
-      bi("Prompt, safety and usage logs", "提示词、安全与使用日志")
+      bi("Prompt, safety and usage logs", "提示词、安全与使用日志"),
+      bi("AI Media Center for analysis, materials, quotation, invoice and report attachments", "AI 素材中心：分析、材料、报价、发票与报告附件")
     ],
     controls: [
       bi("No auto-publish", "禁止自动发布"),
       bi("Prompt injection checks", "提示注入检查"),
-      bi("Reviewer ownership", "审核人责任归属")
+      bi("Reviewer ownership", "审核人责任归属"),
+      bi("Approve for AI / Block AI / Sensitive restricted media controls", "允许 AI / 禁止 AI / 敏感限制素材控制")
     ]
   },
   {
@@ -191,12 +199,14 @@ export const adminCenters: AdminCenter[] = [
       bi("Customer 360 timeline", "客户 360 时间线"),
       bi("Pending customer binding", "待处理客户绑定"),
       bi("Portal repair tracking", "客户中心报修追踪"),
-      bi("Quotes, invoices, receipts and warranties", "报价、发票、收据与保修")
+      bi("Quotes, invoices, receipts and warranties", "报价、发票、收据与保修"),
+      bi("Customer-visible field media for portal repair tracking", "客户中心可见的现场素材与报修追踪附件")
     ],
     controls: [
       bi("Customer-owned RLS", "客户本人数据 RLS"),
       bi("No plaintext passwords", "不显示明文密码"),
-      bi("Access/correction workflow", "访问 / 更正请求流程")
+      bi("Access/correction workflow", "访问 / 更正请求流程"),
+      bi("Admin controls customer_visible vs internal media visibility", "后台控制 customer_visible 与内部素材可见范围")
     ]
   },
   {
@@ -216,12 +226,14 @@ export const adminCenters: AdminCenter[] = [
       bi("API integrations and secrets", "API 集成与密钥"),
       bi("Search settings and permissions", "搜索设置与权限"),
       bi("QR generation/download backend only", "QR 生成 / 下载仅限后台"),
-      bi("Backup, restore and audit logs", "备份、恢复与审计日志")
+      bi("Backup, restore and audit logs", "备份、恢复与审计日志"),
+      bi("Unified Media Library settings and module backup coverage", "统一素材库设置与模块备份覆盖")
     ],
     controls: [
       bi("Server-only secrets", "服务端密钥"),
       bi("Signed download links", "签名下载链接"),
-      bi("Restore logs", "恢复日志")
+      bi("Restore logs", "恢复日志"),
+      bi("Media library, field media, AI media and publish media package audit coverage", "素材库、现场素材、AI 素材和发布素材包审计覆盖")
     ]
   }
 ];
@@ -259,141 +271,121 @@ export const workflowSteps: WorkflowStep[] = [
   },
   {
     name: bi("Invoice", "发票"),
-    status: bi("draft / issued / partially_paid / paid / overdue / void", "草稿 / 已开具 / 部分付款 / 已付款 / 已超期 / 已作废"),
+    status: bi("draft / sent / paid / void / overdue", "草稿 / 已发送 / 已付款 / 作废 / 已逾期"),
     owner: bi("Finance", "财务"),
-    guardrail: bi("Issued invoice number is unique; void requires permission and reason.", "已开具发票号唯一；作废需要权限与原因。")
+    guardrail: bi("Invoice edits after sent are audit logged.", "发票发送后的修改必须记录审计日志。")
   },
   {
-    name: bi("Payment", "付款"),
-    status: bi("pending / processing / succeeded / failed / refunded", "待处理 / 处理中 / 成功 / 失败 / 已退款"),
-    owner: bi("Finance", "财务"),
-    guardrail: bi("Online payment needs gateway webhook reconciliation.", "线上付款需要支付网关 Webhook 对账。")
-  },
-  {
-    name: bi("Receipt", "收据"),
-    status: bi("draft / issued / corrected / void", "草稿 / 已开具 / 已更正 / 已作废"),
-    owner: bi("Finance", "财务"),
-    guardrail: bi("Receipt is issued after payment allocation only.", "收据只能在付款分配后开具。")
-  },
-  {
-    name: bi("Warranty / Claim", "保修 / 保修申请"),
-    status: bi("active / expired / claim_opened / approved / rejected / resolved", "有效 / 已过期 / 已提交申请 / 已批准 / 已拒绝 / 已解决"),
+    name: bi("Warranty", "保修"),
+    status: bi("active / expired / claim_open / claim_closed", "有效 / 已过期 / 保修申请中 / 已关闭"),
     owner: bi("Operations Admin", "运营管理员"),
-    guardrail: bi("Claim requires linked completed job and coverage check.", "保修申请需要关联已完成工单并检查保修范围。")
+    guardrail: bi("Warranty QR points to customer login / member center, not a public lookup page.", "保修 QR 指向客户登录 / 会员中心，不做公开查询页。")
   }
 ];
 
 export const intakeRecords: IntakeRecord[] = [
   {
-    id: "SR-28041",
-    source: bi("Website quick repair", "网站快速报修"),
-    customer: "Mr Tan",
-    issue: bi("Urgent ceiling leak above kitchen, photos uploaded", "厨房上方天花板紧急漏水，已上传照片"),
+    id: "REQ-1024",
+    source: bi("Website quick request", "网站快速报修"),
+    customer: "Tan HDB / Tampines",
+    issue: bi("Bathroom ceiling leak", "卫生间天花漏水"),
     priority: "P0",
-    status: bi("Service Request created, binding pending", "已创建服务请求，等待客户绑定"),
-    nextAction: bi("Call within 5 minutes and assign inspection", "5 分钟内致电并安排勘查")
+    status: bi("New, binding pending", "新建，待绑定"),
+    nextAction: bi("Call within 5 minutes", "5 分钟内联系")
   },
   {
-    id: "SR-28042",
-    source: bi("Registration + repair", "会员注册 + 报修"),
-    customer: "Lina Wong",
-    issue: bi("Bathroom seepage, wants portal tracking", "浴室渗水，希望通过客户中心追踪"),
+    id: "REQ-1025",
+    source: bi("WhatsApp photo consult", "WhatsApp 照片咨询"),
+    customer: "Condo MCST",
+    issue: bi("External wall seepage", "外墙渗水"),
     priority: "P1",
-    status: bi("Customer account linked", "客户账户已绑定"),
-    nextAction: bi("Schedule inspection and keep portal updated", "安排勘查并同步客户中心")
+    status: bi("AI triaged, human review", "AI 初筛，待人工复核"),
+    nextAction: bi("Schedule inspection", "安排勘查")
   },
   {
-    id: "GM-1292",
-    source: bi("Google Business Profile", "Google 商家资料"),
-    customer: "A. Rahman",
-    issue: bi("3-star review mentions unresolved warranty concern", "3 星评论提到未解决的保修问题"),
-    priority: "P0",
-    status: bi("Human required", "需要人工处理"),
-    nextAction: bi("Operations Admin review before reply", "运营管理员审核后回复")
+    id: "REQ-1026",
+    source: bi("Member portal", "会员中心"),
+    customer: "Retail unit",
+    issue: bi("Planter box waterproofing", "花槽防水"),
+    priority: "P2",
+    status: bi("Linked customer", "已绑定客户"),
+    nextAction: bi("Prepare quote", "准备报价")
+  }
+];
+
+export const slaRules: Array<[BilingualText, BilingualText, BilingualText, BilingualText]> = [
+  [bi("P0 Critical", "P0 紧急"), bi("Active leak / angry review / payment risk", "正在漏水 / 愤怒差评 / 付款风险"), bi("WhatsApp admin + dashboard alert", "WhatsApp 管理员 + 仪表盘预警"), bi("5 minutes", "5 分钟")],
+  [bi("P1 High", "P1 高"), bi("Likely conversion or urgent inspection", "高转化或紧急勘查"), bi("Assign owner + due badge", "分配负责人 + 到期角标"), bi("30 minutes", "30 分钟")],
+  [bi("P2 Normal", "P2 普通"), bi("Standard request", "普通请求"), bi("Queue in inbox", "进入收件箱队列"), bi("4 hours", "4 小时")],
+  [bi("P3 Low", "P3 低"), bi("Low intent or archive", "低意向或归档"), bi("No external push", "不外部推送"), bi("Next working day", "下一个工作日")]
+];
+
+export const editableContentBlocks = [
+  {
+    key: "home-hero",
+    label: bi("Home hero conversion block", "首页大图转化区"),
+    english: "No-hacking leak detection and waterproofing repair in Singapore. Upload photos and get a fast inspection plan.",
+    chinese: "新加坡免敲砖漏水检测与防水维修。上传照片，快速获得勘查方案。"
   },
   {
-    id: "WA-7721",
-    source: bi("WhatsApp", "WhatsApp"),
-    customer: "Grace Lee",
-    issue: bi("Asked for exact quote before inspection", "勘查前询问准确报价"),
-    priority: "P1",
-    status: bi("AI handoff triggered", "已触发 AI 转人工"),
-    nextAction: bi("Explain inspection-first quote policy", "说明先勘查后报价政策")
+    key: "submit-success",
+    label: bi("Submit request success message", "提交报修成功提示"),
+    english: "Your repair request has been received. Our team will review the photos and contact you shortly.",
+    chinese: "您的报修请求已收到。我们的团队会查看照片并尽快联系您。"
+  },
+  {
+    key: "ai-reply-template",
+    label: bi("AI reply draft template", "AI 回复草稿模板"),
+    english: "Thanks for sending the photos. Based on the visible stains, we recommend a site inspection before quoting.",
+    chinese: "感谢您发送照片。根据可见水迹，我们建议先安排现场勘查后再报价。"
   }
 ];
 
 export const successMessageRules: SuccessMessageRule[] = [
   {
-    scenario: bi("Quick repair request submitted successfully", "快速报修提交成功"),
-    english: "Thank you. Your repair request has been received. Our NANOFIX team will review it shortly and contact you as soon as possible.",
-    chinese: "谢谢您，您的报修请求已提交成功。NANOFIX 团队会尽快查看，并尽快与您联系。",
-    primarySubmitButton: bi("Submit Repair Request", "提交报修"),
-    nextStepButtons: bi("None. No next-step buttons on this quick no-login success page.", "无。快速免登录成功页不显示下一步按钮。"),
-    note: bi("Fastest no-login repair path for urgent customers.", "面向紧急客户的最快免登录报修路径。")
+    scenario: bi("Public quick repair form", "公开快速报修表单"),
+    english: "Your repair request has been submitted successfully. NANOFIX will contact you via WhatsApp or phone after reviewing your photos.",
+    chinese: "您的报修请求已成功提交。NANOFIX 会在查看照片后通过 WhatsApp 或电话联系您。",
+    primarySubmitButton: bi("Submit Repair Request", "提交报修请求"),
+    nextStepButtons: bi("Track My Repair / Contact WhatsApp", "追踪报修 / 联系 WhatsApp"),
+    note: bi("Does not require login or OTP before submit.", "提交前不强制登录或 OTP。")
   },
   {
-    scenario: bi("Customer registration completed successfully", "会员注册成功"),
-    english: "Welcome to NANOFIX. Your account has been created successfully. You can now track repair requests, quotations, invoices, payments and warranty records from your customer portal.",
-    chinese: "欢迎加入 NANOFIX，您的会员账户已创建成功。您现在可以在客户中心查看报修进度、报价、发票、付款和保修记录。",
-    primarySubmitButton: bi("Create Account", "注册会员"),
-    nextStepButtons: bi("View Customer Portal / Submit Another Request", "查看客户中心 / 再次提交报修"),
-    note: bi("Portal-first path for customers who want tracking.", "面向希望全程追踪客户的客户中心路径。")
+    scenario: bi("Member registration with optional repair", "会员注册并可选提交报修"),
+    english: "Your member account is created. If you submitted repair details, a service request has been linked to your account.",
+    chinese: "您的会员账号已创建。如您同时提交了报修信息，系统已把服务请求绑定到您的账号。",
+    primarySubmitButton: bi("Create Account", "创建账号"),
+    nextStepButtons: bi("Open Customer Portal / Submit Repair", "打开客户中心 / 提交报修"),
+    note: bi("Registration alone does not create a job.", "仅注册不会自动生成工单。")
   },
   {
-    scenario: bi("Customer registration + repair request submitted successfully", "会员注册并提交报修成功"),
-    english: "Welcome to NANOFIX. Your account and repair request have been created successfully. Our team will review your request shortly, and you can track the progress from your customer portal.",
-    chinese: "欢迎加入 NANOFIX，您的会员账户和报修请求已创建成功。我们的团队会尽快查看您的请求，您也可以在客户中心追踪处理进度。",
-    primarySubmitButton: bi("Create Account & Submit Repair Request", "注册会员并提交报修"),
-    nextStepButtons: bi("View Customer Portal / Submit Another Request", "查看客户中心 / 再次提交报修"),
-    note: bi("Registration with linked repair request.", "注册会员并绑定报修请求。")
+    scenario: bi("AI social draft approval", "AI 社媒草稿审批"),
+    english: "The AI draft is saved for review. It will not be published until an admin approves and schedules it.",
+    chinese: "AI 草稿已保存待审核。管理员批准并排程前不会发布。",
+    primarySubmitButton: bi("Save AI Draft", "保存 AI 草稿"),
+    nextStepButtons: bi("Preview Platforms / Send for Approval", "预览平台 / 提交审批"),
+    note: bi("AI auto-publish is disabled by default.", "AI 默认不能自动发布。")
   }
-];
-
-export const slaRules: Array<[BilingualText, BilingualText, BilingualText, BilingualText]> = [
-  [bi("P0 Critical", "P0 紧急"), bi("Urgent leak, bad review, angry complaint, payment issue, job emergency", "紧急漏水、差评、强烈投诉、付款问题、工单紧急情况"), bi("WhatsApp admin push + red dashboard alert", "WhatsApp 管理员推送 + 红色仪表盘预警"), bi("Acknowledge within 5 minutes", "5 分钟内确认")],
-  [bi("P1 High", "P1 高优先级"), bi("High-intent booking, urgent inspection, warranty risk, same-day request", "高意向预约、紧急勘查、保修风险、当天请求"), bi("Notification bell + owner assignment", "通知铃 + 负责人分配"), bi("Acknowledge within 30 minutes", "30 分钟内确认")],
-  [bi("P2 Normal", "P2 普通"), bi("General form/message, normal request, content draft", "普通表单 / 消息、常规请求、内容草稿"), bi("Unified intake and module badge", "统一获客入口与模块角标"), bi("Respond within 1 business day", "1 个工作日内回复")],
-  [bi("P3 Low", "P3 低优先级"), bi("Reports, archived logs, low-intent leads", "报表、归档日志、低意向线索"), bi("Logs and reports only", "仅日志与报表"), bi("Review in scheduled report", "在定期报表中查看")]
 ];
 
 export const rbacRows: Array<[BilingualText, BilingualText, BilingualText, BilingualText]> = [
-  [bi("Super Admin", "超级管理员"), bi("All modules", "全部模块"), bi("Full create/read/update/delete/export/approve/publish/backup/restore", "完整新增 / 查看 / 修改 / 删除 / 导出 / 审批 / 发布 / 备份 / 恢复"), bi("Danger actions audited", "高风险操作需要审计")],
-  [bi("Operations Admin", "运营管理员"), bi("Service, dispatch, customer operations", "服务、派工、客户运营"), bi("Assign jobs, bind customers, resolve P0/P1", "分配工单、绑定客户、处理 P0/P1"), bi("No secrets or finance voids by default", "默认不能操作密钥或财务作废")],
-  [bi("Finance", "财务"), bi("Quotes, invoices, payments, receipts", "报价、发票、付款、收据"), bi("Approve quotes, issue invoices, reconcile payments", "审批报价、开具发票、核对付款"), bi("No content publishing", "不能发布内容")],
-  [bi("Content Admin", "内容管理员"), bi("Website, social, AI drafts", "网站、社媒、AI 草稿"), bi("Review, schedule and publish approved content", "审核、排程并发布已批准内容"), bi("No finance exports", "不能导出财务数据")],
-  [bi("Support", "客服"), bi("Inbox and limited customer context", "收件箱和有限客户上下文"), bi("Reply, handoff, convert to lead", "回复、转人工、转为线索"), bi("No invoices or settings", "不能操作发票或设置")],
-  [bi("Engineer", "工程师"), bi("Assigned jobs", "已分配工单"), bi("Checklist, photos, status updates", "清单、照片、状态更新"), bi("No unassigned jobs", "不能查看未分配工单")],
-  [bi("Customer", "客户"), bi("Own portal", "自己的客户中心"), bi("View own requests, quotes, invoices, receipts, warranties", "查看自己的请求、报价、发票、收据和保修"), bi("No internal notes", "不能查看内部备注")]
+  [bi("Super Admin", "超级管理员"), bi("Full backend", "全后台"), bi("Manage users, settings, backups, publish, restore", "管理用户、设置、备份、发布、恢复"), bi("Cannot view plaintext passwords", "不能查看明文密码")],
+  [bi("Operations Admin", "运营管理员"), bi("Service operations", "业务运营"), bi("Leads, requests, inspections, jobs, warranties", "线索、服务请求、勘查、工单、保修"), bi("Finance actions limited", "财务操作受限")],
+  [bi("Finance", "财务"), bi("Quotes and payments", "报价与付款"), bi("Quotes, invoices, receipts, reconciliation", "报价、发票、收据、对账"), bi("No system settings", "不能操作系统设置")],
+  [bi("Engineer", "工程师"), bi("Assigned field work", "已分配现场工作"), bi("View assigned jobs and submit reports", "查看已分配工单并提交报告"), bi("No customer-wide search", "不能全客户搜索")],
+  [bi("Customer", "客户"), bi("Own portal", "自己的客户中心"), bi("Own repair records, quotes, invoices, payments, warranties", "自己的报修、报价、发票、付款、保修"), bi("No admin backend access", "不能进入管理后台")]
 ];
 
 export const backupModules: BilingualText[] = [
-  bi("Central DB", "中央数据库"),
   bi("Website Management", "网站管理"),
-  bi("Social / GMB / WhatsApp", "社媒 / GMB / WhatsApp"),
-  bi("AI Logs", "AI 日志"),
-  bi("Service & Orders", "服务与订单"),
+  bi("Service & Order Operations", "服务与订单运营"),
+  bi("Social Media Management", "社媒管理"),
+  bi("AI Intelligence Center", "AI 智能中心"),
   bi("Customer Center", "客户中心"),
-  bi("Finance", "财务"),
+  bi("Unified Media Library", "统一素材库"),
+  bi("Field Media Center", "现场素材中心"),
+  bi("AI Media Center", "AI 素材中心"),
+  bi("Publish Media Package", "发布素材包"),
+  bi("Central Database & RLS", "中央数据库与 RLS"),
   bi("Audit Logs", "审计日志")
-];
-
-export const editableContentBlocks = [
-  {
-    key: "dashboard_notice",
-    label: bi("Dashboard notice", "仪表盘公告"),
-    english: "P0 leakage and negative-review items require immediate human review before any external reply.",
-    chinese: "P0 漏水与负面评论事项必须先由人工审核，之后才可对外回复。"
-  },
-  {
-    key: "website_homepage_hero",
-    label: bi("Website homepage hero", "网站首页首屏文案"),
-    english: "Singapore waterproofing, leak detection and no-hacking repair with free inspection and clear quotation.",
-    chinese: "新加坡防水、漏水检测与免敲砖维修，提供免费勘查与清晰报价。"
-  },
-  {
-    key: "ai_reply_template",
-    label: bi("AI reply template", "AI 回复模板"),
-    english: "Thank you for contacting NANOFIX. We will review your photos, confirm urgency and arrange the next inspection step.",
-    chinese: "感谢您联系 NANOFIX。我们会查看您的照片、确认紧急程度，并安排下一步勘查。"
-  }
 ];
