@@ -27,6 +27,45 @@ export const metadata: Metadata = {
 
 const label = (en: string, zh: string) => `${en} / ${zh}`;
 
+const mediaQuickLinks = [
+  {
+    href: "/admin/field-media",
+    icon: "fa-images",
+    title: label("Field Media Center", "现场素材中心"),
+    text: label(
+      "Customer repair photos, service request files, engineer inspection media, payment proof and warranty attachments.",
+      "客户报修照片、服务请求文件、工程师查验素材、付款证明和保修附件。"
+    )
+  },
+  {
+    href: "/admin/ai-media",
+    icon: "fa-brain",
+    title: label("AI Media Center", "AI 素材中心"),
+    text: label(
+      "AI analysis, reports, quotation support, material references, price sheets and SEO/AEO source assets.",
+      "AI 分析、报告、报价辅助、材料参考、价格表和 SEO/AEO 来源素材。"
+    )
+  },
+  {
+    href: "/admin/publish-center/media-package",
+    icon: "fa-box-open",
+    title: label("Publish Media Package", "发布素材包"),
+    text: label(
+      "Final images, GIFs, videos, thumbnails and files attached to Website or Social publish items.",
+      "绑定到官网或社媒发布项的最终图片、GIF、视频、封面和文件。"
+    )
+  },
+  {
+    href: "/admin/publish-center",
+    icon: "fa-paper-plane",
+    title: label("Publish Center", "发布中心"),
+    text: label(
+      "Human-controlled final publishing gate for website and social content with media package checks.",
+      "官网和社媒内容最终人工发布门禁，包含发布素材包检查。"
+    )
+  }
+];
+
 function metricColor(tone: "blue" | "green" | "amber" | "red") {
   return {
     blue: "#2563EB",
@@ -68,6 +107,15 @@ export default function AdminPage() {
               <span>
                 <span className={styles.navTitle}>{label("Global Search", "全局搜索")}</span>
                 <span className={styles.navOrder}>{label("Top fixed tool", "顶部固定工具")}</span>
+              </span>
+            </a>
+            <a className={styles.navItem} href="#unified-media">
+              <span className={styles.navIcon}>
+                <i className="fa-solid fa-photo-film" aria-hidden="true" />
+              </span>
+              <span>
+                <span className={styles.navTitle}>{label("Unified Media", "统一素材")}</span>
+                <span className={styles.navOrder}>{label("Upload / URL / Library", "上传 / URL / 素材库")}</span>
               </span>
             </a>
             {adminCenters.map((center) => (
@@ -166,6 +214,38 @@ export default function AdminPage() {
                   <span className={styles.statusValue}>RLS</span>
                   <span className={styles.statusLabel}>{label("Security scope", "安全范围")}</span>
                 </div>
+              </div>
+            </section>
+
+            <section className={styles.section} id="unified-media">
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2 className={styles.sectionTitle}>{label("Unified Media Quick Access", "统一素材快捷入口")}</h2>
+                  <p className={styles.sectionText}>
+                    {label(
+                      "All upload and editing modules use the same media source options: local computer upload, URL import and backend media library selection.",
+                      "所有上传与编辑模块统一使用本地电脑上传、URL 导入和后台素材库选择三种素材来源。"
+                    )}
+                  </p>
+                </div>
+                <a className={styles.primaryButton} href="/admin/field-media">
+                  <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />
+                  {label("Open Field Media", "打开现场素材")}
+                </a>
+              </div>
+              <div className={styles.opsGrid}>
+                {mediaQuickLinks.map((item) => (
+                  <article className={styles.opsPanel} key={item.href}>
+                    <h3>
+                      <i className={`fa-solid ${item.icon}`} aria-hidden="true" /> {item.title}
+                    </h3>
+                    <p className={styles.sectionText}>{item.text}</p>
+                    <a className={styles.ghostButton} href={item.href}>
+                      <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                      {label("Open Module", "打开模块")}
+                    </a>
+                  </article>
+                ))}
               </div>
             </section>
 
@@ -439,6 +519,7 @@ export default function AdminPage() {
                   <li>{label("Dispatch board by engineer, date, skill and location", "按工程师、日期、技能和地点查看派工板")}</li>
                   <li>{label("ETA, en route, arrived, in progress and completed timestamps", "预计到达、出发、到达、施工中和完成时间记录")}</li>
                   <li>{label("Inspection checklist, before/after photos and customer signature", "勘查清单、施工前后照片和客户签名")}</li>
+                  <li>{label("Field media quick access links every photo/video to service request, job and warranty records", "现场素材快捷入口把每张图片/视频关联到报修、工单和保修记录")}</li>
                 </ul>
               </article>
               <article className={styles.opsPanel}>
@@ -455,6 +536,7 @@ export default function AdminPage() {
                   <li>{label("AI drafts cannot auto-publish", "AI 草稿不可自动发布")}</li>
                   <li>{label("Negative reviews and high-risk replies require human approval", "负面评论和高风险回复必须人工审批")}</li>
                   <li>{label("Prompt version, model, source and reviewer are logged", "记录提示词版本、模型、来源和审核人")}</li>
+                  <li>{label("AI Media Center controls approved_for_ai, blocked_for_ai and sensitive_restricted assets", "AI 素材中心控制允许 AI、禁止 AI 和敏感限制素材")}</li>
                 </ul>
               </article>
               <article className={styles.opsPanel}>
