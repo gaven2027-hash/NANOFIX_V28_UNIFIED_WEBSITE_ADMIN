@@ -82,7 +82,7 @@ async function listAssets(request: Request) {
   return NextResponse.json({ ok: true, assets: data || [] });
 }
 
-async function createUrlAsset(request: Request, body: Payload, actorId?: string, actorRole?: string) {
+async function createUrlAsset(body: Payload, actorId?: string, actorRole?: string) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return jsonError('Supabase server client is not configured.', 503);
   const assetUrl = safeUrl(body.asset_url || body.url);
@@ -94,7 +94,7 @@ async function createUrlAsset(request: Request, body: Payload, actorId?: string,
   return NextResponse.json({ ok: true, asset: data });
 }
 
-async function createLibrarySelection(request: Request, body: Payload, actorId?: string, actorRole?: string) {
+async function createLibrarySelection(body: Payload, actorId?: string, actorRole?: string) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return jsonError('Supabase server client is not configured.', 503);
   const assetId = String(body.asset_id || body.selected_asset_id || '');
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
   if (contentType.includes('multipart/form-data')) return createLocalUpload(request, context?.actorId, context?.role);
   const body = (await request.json().catch(() => ({}))) as Payload;
   const action = String(body.action || 'create_url_asset');
-  if (action === 'create_url_asset') return createUrlAsset(request, body, context?.actorId, context?.role);
-  if (action === 'select_library_asset') return createLibrarySelection(request, body, context?.actorId, context?.role);
+  if (action === 'create_url_asset') return createUrlAsset(body, context?.actorId, context?.role);
+  if (action === 'select_library_asset') return createLibrarySelection(body, context?.actorId, context?.role);
   return jsonError('Unsupported media library action.', 400);
 }
