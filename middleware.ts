@@ -34,6 +34,9 @@ const adminRoutes = [
 const loginRoutes = ["/login"];
 const loginAliases: Record<string, PortalContext> = {
   "/admin-login": "admin",
+  "/adminb": "admin",
+  "/customer": "customer",
+  "/customerlb": "customer",
   "/customer-login": "customer",
   "/engineer-login": "engineer",
   "/member-sign-up-login": "customer"
@@ -111,7 +114,7 @@ function redirectToAdminApp(request: NextRequest, pathname: string, search = req
 
 function shouldForceAdminAppHost(pathname: string, searchParams: URLSearchParams) {
   if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return true;
-  if (pathname === "/admin-login" || pathname === "/admin-register") return true;
+  if (pathname === "/admin-login" || pathname === "/admin-register" || pathname === "/adminb") return true;
   if (pathname === "/login") return searchParams.get("role") === "admin";
   if (pathname === "/register") return searchParams.get("role") === "admin";
   return false;
@@ -258,10 +261,19 @@ function apiUnauthorized(message: string, status = 401) {
   return NextResponse.json({ ok: false, error: message }, { status, headers: { "X-Robots-Tag": "noindex, nofollow" } });
 }
 
+function loginRoleForPath(pathname: string): PortalContext | null {
+  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return "admin";
+  if (startsWithAny(pathname, customerRoutes)) return "customer";
+  if (startsWithAny(pathname, engineerRoutes)) return "engineer";
+  return null;
+}
+
 function redirectToLogin(request: NextRequest, reason?: string) {
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = "/login";
   loginUrl.search = "";
+  const role = loginRoleForPath(request.nextUrl.pathname);
+  if (role) loginUrl.searchParams.set("role", role);
   loginUrl.searchParams.set("next", request.nextUrl.pathname);
   if (reason) loginUrl.searchParams.set("reason", reason);
   return NextResponse.redirect(loginUrl);
@@ -334,6 +346,9 @@ export const config = {
     "/",
     "/login/:path*",
     "/admin-login/:path*",
+    "/adminb/:path*",
+    "/customer/:path*",
+    "/customerlb/:path*",
     "/customer-login/:path*",
     "/engineer-login/:path*",
     "/member-sign-up-login/:path*",
