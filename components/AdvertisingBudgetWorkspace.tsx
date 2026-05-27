@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SectionCard } from './SectionCard';
 import { Badge } from './Badge';
 
@@ -16,8 +16,8 @@ export function AdvertisingBudgetWorkspace() {
   const [requests, setRequests] = useState<Row[]>([]);
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({ campaign_id: '', current_daily_budget: '0', requested_daily_budget: '50', current_monthly_budget: '0', requested_monthly_budget: '1500', reason: 'Increase budget for campaign with strong booking conversion after finance review.' });
-  async function loadData() { const response = await fetch('/api/admin/advertising-center/budgets', { cache: 'no-store' }); const json = await response.json().catch(() => ({})); if (json.ok) { setCampaigns(json.campaigns || []); setRequests(json.budgetRequests || []); if (!form.campaign_id && json.campaigns?.[0]) setForm((old) => ({ ...old, campaign_id: json.campaigns[0].campaign_id, current_daily_budget: String(json.campaigns[0].daily_budget || 0), current_monthly_budget: String(json.campaigns[0].monthly_budget || 0) })); } }
-  useEffect(() => { void loadData(); }, []);
+  const loadData = useCallback(async () => { const response = await fetch('/api/admin/advertising-center/budgets', { cache: 'no-store' }); const json = await response.json().catch(() => ({})); if (json.ok) { setCampaigns(json.campaigns || []); setRequests(json.budgetRequests || []); if (!form.campaign_id && json.campaigns?.[0]) setForm((old) => ({ ...old, campaign_id: json.campaigns[0].campaign_id, current_daily_budget: String(json.campaigns[0].daily_budget || 0), current_monthly_budget: String(json.campaigns[0].monthly_budget || 0) })); } }, [form.campaign_id]);
+  useEffect(() => { void loadData(); }, [loadData]);
   function chooseCampaign(id: string) { const campaign = campaigns.find((c) => c.campaign_id === id); setForm({ ...form, campaign_id: id, current_daily_budget: String(campaign?.daily_budget || 0), current_monthly_budget: String(campaign?.monthly_budget || 0) }); }
   async function submitRequest() { setMessage(''); const response = await fetch('/api/admin/advertising-center/budgets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }); const json = await response.json().catch(() => ({})); if (!response.ok || !json.ok) return setMessage(json.error || 'Budget request failed. / 预算申请失败。'); setMessage('Budget request submitted. / 预算申请已提交。'); await loadData(); }
   async function review(action: string, row: Row) { setMessage(''); const response = await fetch('/api/admin/advertising-center/budgets', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budget_change_id: row.budget_change_id, action, decision_note: 'Reviewed in Advertising Budget Center.' }) }); const json = await response.json().catch(() => ({})); if (!response.ok || !json.ok) return setMessage(json.error || 'Review failed. / 审核失败。'); setMessage('Budget request updated. / 预算申请已更新。'); await loadData(); }
