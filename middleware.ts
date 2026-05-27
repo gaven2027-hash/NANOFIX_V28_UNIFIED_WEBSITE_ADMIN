@@ -18,7 +18,7 @@ type VerifiedActor = {
   authMode: "supabase" | "internal_secret" | "preview";
 };
 
-type PortalContext = "admin" | "customer" | "engineer";
+type PortalContext = "admin" | "customer";
 
 const adminRoutes = [
   "/admin",
@@ -36,23 +36,23 @@ const loginRoutes = ["/login"];
 const loginAliases: Record<string, PortalContext> = {
   "/admin-login": "admin",
   "/adminb": "admin",
+  "/internal-admin-login": "admin",
   "/customer": "customer",
   "/customerlb": "customer",
   "/customer-login": "customer",
-  "/engineer-login": "engineer",
-  "/member-sign-up-login": "customer"
+  "/member-sign-up-login": "customer",
+  "/engineer-login": "admin"
 };
 const registerAliases: Record<string, PortalContext> = {
   "/admin-register": "admin",
+  "/internal-admin-register": "admin",
   "/customer-register": "customer",
   "/member-register": "customer"
 };
 const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests"];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
-const engineerRoutes = ["/engineer-portal", "/api/portal/engineer"];
 
-const adminRoles: NanofixRole[] = ["super_admin", "operations_admin", "finance", "content_admin", "support"];
-const engineerRoles: NanofixRole[] = ["engineer", ...adminRoles];
+const adminRoles: NanofixRole[] = ["super_admin", "operations_admin", "finance", "content_admin", "support", "engineer"];
 const customerRoles: NanofixRole[] = ["customer", ...adminRoles];
 
 function startsWithAny(pathname: string, routes: string[]) {
@@ -67,14 +67,12 @@ function isProtectedPath(pathname: string) {
   return (
     startsWithAny(pathname, adminRoutes) ||
     startsWithAny(pathname, apiAdminRoutes) ||
-    startsWithAny(pathname, customerRoutes) ||
-    startsWithAny(pathname, engineerRoutes)
+    startsWithAny(pathname, customerRoutes)
   );
 }
 
 function allowedRolesFor(pathname: string): NanofixRole[] {
   if (startsWithAny(pathname, customerRoutes)) return customerRoles;
-  if (startsWithAny(pathname, engineerRoutes)) return engineerRoles;
   return adminRoles;
 }
 
@@ -115,7 +113,7 @@ function redirectToAdminApp(request: NextRequest, pathname: string, search = req
 
 function shouldForceAdminAppHost(pathname: string, searchParams: URLSearchParams) {
   if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return true;
-  if (pathname === "/admin-login" || pathname === "/admin-register" || pathname === "/adminb") return true;
+  if (["/admin-login", "/admin-register", "/adminb", "/internal-admin-login", "/internal-admin-register", "/engineer-login"].includes(pathname)) return true;
   if (pathname === "/login") return searchParams.get("role") === "admin";
   if (pathname === "/register") return searchParams.get("role") === "admin";
   return false;
@@ -185,31 +183,14 @@ async function fetchProfileActor(authUserId: string, email?: string): Promise<Ve
     headers: { apikey: serviceRoleKey, authorization: `Bearer ${serviceRoleKey}`, accept: "application/json" },
     cache: "no-store"
   });
-  if (profileResponse.ok) {
-    const rows = (await profileResponse.json()) as Array<{ profile_id?: string; email?: string; role?: string; is_active?: boolean }>;
-    const profile = rows[0];
-    const role = normalizeRole(profile?.role);
-    if (profile?.profile_id && role && profile.is_active !== false) {
-      return { actorId: profile.profile_id, authUserId, email: profile.email || email, role, authMode: "supabase" };
-    }
-  }
+  if (!profileResponse.ok) return null;
 
-  const adminParams = new URLSearchParams({
-    select: "admin_id,auth_user_id,email,role,status",
-    auth_user_id: `eq.${authUserId}`,
-    status: "eq.active",
-    limit: "1"
-  });
-  const adminResponse = await fetch(`${url}/rest/v1/admin_profiles?${adminParams.toString()}`, {
-    headers: { apikey: serviceRoleKey, authorization: `Bearer ${serviceRoleKey}`, accept: "application/json" },
-    cache: "no-store"
-  });
-  if (!adminResponse.ok) return null;
-  const rows = (await adminResponse.json()) as Array<{ admin_id?: string; email?: string; role?: string; status?: string }>;
-  const admin = rows[0];
-  const role = normalizeRole(admin?.role);
-  if (!admin?.admin_id || !role || admin.status !== "active") return null;
-  return { actorId: admin.admin_id, authUserId, email: admin.email || email, role, authMode: "supabase" };
+  const rows = (await profileResponse.json()) as Array<{ profile_id?: string; email?: string; role?: string; is_active?: boolean }>;
+  const profile = rows[0];
+  const role = normalizeRole(profile?.role);
+  if (!profile?.profile_id || !role || profile.is_active === false) return null;
+
+  return { actorId: profile.profile_id, authUserId, email: profile.email || email, role, authMode: "supabase" };
 }
 
 async function actorFromSupabaseSession(request: NextRequest): Promise<VerifiedActor | null> {
@@ -265,7 +246,6 @@ function apiUnauthorized(message: string, status = 401) {
 function loginRoleForPath(pathname: string): PortalContext | null {
   if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return "admin";
   if (startsWithAny(pathname, customerRoutes)) return "customer";
-  if (startsWithAny(pathname, engineerRoutes)) return "engineer";
   return null;
 }
 
@@ -291,7 +271,7 @@ function redirectPortalAlias(request: NextRequest, pathname: "/login" | "/regist
 function redirectByRole(request: NextRequest, role: NanofixRole) {
   const url = request.nextUrl.clone();
   url.search = "";
-  url.pathname = role === "customer" ? "/customer-portal" : role === "engineer" ? "/engineer-portal" : "/dashboard";
+  url.pathname = role === "customer" ? "/customer-portal" : "/dashboard";
   return NextResponse.redirect(url);
 }
 
@@ -318,7 +298,7 @@ export async function middleware(request: NextRequest) {
 
   const loginPath = isLoginPath(pathname);
   const protectedPath = isProtectedPath(pathname);
-  const isProtectedApi = startsWithAny(pathname, [...apiAdminRoutes, ...customerRoutes.filter((r) => r.startsWith("/api")), ...engineerRoutes.filter((r) => r.startsWith("/api"))]);
+  const isProtectedApi = startsWithAny(pathname, [...apiAdminRoutes, ...customerRoutes.filter((r) => r.startsWith("/api"))]);
 
   if (!protectedPath && !loginPath) return NextResponse.next();
 
@@ -348,12 +328,14 @@ export const config = {
     "/login/:path*",
     "/admin-login/:path*",
     "/adminb/:path*",
+    "/internal-admin-login/:path*",
     "/customer/:path*",
     "/customerlb/:path*",
     "/customer-login/:path*",
-    "/engineer-login/:path*",
     "/member-sign-up-login/:path*",
+    "/engineer-login/:path*",
     "/admin-register/:path*",
+    "/internal-admin-register/:path*",
     "/customer-register/:path*",
     "/member-register/:path*",
     "/admin/:path*",
@@ -366,11 +348,9 @@ export const config = {
     "/customer-center/:path*",
     "/system-settings/:path*",
     "/customer-portal/:path*",
-    "/engineer-portal/:path*",
     "/api/admin/:path*",
     "/api/global-search/:path*",
     "/api/service-requests/:path*",
-    "/api/portal/customer/:path*",
-    "/api/portal/engineer/:path*"
+    "/api/portal/customer/:path*"
   ]
 };
