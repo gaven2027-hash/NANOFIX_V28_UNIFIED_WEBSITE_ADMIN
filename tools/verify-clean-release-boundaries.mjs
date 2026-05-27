@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 function read(path) { return existsSync(path) ? readFileSync(path, 'utf8') : ''; }
 function must(ok, label, failures) { console.log(`${ok ? '✅' : '❌'} ${label}`); if (!ok) failures.push(label); }
+function hasAny(text, values) { return values.some((value) => text.includes(value)); }
 
 const failures = [];
 const middleware = read('middleware.ts');
@@ -28,7 +29,13 @@ must(!existsSync('app/register/engineer/page.tsx'), 'old standalone engineer reg
 must(!registerForm.includes("type RegisterContext = 'admin' | 'customer' | 'engineer'") && !registerShell.includes("type RegisterContext = 'admin' | 'customer' | 'engineer'"), 'standalone engineer register type is removed', failures);
 must(registerForm.includes('Engineer / Inspection') && registerForm.includes('inspection_repair'), 'Engineer / Inspection exists only as an Internal Admin role group', failures);
 must(publicRegistrationApi.includes("const allowedRequestedRoles = ['customer', 'admin']"), 'public registration API allows only customer/admin', failures);
-for (const group of ['super_admin','admin','inspection_repair','operations','finance']) {
+
+must(
+  registerForm.includes('super_admin') && hasAny(publicRegistrationApi, ['super_admin','total_management']) && hasAny(adminRegistrationApi, ['super_admin','total_management']) && hasAny(registrationWorkspace, ['super_admin','total_management']),
+  'role group super_admin is wired',
+  failures
+);
+for (const group of ['admin','inspection_repair','operations','finance']) {
   must(registerForm.includes(group) && publicRegistrationApi.includes(group) && adminRegistrationApi.includes(group) && registrationWorkspace.includes(group), `role group ${group} is wired`, failures);
 }
 must(adminRegistrationApi.includes('roleFromGroup') && adminRegistrationApi.includes('approve_portal_registration_request'), 'admin registration review maps group and audits approval', failures);
