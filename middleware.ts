@@ -33,6 +33,7 @@ const adminRoutes = [
 ];
 
 const loginRoutes = ["/login"];
+const legacyEngineerPortalRoutes = ["/engineer-portal"];
 const loginAliases: Record<string, PortalContext> = {
   "/admin-login": "admin",
   "/adminb": "admin",
@@ -49,7 +50,7 @@ const registerAliases: Record<string, PortalContext> = {
   "/customer-register": "customer",
   "/member-register": "customer"
 };
-const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests"];
+const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests", "/api/portal/engineer"];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
 
 const adminRoles: NanofixRole[] = ["super_admin", "operations_admin", "finance", "content_admin", "support", "engineer"];
@@ -112,7 +113,7 @@ function redirectToAdminApp(request: NextRequest, pathname: string, search = req
 }
 
 function shouldForceAdminAppHost(pathname: string, searchParams: URLSearchParams) {
-  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return true;
+  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes, ...legacyEngineerPortalRoutes])) return true;
   if (["/admin-login", "/admin-register", "/adminb", "/internal-admin-login", "/internal-admin-register", "/engineer-login"].includes(pathname)) return true;
   if (pathname === "/login") return searchParams.get("role") === "admin";
   if (pathname === "/register") return searchParams.get("role") === "admin";
@@ -244,7 +245,7 @@ function apiUnauthorized(message: string, status = 401) {
 }
 
 function loginRoleForPath(pathname: string): PortalContext | null {
-  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes])) return "admin";
+  if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes, ...legacyEngineerPortalRoutes])) return "admin";
   if (startsWithAny(pathname, customerRoutes)) return "customer";
   return null;
 }
@@ -275,6 +276,13 @@ function redirectByRole(request: NextRequest, role: NanofixRole) {
   return NextResponse.redirect(url);
 }
 
+function redirectLegacyEngineerPortal(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/dashboard";
+  url.search = "";
+  return NextResponse.redirect(url);
+}
+
 function refreshSupabaseCookies() {
   return NextResponse.next();
 }
@@ -283,6 +291,8 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const host = request.nextUrl.hostname;
   const productionHost = isNanofixProductionHost(host);
+
+  if (startsWithAny(pathname, legacyEngineerPortalRoutes)) return redirectLegacyEngineerPortal(request);
 
   if (productionHost && isNanofixAdminAppHost(host) && pathname === "/") {
     return redirectToAdminApp(request, "/login", "?role=admin");
@@ -348,9 +358,11 @@ export const config = {
     "/customer-center/:path*",
     "/system-settings/:path*",
     "/customer-portal/:path*",
+    "/engineer-portal/:path*",
     "/api/admin/:path*",
     "/api/global-search/:path*",
     "/api/service-requests/:path*",
-    "/api/portal/customer/:path*"
+    "/api/portal/customer/:path*",
+    "/api/portal/engineer/:path*"
   ]
 };
