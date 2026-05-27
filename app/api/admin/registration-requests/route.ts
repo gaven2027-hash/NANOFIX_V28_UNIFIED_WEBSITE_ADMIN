@@ -8,14 +8,16 @@ type Payload = Record<string, unknown>;
 const requestColumns = 'registration_request_id,auth_user_id,profile_id,email,full_name,phone,requested_role,approved_role,requested_role_group,approved_role_group,source,status,reviewer_notes,metadata_json,reviewed_by,reviewed_at,created_at,updated_at';
 const profileColumns = 'profile_id,auth_user_id,email,full_name,username,mobile_phone,whatsapp_phone,role,requested_role,approved_role,registration_source,is_active,profile_status,review_status,password_status,email_verified,created_at,updated_at';
 const allowedStatuses = ['pending_review', 'approved', 'rejected', 'cancelled'];
-const roleGroups = ['customer','total_management','management','inspection_repair','operations','finance'];
+const roleGroups = ['customer','super_admin','admin','inspection_repair','operations','finance','total_management','management'];
 function jsonError(message: string, status = 400) { return NextResponse.json({ ok: false, error: message }, { status }); }
 function cleanText(value: unknown, fallback = '', max = 4000) { return typeof value === 'string' ? value.trim().slice(0, max) : fallback; }
 function cleanEmail(value: unknown) { return cleanText(value, '', 320).toLowerCase(); }
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
 function normalizeStatus(value: unknown) { const status = cleanText(value, 'pending_review').toLowerCase(); return allowedStatuses.includes(status) ? status : 'pending_review'; }
-function roleFromGroup(group: string, requestedRole: unknown, actorRole?: AdminRole) { if (cleanText(requestedRole, 'customer') === 'customer') return 'customer'; if (group === 'inspection_repair') return 'engineer'; if (group === 'operations') return 'operations_admin'; if (group === 'finance') return 'finance'; if (group === 'total_management') return actorRole === 'super_admin' ? 'super_admin' : 'content_admin'; return 'content_admin'; }
-function normalizeRoleGroup(value: unknown, requestedRole: unknown) { if (cleanText(requestedRole, 'customer') === 'customer') return 'customer'; const group = cleanText(value, 'management').toLowerCase(); return roleGroups.includes(group) && group !== 'customer' ? group : 'management'; }
+function normalizeRequestedRole(value: unknown) { const raw = cleanText(value, 'customer').toLowerCase(); if (['admin','internal_admin_app','staff','internal'].includes(raw)) return 'admin'; if (['customer','customer_portal','member'].includes(raw)) return 'customer'; return raw === 'admin' ? 'admin' : 'customer'; }
+function normalizeGroupAlias(value: unknown) { const raw = cleanText(value, 'admin').toLowerCase(); if (raw === 'total_management') return 'super_admin'; if (raw === 'management') return 'admin'; return raw; }
+function roleFromGroup(group: string, requestedRole: unknown, actorRole?: AdminRole) { if (normalizeRequestedRole(requestedRole) === 'customer') return 'customer'; if (group === 'inspection_repair') return 'engineer'; if (group === 'operations') return 'operations_admin'; if (group === 'finance') return 'finance'; if (group === 'super_admin') return actorRole === 'super_admin' ? 'super_admin' : 'content_admin'; return 'content_admin'; }
+function normalizeRoleGroup(value: unknown, requestedRole: unknown) { if (normalizeRequestedRole(requestedRole) === 'customer') return 'customer'; const group = normalizeGroupAlias(value); return roleGroups.includes(group) && group !== 'customer' ? group : 'admin'; }
 async function findProfile(supabase: ReturnType<typeof createSupabaseAdminClient>, requestRow: Payload) { if (!supabase) return null; if (validUuid(requestRow.profile_id)) { const { data } = await supabase.from('profiles').select(profileColumns).eq('profile_id', requestRow.profile_id).maybeSingle(); if (data) return data; } if (validUuid(requestRow.auth_user_id)) { const { data } = await supabase.from('profiles').select(profileColumns).eq('auth_user_id', requestRow.auth_user_id).maybeSingle(); if (data) return data; } const email = cleanEmail(requestRow.email); if (email) { const { data } = await supabase.from('profiles').select(profileColumns).eq('email', email).order('created_at', { ascending: false }).limit(1).maybeSingle(); if (data) return data; } return null; }
 
 export async function GET(request: Request) {
@@ -32,12 +34,12 @@ export async function GET(request: Request) {
   let query = supabase.from('portal_registration_requests').select(requestColumns).order('created_at', { ascending: false }).limit(100);
   if (validUuid(id)) query = query.eq('registration_request_id', id);
   if (status) query = query.eq('status', normalizeStatus(status));
-  if (role) query = query.eq('requested_role', cleanText(role, 'customer'));
-  if (roleGroup && roleGroups.includes(roleGroup)) query = query.eq('requested_role_group', roleGroup);
+  if (role) query = query.eq('requested_role', normalizeRequestedRole(role));
+  if (roleGroup && roleGroups.includes(roleGroup)) query = query.eq('requested_role_group', normalizeGroupAlias(roleGroup));
   if (search) query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%,phone.ilike.%${search}%,reviewer_notes.ilike.%${search}%`);
   const { data, error } = await query;
   if (error) return jsonError(error.message, 500);
-  return NextResponse.json({ ok: true, rows: data || [], roleGroups });
+  return NextResponse.json({ ok: true, rows: data || [], roleGroups: ['customer','super_admin','admin','inspection_repair','operations','finance'] });
 }
 
 export async function PATCH(request: Request) {
@@ -66,7 +68,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true, row: rejected, action: 'reject' });
   }
   let profileAfter: Payload | null = null;
-  const profilePayload = { role: approvedRole, requested_role: before.requested_role || approvedRole, approved_role: approvedRole, registration_source: before.source || 'portal_register', is_active: true, profile_status: 'active', review_status: 'approved', full_name: before.full_name || before.email || null, mobile_phone: before.phone || null, whatsapp_phone: before.phone || null, updated_at: now };
+  const requestedRole = normalizeRequestedRole(before.requested_role);
+  const profilePayload = { role: approvedRole, requested_role: requestedRole, approved_role: approvedRole, registration_source: before.source || 'portal_register', is_active: true, profile_status: 'active', review_status: 'approved', full_name: before.full_name || before.email || null, mobile_phone: before.phone || null, whatsapp_phone: before.phone || null, updated_at: now };
   if (profileBefore?.profile_id) { const { data, error } = await supabase.from('profiles').update(profilePayload).eq('profile_id', profileBefore.profile_id).select(profileColumns).single(); if (error) return jsonError(error.message, 500); profileAfter = data as Payload; }
   else { const { data, error } = await supabase.from('profiles').insert({ auth_user_id: validUuid(before.auth_user_id) ? before.auth_user_id : null, email: before.email, ...profilePayload, password_status: 'set', email_verified: false, created_at: now }).select(profileColumns).single(); if (error) return jsonError(error.message, 500); profileAfter = data as Payload; }
   const { data: approved, error: approveError } = await supabase.from('portal_registration_requests').update({ profile_id: profileAfter?.profile_id || before.profile_id || null, approved_role: approvedRole, approved_role_group: approvedRoleGroup, status: 'approved', reviewer_notes: reviewerNotes, reviewed_by: context?.actorId, reviewed_at: now, updated_at: now }).eq('registration_request_id', id).select(requestColumns).single();
