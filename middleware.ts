@@ -26,6 +26,7 @@ const adminRoutes = [
   "/service-operations",
   "/website-management",
   "/social-media",
+  "/advertising-center",
   "/ai-intelligence",
   "/customer-center",
   "/system-settings"
@@ -360,6 +361,7 @@ export const config = {
     "/service-operations/:path*",
     "/website-management/:path*",
     "/social-media/:path*",
+    "/advertising-center/:path*",
     "/ai-intelligence/:path*",
     "/customer-center/:path*",
     "/system-settings/:path*",
