@@ -1,6 +1,6 @@
 {
-  "name": "nanofix-v28-cg-gp-super-stable",
-  "version": "28.1.4-advertising-center-phase-1",
+  "name": "nanofix-v28-unified-website-admin",
+  "version": "28.1.6-final-chat-memory-20260527",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -69,5 +69,5 @@
   "overrides": {
     "postcss": "8.5.10"
   },
-  "description": "NANOFIX V28.1.4 advertising center phase 1: unified paid acquisition, ROI, budget review, AI ad suggestions and super admin takeover authority."
+  "description": "NANOFIX V28.1.6 final memory baseline: separate Customer Portal, unified Internal Admin App role login, admin menu 0-8, Super Admin takeover audit, reviews/privacy workflow and Vercel standard build:ci."
 }
