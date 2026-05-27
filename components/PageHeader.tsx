@@ -1,16 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { menu } from '@/data/adminData';
+import { menu } from '@/data/adminNavigation';
 
 function getOrderLabel(title: string) {
   const matched = menu.find((item) => item.title === title || item.zh === title);
   if (matched) return matched.order;
   const portalMap: Record<string, string> = {
-    'Customer Portal': 'CP',
-    'Customer Portal / 客户会员中心': 'CP',
-    'Engineer Portal': 'EP',
-    'Engineer Portal / 工程师工作台': 'EP'
+    'Customer Portal': 'P1',
+    'Customer Portal / 客户会员中心': 'P1',
+    'Engineer Portal': 'P2',
+    'Engineer Portal / 工程师工作台': 'P2'
   };
   return portalMap[title] ?? '•';
 }
@@ -18,7 +18,6 @@ function getOrderLabel(title: string) {
 function formatTitleWithOrder(_orderLabel: string, title: string) {
   return title;
 }
-
 
 export function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   const [collapsed, setCollapsed] = useState(false);
