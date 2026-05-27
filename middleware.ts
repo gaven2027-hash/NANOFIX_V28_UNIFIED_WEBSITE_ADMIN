@@ -295,8 +295,8 @@ function redirectByRole(request: NextRequest, role: NanofixRole) {
   return NextResponse.redirect(url);
 }
 
-function refreshSupabaseCookies(request: NextRequest) {
-  return NextResponse.next({ request });
+function refreshSupabaseCookies() {
+  return NextResponse.next();
 }
 
 export async function middleware(request: NextRequest) {
@@ -325,7 +325,7 @@ export async function middleware(request: NextRequest) {
   const actor = (await actorFromSupabaseSession(request)) ?? actorFromInternalSecret(request) ?? actorFromLocalPreview();
 
   if (loginPath) {
-    if (!actor) return refreshSupabaseCookies(request);
+    if (!actor) return refreshSupabaseCookies();
     return redirectByRole(request, actor.role);
   }
 
