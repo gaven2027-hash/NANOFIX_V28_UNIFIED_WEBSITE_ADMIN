@@ -19,6 +19,8 @@ const domains = read('lib/nanofix/domains.ts');
 const adminHome = read('app/admin/page.tsx');
 const adminShell = read('components/AdminShell.tsx');
 const adminNavigation = read('data/adminNavigation.ts');
+const submoduleWorkspace = read('components/AdminSubmoduleWorkspace.tsx');
+const menuAnchorSections = read('components/MenuAnchorSections.tsx');
 
 must(domains.includes('https://www.nanofixsg.com') && domains.includes('https://app.nanofixsg.com'), 'public/app domain constants exist');
 must(middleware.includes('"/adminb"') && middleware.includes('"/customer"') && middleware.includes('"/customerlb"'), 'short login aliases exist');
@@ -43,8 +45,13 @@ must(vercel.includes('/api/system/module-health-worker'), 'Vercel module health 
 
 must(adminNavigation.includes('/admin/advertising-center') && adminNavigation.includes('/admin/advertising-center/budgets'), 'clean routed admin navigation includes advertising center module and submodules');
 must(adminShell.includes("@/data/adminNavigation") && adminShell.includes('ModuleShortcutBar'), 'AdminShell uses routed navigation and module shortcut bar');
+must(adminShell.includes('useState<string | null>(null)') && !adminShell.includes('Object.fromEntries(menu.map'), 'AdminShell left menu defaults collapsed instead of expanding all sections');
+must(adminShell.includes('setOpenSection((current) => (current === item.href ? null : item.href))'), 'AdminShell opens only one primary menu section at a time');
+must(adminShell.includes('Expand submenu only') && adminShell.includes('Open module page'), 'AdminShell separates first-level expand from manual module navigation');
 must(adminHome.includes("@/data/adminNavigation") && adminHome.includes('Open Module / 进入模块') && !adminHome.includes('centerGrid'), 'admin home is routed module launch page, not old preview grid');
 must(!adminHome.includes('href={`#center-${center.order}`}') && !adminHome.includes('id={`center-${center.order}`}'), 'old #center anchor-only admin navigation residue is removed from admin home');
+must(menuAnchorSections.includes('AdminSubmoduleWorkspace') && !menuAnchorSections.includes('Production data should replace'), 'MenuAnchorSections routes to interactive workspace, not text-only placeholder cards');
+must(submoduleWorkspace.includes('Workspace active / 工作区已打开') && submoduleWorkspace.includes('Operational panel / 操作面板') && submoduleWorkspace.includes('window.dispatchEvent(new HashChangeEvent'), 'right-side submenu area is interactive single-page workspace');
 
 for (const route of ['/admin/advertising-center', '/admin/advertising-center/import', '/admin/advertising-center/insights', '/admin/advertising-center/creatives', '/admin/advertising-center/budgets']) {
   must(e2eSmoke.includes(route), `E2E smoke protects ${route}`);
