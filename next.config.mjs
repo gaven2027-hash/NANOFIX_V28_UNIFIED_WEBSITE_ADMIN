@@ -25,6 +25,35 @@ const securityHeaders = [
   }
 ];
 
+const protectedHeaders = [
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
+  { key: "Cache-Control", value: "no-store, max-age=0" }
+];
+
+const protectedRouteSources = [
+  "/admin",
+  "/admin/:path*",
+  "/dashboard",
+  "/dashboard/:path*",
+  "/customer-portal",
+  "/customer-portal/:path*",
+  "/engineer-portal",
+  "/engineer-portal/:path*",
+  "/website-management",
+  "/website-management/:path*",
+  "/service-operations",
+  "/service-operations/:path*",
+  "/social-media",
+  "/social-media/:path*",
+  "/ai-intelligence",
+  "/ai-intelligence/:path*",
+  "/customer-center",
+  "/customer-center/:path*",
+  "/system-settings",
+  "/system-settings/:path*",
+  "/login"
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -35,13 +64,11 @@ const nextConfig = {
     workerThreads: false
   },
   eslint: {
-    // Lint is still enforced by npm run lint / npm run verify before deployment.
-    // Skipping duplicate lint inside next build keeps Vercel builds faster and avoids double-reporting.
+    // Lint is enforced by npm run lint inside validate:predeploy before Vercel build:ci.
     ignoreDuringBuilds: true
   },
   typescript: {
-    // Type safety is enforced by npm run typecheck in CI.
-    // Next internal checker can hang on the large visual-lock legacy payload during build tracing, so Vercel build skips duplicate checking.
+    // Type safety is enforced by npm run typecheck inside validate:predeploy before Vercel build:ci.
     ignoreBuildErrors: true
   },
   async headers() {
@@ -62,18 +89,10 @@ const nextConfig = {
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" }
         ]
       },
-      {
-        source: "/admin/:path*",
-        headers: [
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
-          { key: "Cache-Control", value: "no-store, max-age=0" }
-        ]
-      },
+      ...protectedRouteSources.map((source) => ({ source, headers: protectedHeaders })),
       {
         source: "/api/:path*",
-        headers: [
-          { key: "Cache-Control", value: "no-store, max-age=0" }
-        ]
+        headers: protectedHeaders
       }
     ];
   }
