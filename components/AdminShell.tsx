@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { menu } from '@/data/adminData';
+import { menu } from '@/data/adminNavigation';
 import { TopSearch } from './TopSearch';
+
+function basePath(href: string) {
+  return href.split('#')[0] || '/admin';
+}
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -16,7 +20,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
       {menu.map((item) => {
-        const routeHref = item.href.split('#')[0] || '/dashboard';
+        const routeHref = basePath(item.href);
         const active = pathname === routeHref || pathname.startsWith(`${routeHref}/`);
         const isOpen = openSections[item.href] ?? true;
         return (
@@ -28,7 +32,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <div className={clsx('flex items-stretch gap-2 p-2 transition', active ? 'bg-activeBlue/95 text-white shadow-lg shadow-blue-950/20' : 'text-slate-200')}>
-              <Link href={item.href} onClick={onNavigate} className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2">
+              <Link href={routeHref} onClick={onNavigate} className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2">
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-[13px] font-black">{item.order}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[16px] font-extrabold leading-5 tracking-[-0.01em]">{item.title}</span>
@@ -54,7 +58,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     key={child.href}
                     href={child.href}
                     onClick={onNavigate}
-                    className="group rounded-xl py-2 pl-12 pr-3 text-[14px] font-bold leading-5 text-blue-100 transition hover:bg-white/10 hover:text-white"
+                    className={clsx(
+                      'group rounded-xl py-2 pl-12 pr-3 text-[14px] font-bold leading-5 text-blue-100 transition hover:bg-white/10 hover:text-white',
+                      pathname === basePath(child.href) ? 'bg-white/10 text-white' : ''
+                    )}
                   >
                     <span className="block">{child.title}</span>
                     <span className="block text-[12px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
@@ -71,13 +78,31 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 function BrandBlock() {
   return (
-    <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
+    <Link href="/admin" className="flex h-20 items-center gap-3 border-b border-white/10 px-6 transition hover:bg-white/[0.035]">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25">
         <img src="/nanofix-logo.png" alt="NANOFIX logo PNG" className="h-full w-full object-contain" />
       </div>
       <div>
         <div className="text-xl font-black tracking-wide">NANOFIX</div>
         <div className="text-[13px] text-slate-300">V28 / 总后台</div>
+      </div>
+    </Link>
+  );
+}
+
+function ModuleShortcutBar() {
+  const pathname = usePathname();
+  const current = useMemo(() => menu.find((item) => pathname === basePath(item.href) || pathname.startsWith(`${basePath(item.href)}/`)), [pathname]);
+  if (!current?.children.length) return null;
+  return (
+    <div className="border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto pb-1">
+        {current.children.map((child) => (
+          <Link key={child.href} href={child.href} className="shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-activeBlue hover:bg-blue-50 hover:text-activeBlue">
+            <span>{child.title}</span>
+            <span className="ml-1 text-slate-400">/ {child.zh}</span>
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -117,6 +142,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:pl-80">
         <TopSearch />
+        <ModuleShortcutBar />
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
