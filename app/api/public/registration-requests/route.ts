@@ -7,12 +7,12 @@ type Payload = Record<string, unknown>;
 
 const columns = 'registration_request_id,auth_user_id,profile_id,email,full_name,phone,requested_role,approved_role,requested_role_group,approved_role_group,source,status,reviewer_notes,metadata_json,reviewed_by,reviewed_at,created_at,updated_at';
 const allowedRequestedRoles = ['customer', 'admin'];
-const allowedRoleGroups = ['customer','total_management','management','inspection_repair','operations','finance'];
+const allowedRoleGroups = ['customer','super_admin','admin','inspection_repair','operations','finance','total_management','management'];
 function jsonError(message: string, status = 400) { return NextResponse.json({ ok: false, error: message }, { status }); }
 function cleanText(value: unknown, fallback = '', max = 2000) { return typeof value === 'string' ? value.trim().slice(0, max) : fallback; }
 function cleanEmail(value: unknown) { return cleanText(value, '', 320).toLowerCase(); }
-function normalizeRequestedRole(value: unknown) { const role = cleanText(value, 'customer').toLowerCase(); return allowedRequestedRoles.includes(role) ? role : 'customer'; }
-function normalizeRoleGroup(value: unknown, requestedRole: string) { if (requestedRole === 'customer') return 'customer'; const group = cleanText(value, 'management').toLowerCase(); return allowedRoleGroups.includes(group) && group !== 'customer' ? group : 'management'; }
+function normalizeRequestedRole(value: unknown) { const raw = cleanText(value, 'customer').toLowerCase(); if (['admin','internal_admin_app','staff','internal'].includes(raw)) return 'admin'; if (['customer','customer_portal','member'].includes(raw)) return 'customer'; return allowedRequestedRoles.includes(raw) ? raw : 'customer'; }
+function normalizeRoleGroup(value: unknown, requestedRole: string) { if (requestedRole === 'customer') return 'customer'; const raw = cleanText(value, 'admin').toLowerCase(); const mapped = raw === 'total_management' ? 'super_admin' : raw === 'management' ? 'admin' : raw; return allowedRoleGroups.includes(mapped) && mapped !== 'customer' ? mapped : 'admin'; }
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
 
 export async function POST(request: Request) {
