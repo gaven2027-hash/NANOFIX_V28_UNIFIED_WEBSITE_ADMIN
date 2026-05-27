@@ -49,6 +49,7 @@ const registerForm = read('app/register/RegisterForm.tsx');
 const registerShell = read('app/register/RegisterShell.tsx');
 const customerPortalPage = read('app/customer-portal/page.tsx');
 const portalShell = read('components/PortalShell.tsx');
+const customerRequestWorkspace = read('components/CustomerPortalRequestWorkspace.tsx');
 const publicRegistrationApi = read('app/api/public/registration-requests/route.ts');
 const publicServiceRequestApi = read('app/api/public/service-requests/route.ts');
 const adminRegistrationApi = read('app/api/admin/registration-requests/route.ts');
@@ -81,9 +82,12 @@ must(middleware.includes('"/api/portal/engineer"') && middleware.includes('apiAd
 must(!middleware.includes('type PortalContext = "admin" | "customer" | "engineer"'), 'Middleware no longer treats engineer as portal context');
 
 must(customerPortalPage.includes('<PortalShell type="customer">') && !customerPortalPage.includes('AdminShell'), 'Customer portal remains outside Internal Admin left menu shell');
+must(customerPortalPage.includes('CustomerPortalRequestWorkspace'), 'Customer portal wires real request workspace');
 must(portalShell.includes('New Repair Request') && portalShell.includes('Warranty Claim'), 'Customer Portal includes New Repair Request and Warranty Claim');
 must(portalShell.includes('Submit Review') && portalShell.includes('Review Privacy Settings'), 'Customer Portal includes reviews and privacy settings');
 must(!portalShell.includes('EngineerPortalAnchors') && !portalShell.includes('const engineerLinks'), 'PortalShell no longer exposes standalone engineer portal menu');
+must(customerRequestWorkspace.includes("type RequestKind = 'new_repair' | 'warranty_claim'"), 'Customer request workspace supports repair and warranty claim types');
+must(customerRequestWorkspace.includes("fetch('/api/public/service-requests'") && customerRequestWorkspace.includes('Customer Portal submissions are customer-owned records'), 'Customer request workspace submits to public service request API');
 
 must(publicRegistrationApi.includes("const allowedRequestedRoles = ['customer', 'admin']"), 'Public registration API allows only customer/admin request types');
 must(publicRegistrationApi.includes('super_admin') && publicRegistrationApi.includes('inspection_repair') && publicRegistrationApi.includes('operations') && publicRegistrationApi.includes('finance'), 'Public registration API accepts final internal role groups');
@@ -98,7 +102,7 @@ must(publicServiceRequestApi.includes('source_type') && publicServiceRequestApi.
 
 must(adminNavigation.includes("Customer Review Carousel") && adminNavigation.includes("Review Deletion & Audit"), 'Admin navigation restored review/testimonial final menu items');
 must(adminNavigation.includes("Internal Staff Login & Registration") && adminNavigation.includes("Customer Portal Login & Registration"), 'Admin navigation restored login/registration settings');
-must(!adminNavigation.includes("Engineer Portal") && !adminNavigation.includes("Customer Portal / 客户会员中心\',"), 'Admin navigation does not include standalone portal first-level modules');
+must(!adminNavigation.includes("Engineer Portal") && !adminNavigation.includes("Customer Portal / 客户会员中心',"), 'Admin navigation does not include standalone portal first-level modules');
 
 must(!existsSync('app/register/engineer/page.tsx'), 'No standalone engineer register page exists');
 must(!existsSync('app/engineer-login/page.tsx'), 'No standalone engineer login page exists');
