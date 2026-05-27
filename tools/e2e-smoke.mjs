@@ -25,7 +25,12 @@ const protectedRoutes = [
   "/admin",
   "/dashboard",
   "/customer-portal",
-  "/engineer-portal"
+  "/engineer-portal",
+  "/admin/advertising-center",
+  "/admin/advertising-center/import",
+  "/admin/advertising-center/insights",
+  "/admin/advertising-center/creatives",
+  "/admin/advertising-center/budgets"
 ];
 
 const apiRoutes = [
@@ -34,7 +39,12 @@ const apiRoutes = [
   ["/api/global-search", 401],
   ["/api/service-requests", 401],
   ["/api/portal/customer", 401],
-  ["/api/portal/engineer", 401]
+  ["/api/portal/engineer", 401],
+  ["/api/admin/advertising-center", 401],
+  ["/api/admin/advertising-center/import", 401],
+  ["/api/admin/advertising-center/insights", 401],
+  ["/api/admin/advertising-center/creatives", 401],
+  ["/api/admin/advertising-center/budgets", 401]
 ];
 
 let server = null;
