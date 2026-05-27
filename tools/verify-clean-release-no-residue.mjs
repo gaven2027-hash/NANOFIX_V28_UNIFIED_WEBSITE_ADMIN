@@ -19,6 +19,7 @@ const domains = read('lib/nanofix/domains.ts');
 
 must(domains.includes('https://www.nanofixsg.com') && domains.includes('https://app.nanofixsg.com'), 'public/app domain constants exist');
 must(middleware.includes('"/adminb"') && middleware.includes('"/customer"') && middleware.includes('"/customerlb"'), 'short login aliases exist');
+must(middleware.includes('"/advertising-center"') && middleware.includes('"/advertising-center/:path*"'), 'advertising center is explicitly listed in protected admin routes');
 must(!existsSync('app/register/engineer/page.tsx'), 'standalone engineer registration route is deleted');
 must(registerForm.includes("type RegisterContext = 'admin' | 'customer'"), 'register form only supports admin/customer contexts');
 must(registerForm.includes('inspection_repair') && registerForm.includes('total_management') && registerForm.includes('finance'), 'admin register role groups exist');
