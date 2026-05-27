@@ -6,6 +6,8 @@ const checks = [];
 function must(ok, label) { checks.push([Boolean(ok), label]); }
 
 const middleware = read('middleware.ts');
+const vercel = read('vercel.json');
+const e2eSmoke = read('tools/e2e-smoke.mjs');
 const registerForm = read('app/register/RegisterForm.tsx');
 const publicRegistrationApi = read('app/api/public/registration-requests/route.ts');
 const adminRegistrationApi = read('app/api/admin/registration-requests/route.ts');
@@ -30,6 +32,17 @@ must(fieldMediaApi.includes('canView') && fieldMediaApi.includes('allowed_view_a
 must(fieldMedia.includes('Client portals cannot read this center directly') && !fieldMedia.includes('MediaSourcePicker'), 'field media UI is backend-only and decoupled from media picker dependency');
 must(!existsSync('app/api/customer/field-media/route.ts'), 'customer field media API is not exposed');
 must(!existsSync('app/api/engineer/field-media/route.ts'), 'engineer field media API is not exposed');
+
+must(vercel.includes('npm run validate:predeploy && npm run build:ci'), 'Vercel production build runs OA validation gate before build');
+must(!vercel.includes('"buildCommand": "npm run build:standard"'), 'old Vercel buildCommand residue is removed');
+must(vercel.includes('/api/system/module-health-worker'), 'Vercel module health cron remains configured');
+
+for (const route of ['/admin/advertising-center', '/admin/advertising-center/import', '/admin/advertising-center/insights', '/admin/advertising-center/creatives', '/admin/advertising-center/budgets']) {
+  must(e2eSmoke.includes(route), `E2E smoke protects ${route}`);
+}
+for (const apiRoute of ['/api/admin/advertising-center', '/api/admin/advertising-center/import', '/api/admin/advertising-center/insights', '/api/admin/advertising-center/creatives', '/api/admin/advertising-center/budgets']) {
+  must(e2eSmoke.includes(apiRoute), `E2E smoke rejects spoofed unauthenticated ${apiRoute}`);
+}
 
 for (const [ok, label] of checks) console.log(`${ok ? '✅' : '❌'} ${label}`);
 const failed = checks.filter(([ok]) => !ok);
