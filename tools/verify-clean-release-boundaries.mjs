@@ -25,9 +25,10 @@ must(middleware.includes('shouldForceAdminAppHost') && middleware.includes('isNa
 must(registerForm.includes("type RegisterContext = 'admin' | 'customer'"), 'register form only supports admin/customer contexts', failures);
 must(registerShell.includes("type RegisterContext = 'admin' | 'customer'"), 'register shell only supports admin/customer contexts', failures);
 must(!existsSync('app/register/engineer/page.tsx'), 'old standalone engineer registration page is deleted', failures);
-must(!registerForm.includes("'engineer'") && !registerShell.includes("'engineer'"), 'standalone engineer register type is removed', failures);
+must(!registerForm.includes("type RegisterContext = 'admin' | 'customer' | 'engineer'") && !registerShell.includes("type RegisterContext = 'admin' | 'customer' | 'engineer'"), 'standalone engineer register type is removed', failures);
+must(registerForm.includes('Engineer / Inspection') && registerForm.includes('inspection_repair'), 'Engineer / Inspection exists only as an Internal Admin role group', failures);
 must(publicRegistrationApi.includes("const allowedRequestedRoles = ['customer', 'admin']"), 'public registration API allows only customer/admin', failures);
-for (const group of ['total_management','management','inspection_repair','operations','finance']) {
+for (const group of ['super_admin','admin','inspection_repair','operations','finance']) {
   must(registerForm.includes(group) && publicRegistrationApi.includes(group) && adminRegistrationApi.includes(group) && registrationWorkspace.includes(group), `role group ${group} is wired`, failures);
 }
 must(adminRegistrationApi.includes('roleFromGroup') && adminRegistrationApi.includes('approve_portal_registration_request'), 'admin registration review maps group and audits approval', failures);
