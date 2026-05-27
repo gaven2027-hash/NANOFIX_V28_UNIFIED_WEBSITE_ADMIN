@@ -31,9 +31,9 @@ const config = {
   theme: {
     extend: {
       colors: {
-        adminBg: "#F4F7FC",
+        adminBg: "#F3F9FF",
         sidebar: "#1E293B",
-        activeBlue: "#2563EB"
+        activeBlue: "#48B8FF"
       }
     }
   },
