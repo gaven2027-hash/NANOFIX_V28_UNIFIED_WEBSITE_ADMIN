@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SectionCard } from './SectionCard';
 import { Badge } from './Badge';
 
@@ -20,21 +20,21 @@ export function AdvertisingImportWorkspace() {
   const [result, setResult] = useState<Row | null>(null);
   const preview = useMemo(() => previewRows(csv), [csv]);
 
-  async function loadTemplate() {
+  const loadTemplate = useCallback(async () => {
     const response = await fetch('/api/admin/advertising-center/import', { cache: 'no-store' });
     const json = await response.json().catch(() => ({}));
     if (json.ok) {
       setSampleCsv(json.sampleCsv || '');
       setColumns(json.templateColumns || []);
-      if (!csv) setCsv(json.sampleCsv || '');
+      setCsv((current) => current || json.sampleCsv || '');
     }
-  }
-  async function loadLogs() {
+  }, []);
+  const loadLogs = useCallback(async () => {
     const response = await fetch('/api/admin/advertising-center', { cache: 'no-store' });
     const json = await response.json().catch(() => ({}));
     if (json.ok) setSyncLogs(json.syncLogs || []);
-  }
-  useEffect(() => { void loadTemplate(); void loadLogs(); }, []);
+  }, []);
+  useEffect(() => { void loadTemplate(); void loadLogs(); }, [loadTemplate, loadLogs]);
   async function importCsv() {
     setMessage('');
     setResult(null);
