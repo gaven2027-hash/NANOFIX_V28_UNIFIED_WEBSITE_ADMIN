@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
@@ -13,7 +13,16 @@ function basePath(href: string) {
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const currentSection = useMemo(() => menu.find((item) => pathname === basePath(item.href) || pathname.startsWith(`${basePath(item.href)}/`)) ?? null, [pathname]);
   const [openSection, setOpenSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pathname === '/admin') {
+      setOpenSection(null);
+      return;
+    }
+    if (currentSection) setOpenSection(currentSection.href);
+  }, [pathname, currentSection]);
 
   return (
     <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
@@ -69,7 +78,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                           window.history.replaceState(null, '', `#${hash}`);
                           window.dispatchEvent(new HashChangeEvent('hashchange'));
                         }
-                        onNavigate?.();
+                        if (samePage) onNavigate?.();
                       }}
                       className={clsx(
                         'group rounded-xl py-2 pl-11 pr-3 text-[13px] font-bold leading-4 text-blue-100 transition hover:bg-white/10 hover:text-white',
