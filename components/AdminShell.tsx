@@ -44,14 +44,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 </span>
                 <span className={clsx('mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-black', active ? 'bg-white/20' : 'bg-slate-700')}>{item.badge}</span>
               </button>
-              <Link
-                href={routeHref}
-                onClick={onNavigate}
-                className="my-2 inline-flex h-9 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[12px] font-black text-white transition hover:bg-white/20"
-                title="Open module page / 进入模块页面"
-              >
-                Go
-              </Link>
               <button
                 type="button"
                 onClick={() => setOpenSection((current) => (current === item.href ? null : item.href))}
