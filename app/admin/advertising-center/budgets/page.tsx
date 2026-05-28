@@ -1,5 +1,5 @@
-import { AdvertisingBudgetWorkspace } from '@/components/AdvertisingBudgetWorkspace';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <AdvertisingBudgetWorkspace />;
+  redirect('/admin/advertising-center#budgets-strategy');
 }
