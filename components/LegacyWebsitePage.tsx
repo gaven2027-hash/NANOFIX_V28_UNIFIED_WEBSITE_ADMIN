@@ -53,7 +53,7 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
         canvas.toBlob(resolve, outputType, imageCompression.quality);
       });
       if (!blob || blob.size >= file.size) return file;
-      const nextName = file.name.replace(/\\.[^.]+$/, '') + (outputType === 'image/webp' ? '.webp' : '.jpg');
+      const nextName = file.name.replace(/\.[^.]+$/, '') + (outputType === 'image/webp' ? '.webp' : '.jpg');
       return new File([blob], nextName, { type: outputType, lastModified: Date.now() });
     } catch (error) {
       return file;
@@ -117,6 +117,57 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
       observer.observe(map);
     }
   });
+  function injectMobileCarouselArrows() {
+    if (document.getElementById('nanofix-mobile-carousel-arrows-style')) return;
+    const style = document.createElement('style');
+    style.id = 'nanofix-mobile-carousel-arrows-style';
+    style.textContent = '@media (max-width: 767px){.nf-carousel-wrap{position:relative}.nf-carousel-arrow{position:absolute;top:50%;z-index:20;display:flex;width:34px;height:54px;transform:translateY(-50%);align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(255,255,255,.72);background:rgba(15,23,42,.46);color:#fff;font-size:24px;font-weight:900;box-shadow:0 10px 26px rgba(2,6,23,.24);backdrop-filter:blur(8px)}.nf-carousel-arrow-left{left:6px}.nf-carousel-arrow-right{right:6px}.nf-carousel-arrow:active{transform:translateY(-50%) scale(.95)}.nf-carousel-hint{position:absolute;left:50%;bottom:8px;z-index:20;transform:translateX(-50%);border-radius:999px;background:rgba(15,23,42,.48);color:#fff;padding:4px 10px;font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap}.nf-carousel-wrap .nf-carousel-target{scroll-behavior:smooth;scroll-snap-type:x mandatory}.nf-carousel-wrap .nf-carousel-target>*{scroll-snap-align:start}}@media (min-width: 768px){.nf-carousel-arrow,.nf-carousel-hint{display:none!important}}';
+    document.head.appendChild(style);
+    const selectors = ['[data-carousel]','[data-carousel-target-id]','.carousel','.swiper','.snap-x','[class*="overflow-x"]'];
+    const candidates = Array.from(document.querySelectorAll(selectors.join(','))).filter(function(el){
+      if (!(el instanceof HTMLElement)) return false;
+      if (el.dataset.nfCarouselReady === 'true') return false;
+      return el.scrollWidth > el.clientWidth + 40 || (el.children && el.children.length > 1);
+    }).slice(0, 12);
+    candidates.forEach(function(scroller, index){
+      if (!(scroller instanceof HTMLElement)) return;
+      scroller.dataset.nfCarouselReady = 'true';
+      scroller.classList.add('nf-carousel-target');
+      const wrapper = document.createElement('div');
+      wrapper.className = 'nf-carousel-wrap';
+      scroller.parentNode && scroller.parentNode.insertBefore(wrapper, scroller);
+      wrapper.appendChild(scroller);
+      function move(direction) {
+        const first = scroller.children && scroller.children[0];
+        const gap = 16;
+        const width = first && first instanceof HTMLElement ? first.getBoundingClientRect().width + gap : Math.max(260, Math.round(scroller.clientWidth * 0.88));
+        scroller.scrollBy({ left: direction * width, behavior: 'smooth' });
+      }
+      const left = document.createElement('button');
+      left.type = 'button';
+      left.className = 'nf-carousel-arrow nf-carousel-arrow-left';
+      left.setAttribute('aria-label', 'Previous slide / 上一张');
+      left.innerHTML = '‹';
+      const right = document.createElement('button');
+      right.type = 'button';
+      right.className = 'nf-carousel-arrow nf-carousel-arrow-right';
+      right.setAttribute('aria-label', 'Next slide / 下一张');
+      right.innerHTML = '›';
+      const hint = document.createElement('div');
+      hint.className = 'nf-carousel-hint';
+      hint.textContent = 'Tap arrows to slide / 点击三角滑动';
+      left.addEventListener('click', function(event){ event.preventDefault(); move(-1); });
+      right.addEventListener('click', function(event){ event.preventDefault(); move(1); });
+      wrapper.appendChild(left);
+      wrapper.appendChild(right);
+      if (index < 4) wrapper.appendChild(hint);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectMobileCarouselArrows, { once: true });
+  } else {
+    setTimeout(injectMobileCarouselArrows, 0);
+  }
   document.querySelectorAll('[data-member-portal-link="true"]').forEach(function(link) {
     link.setAttribute('href', ${JSON.stringify(memberPortalUrl)});
     link.setAttribute('target', '_blank');
