@@ -1,5 +1,5 @@
-import { AdvertisingCreativesWorkspace } from '@/components/AdvertisingCreativesWorkspace';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <AdvertisingCreativesWorkspace />;
+  redirect('/admin/advertising-center#creatives-copy');
 }
