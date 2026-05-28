@@ -1,17 +1,5 @@
-export type MenuChild = {
-  href: string;
-  title: string;
-  zh: string;
-};
-
-export type MenuItem = {
-  order: string;
-  href: string;
-  title: string;
-  zh: string;
-  badge: number | string;
-  children: MenuChild[];
-};
+export type MenuChild = { href: string; title: string; zh: string };
+export type MenuItem = { order: string; href: string; title: string; zh: string; badge: number | string; children: MenuChild[] };
 
 const child = (href: string, title: string, zh: string): MenuChild => ({ href, title, zh });
 
@@ -142,10 +130,10 @@ export const menu: MenuItem[] = [
       child('/admin/advertising-center#campaign-dashboard', 'Overview / Campaign Dashboard', '总览 / 广告活动面板'),
       child('/admin/advertising-center#campaign-planning', 'Campaign Planning', '广告策划'),
       child('/admin/advertising-center#create-campaign-draft', 'Create Campaign Draft', '创建广告草稿'),
-      child('/admin/advertising-center/import', 'CSV / Excel Import', 'CSV / Excel 导入'),
-      child('/admin/advertising-center/insights', 'ROI Insights & Alerts', 'ROI 分析与预警'),
-      child('/admin/advertising-center/creatives', 'Creatives & Copy', '素材与文案'),
-      child('/admin/advertising-center/budgets', 'Budgets & Strategy', '预算与策略'),
+      child('/admin/advertising-center#csv-excel-import', 'CSV / Excel Import', 'CSV / Excel 导入'),
+      child('/admin/advertising-center#roi-insights-alerts', 'ROI Insights & Alerts', 'ROI 分析与预警'),
+      child('/admin/advertising-center#creatives-copy', 'Creatives & Copy', '素材与文案'),
+      child('/admin/advertising-center#budgets-strategy', 'Budgets & Strategy', '预算与策略'),
       child('/admin/advertising-center#approval-gates', 'Approval Gates', '审批闸门'),
       child('/admin/advertising-center#ad-account-connections', 'Ad Account Connections', '广告账号连接'),
       child('/admin/advertising-center#paid-social-ads', 'Paid Social Ads', '付费社媒广告'),
