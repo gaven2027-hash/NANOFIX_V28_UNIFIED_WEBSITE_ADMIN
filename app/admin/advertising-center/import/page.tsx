@@ -1,5 +1,5 @@
-import { AdvertisingImportWorkspace } from '@/components/AdvertisingImportWorkspace';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <AdvertisingImportWorkspace />;
+  redirect('/admin/advertising-center#csv-excel-import');
 }
