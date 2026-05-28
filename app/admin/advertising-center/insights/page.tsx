@@ -1,5 +1,5 @@
-import { AdvertisingInsightsWorkspace } from '@/components/AdvertisingInsightsWorkspace';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <AdvertisingInsightsWorkspace />;
+  redirect('/admin/advertising-center#roi-insights-alerts');
 }
