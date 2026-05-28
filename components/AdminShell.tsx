@@ -16,7 +16,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const [openSection, setOpenSection] = useState<string | null>(null);
 
   return (
-    <nav className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
+    <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
       {menu.map((item) => {
         const routeHref = basePath(item.href);
         const active = pathname === routeHref || pathname.startsWith(`${routeHref}/`);
@@ -26,35 +26,32 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             key={item.href}
             className={clsx(
               'overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition',
-              active ? 'ring-1 ring-blue-300/40' : 'hover:bg-white/[0.055]'
+              active ? 'ring-1 ring-sky-300/45' : 'hover:bg-white/[0.055]'
             )}
           >
-            <div className={clsx('flex items-stretch gap-2 p-2 transition', active ? 'bg-activeBlue/95 text-white shadow-lg shadow-blue-950/20' : 'text-slate-200')}>
-              <button
-                type="button"
-                onClick={() => setOpenSection((current) => (current === item.href ? null : item.href))}
-                className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2 text-left"
-                aria-expanded={isOpen}
-                title="Expand submenu only / 只展开二级菜单"
+            <button
+              type="button"
+              onClick={() => setOpenSection((current) => (current === item.href ? null : item.href))}
+              className={clsx(
+                'grid w-full grid-cols-[34px_minmax(0,1fr)_auto_34px] items-center gap-2 p-3 text-left transition',
+                active ? 'bg-gradient-to-br from-sky-400/95 via-cyan-300/90 to-blue-500/95 text-white shadow-lg shadow-blue-950/20' : 'text-slate-200'
+              )}
+              aria-expanded={isOpen}
+              title={`${item.title} / ${item.zh}`}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-[12px] font-black leading-none">{item.order}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-[clamp(12px,0.75vw,14px)] font-extrabold leading-4 tracking-[-0.02em]">{item.title}</span>
+                <span className="mt-0.5 block truncate text-[12px] font-semibold leading-4 text-white/78">{item.zh}</span>
+              </span>
+              <span className={clsx('max-w-[44px] truncate rounded-full px-2 py-0.5 text-center text-[10px] font-black leading-4', active ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-200')}>{item.badge}</span>
+              <span
+                aria-hidden="true"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[12px] font-black text-white transition group-hover:bg-white/20"
               >
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-[13px] font-black">{item.order}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[16px] font-extrabold leading-5 tracking-[-0.01em]">{item.title}</span>
-                  <span className="block text-[13px] font-semibold leading-5 text-slate-300 group-hover:text-slate-100">{item.zh}</span>
-                </span>
-                <span className={clsx('mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-black', active ? 'bg-white/20' : 'bg-slate-700')}>{item.badge}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpenSection((current) => (current === item.href ? null : item.href))}
-                aria-expanded={isOpen}
-                aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.title}`}
-                className="my-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[13px] font-black text-white transition hover:bg-white/20"
-                title={isOpen ? 'Collapse / 收起' : 'Expand / 展开'}
-              >
-                <span aria-hidden="true">{isOpen ? '▴' : '▾'}</span>
-              </button>
-            </div>
+                {isOpen ? '▴' : '▾'}
+              </span>
+            </button>
             {isOpen && item.children.length > 0 ? (
               <div className="grid gap-1 px-3 pb-3 pt-2">
                 {item.children.map((child) => {
@@ -75,12 +72,13 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                         onNavigate?.();
                       }}
                       className={clsx(
-                        'group rounded-xl py-2 pl-12 pr-3 text-[14px] font-bold leading-5 text-blue-100 transition hover:bg-white/10 hover:text-white',
+                        'group rounded-xl py-2 pl-11 pr-3 text-[13px] font-bold leading-4 text-blue-100 transition hover:bg-white/10 hover:text-white',
                         samePage ? 'bg-white/10 text-white' : ''
                       )}
+                      title={`${child.title} / ${child.zh}`}
                     >
-                      <span className="block">{child.title}</span>
-                      <span className="block text-[12px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
+                      <span className="block truncate">{child.title}</span>
+                      <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
                     </Link>
                   );
                 })}
