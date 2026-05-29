@@ -13,11 +13,15 @@ const requiredFiles = [
   'app/service-operations/page.tsx',
   'app/api/admin/service-operations/route.ts',
   'app/api/admin/service-operations/financial-documents/route.ts',
+  'app/api/admin/service-operations/inspections/route.ts',
   'components/ServiceOperationsLiveCore.tsx',
   'components/ServiceOperationsDedicatedForms.tsx',
   'components/ServiceOperationsFinancialEditors.tsx',
+  'components/ServiceOperationsInspectionWorkspace.tsx',
   'data/adminModuleReality.ts',
-  'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql'
+  'app/api/ready/route.ts',
+  'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql',
+  'supabase/migrations/202605290003_service_operations_inspection_uploads.sql'
 ];
 
 for (const file of requiredFiles) assert(exists(file), `Missing Service Operations live core file: ${file}`);
@@ -26,15 +30,20 @@ if (requiredFiles.every(exists)) {
   const page = read('app/service-operations/page.tsx');
   const api = read('app/api/admin/service-operations/route.ts');
   const financialApi = read('app/api/admin/service-operations/financial-documents/route.ts');
+  const inspectionApi = read('app/api/admin/service-operations/inspections/route.ts');
   const component = read('components/ServiceOperationsLiveCore.tsx');
   const forms = read('components/ServiceOperationsDedicatedForms.tsx');
   const financialEditors = read('components/ServiceOperationsFinancialEditors.tsx');
+  const inspectionWorkspace = read('components/ServiceOperationsInspectionWorkspace.tsx');
   const registry = read('data/adminModuleReality.ts');
   const bridge = read('supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql');
+  const inspectionSql = read('supabase/migrations/202605290003_service_operations_inspection_uploads.sql');
+  const ready = read('app/api/ready/route.ts');
 
   assert(page.includes('ServiceOperationsLiveCore'), 'Service Operations page must render ServiceOperationsLiveCore above contract panels.');
   assert(page.includes('ServiceOperationsDedicatedForms'), 'Service Operations page must render ServiceOperationsDedicatedForms.');
   assert(page.includes('ServiceOperationsFinancialEditors'), 'Service Operations page must render ServiceOperationsFinancialEditors.');
+  assert(page.includes('ServiceOperationsInspectionWorkspace'), 'Service Operations page must render ServiceOperationsInspectionWorkspace.');
   assert(page.includes('MenuAnchorSections route="/service-operations"'), 'Service Operations page must retain menu anchor reality panels.');
 
   for (const marker of [
@@ -86,6 +95,26 @@ if (requiredFiles.every(exists)) {
   ]) assert(financialApi.includes(marker), `Financial document API missing marker: ${marker}`);
   assert(financialApi.includes('export async function GET') && financialApi.includes('export async function POST'), 'Financial document API must expose GET and POST.');
   assert(!/select\(['"]\*['"]\)/.test(financialApi), 'Financial document API must use explicit field whitelists, not select("*").');
+
+  for (const marker of [
+    'service_operations_inspection_upload_read',
+    'service_operations_inspection_schedule',
+    'service_operations_inspection_form_submit',
+    'service_operations_engineer_assign',
+    'service_operations_upload_review_create',
+    'service_operations_upload_review_update',
+    'service_inspections',
+    'service_upload_reviews',
+    'schedule_inspection',
+    'submit_inspection_form',
+    'assign_engineer',
+    'create_upload_review',
+    'review_upload',
+    'writeAuditLog',
+    'requireActorApi'
+  ]) assert(inspectionApi.includes(marker), `Inspection/upload API missing marker: ${marker}`);
+  assert(inspectionApi.includes('export async function GET') && inspectionApi.includes('export async function POST'), 'Inspection/upload API must expose GET and POST.');
+  assert(!/select\(['"]\*['"]\)/.test(inspectionApi), 'Inspection/upload API must use explicit field whitelists, not select("*").');
 
   for (const marker of [
     '/api/admin/service-operations?limit=12',
@@ -157,6 +186,30 @@ if (requiredFiles.every(exists)) {
   }
   assert(!/localStorage|sessionStorage/.test(financialEditors), 'ServiceOperationsFinancialEditors must not use browser storage for production state.');
 
+  for (const marker of [
+    "type ActionKind = 'schedule_inspection' | 'submit_inspection_form' | 'assign_engineer' | 'create_upload_review' | 'review_upload'",
+    'ServiceOperationsInspectionWorkspace',
+    'Inspection Scheduling & Execution Workspace',
+    '/api/admin/service-operations/inspections',
+    'service_inspections',
+    'service_upload_reviews',
+    'Schedule Inspection',
+    'Inspection Form',
+    'Engineer Assignment',
+    'Create Upload Review',
+    'Review Upload',
+    'Submit via live API',
+    'Recent Inspections',
+    'Upload Reviews',
+    "credentials: 'same-origin'",
+    "cache: 'no-store'",
+    "'content-type': 'application/json'"
+  ]) assert(inspectionWorkspace.includes(marker), `ServiceOperationsInspectionWorkspace missing marker: ${marker}`);
+  for (const field of ['inspection_id', 'service_request_id', 'job_id', 'customer_id', 'engineer_id', 'scheduled_at', 'findings', 'diagnosis', 'recommended_action', 'file_name', 'file_type', 'storage_path', 'review_status', 'review_notes']) {
+    assert(inspectionWorkspace.includes(field), `ServiceOperationsInspectionWorkspace missing field marker: ${field}`);
+  }
+  assert(!/localStorage|sessionStorage/.test(inspectionWorkspace), 'ServiceOperationsInspectionWorkspace must not use browser storage for production state.');
+
   for (const anchor of [
     '/service-operations#leads',
     '/service-operations#service-requests',
@@ -178,6 +231,19 @@ if (requiredFiles.every(exists)) {
     'public.invoice_items',
     'public.payment_transactions'
   ]) assert(bridge.includes(marker), `Schema bridge missing financial/status marker: ${marker}`);
+
+  for (const marker of [
+    'public.service_inspections',
+    'public.service_upload_reviews',
+    'enable row level security',
+    'service_inspections_touch_updated_at',
+    'service_upload_reviews_touch_updated_at',
+    'operations roles can write service inspections',
+    'operations roles can write upload reviews'
+  ]) assert(inspectionSql.includes(marker), `Inspection/upload migration missing marker: ${marker}`);
+
+  assert(ready.includes('service_inspections'), '/api/ready must include service_inspections table check.');
+  assert(ready.includes('service_upload_reviews'), '/api/ready must include service_upload_reviews table check.');
 
   warn(component.includes('Set approved') && component.includes('Set reconciled'), 'Quotation/payment next-status labels are present; verify these transitions are allowed in staging before production use.');
 }
