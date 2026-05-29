@@ -52,7 +52,16 @@ if (requiredFiles.every(exists)) {
   for (const marker of ['automation-notification-engine', 'internal-inbox', 'unified-task-engine']) {
     assert(workspace.includes(marker), `AutomationNotificationWorkspace missing anchor marker: ${marker}`);
   }
+  for (const apiPath of ['/api/admin/automation-notifications', '/api/admin/internal-inbox', '/api/admin/unified-tasks']) {
+    assert(workspace.includes(apiPath), `AutomationNotificationWorkspace must bind live API: ${apiPath}`);
+  }
+  for (const liveMarker of ['loadLiveData', 'degraded', 'errors', 'Refresh live data', 'Demo rows below remain clearly separated']) {
+    assert(workspace.includes(liveMarker), `AutomationNotificationWorkspace missing live/degraded marker: ${liveMarker}`);
+  }
+  assert(workspace.includes("credentials: 'same-origin'"), 'Live API fetch must use same-origin credentials');
+  assert(workspace.includes("cache: 'no-store'"), 'Live API fetch must disable cache for workflow status');
   assert(!/localStorage|sessionStorage/.test(workspace), 'V28.2 workflow UI must not store production workflow state in browser storage');
+  assert(!/return\s+\{\s*ok:\s*true\s*\}/.test(workspace), 'V28.2 workflow UI must not fake live API success');
 
   const automationApi = read('app/api/admin/automation-notifications/route.ts');
   for (const needle of ['requireActorApi', 'automation_rules', 'notification_outbox', 'writeAuditLog']) {
