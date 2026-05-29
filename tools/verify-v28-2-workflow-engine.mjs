@@ -19,7 +19,8 @@ const requiredFiles = [
   'app/api/global-search/route.ts',
   'app/api/ready/route.ts',
   'data/adminNavigation.ts',
-  'supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql'
+  'supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql',
+  'supabase/seed/20260529_v28_2_workflow_engine_seed.sql'
 ];
 
 for (const file of requiredFiles) assert(exists(file), `Missing V28.2 workflow file: ${file}`);
@@ -87,6 +88,22 @@ if (requiredFiles.every(exists)) {
   for (const phrase of ['enable row level security', 'create_unified_task_with_inbox', 'revoke all on function public.create_unified_task_with_inbox']) {
     assert(sql.toLowerCase().includes(phrase.toLowerCase()), `Migration missing security/RPC phrase: ${phrase}`);
   }
+
+  const seed = read('supabase/seed/20260529_v28_2_workflow_engine_seed.sql');
+  for (const seedNeedle of [
+    'service_request.created.p0_triage',
+    'quotation.approval.overdue',
+    'review.privacy.redaction_required',
+    'payment.mismatch.finance_review',
+    '28021000-0000-0000-0000-000000000001',
+    '28022000-0000-0000-0000-000000000001',
+    '28023000-0000-0000-0000-000000000001',
+    '28024000-0000-0000-0000-000000000001'
+  ]) assert(seed.includes(seedNeedle), `V28.2 seed missing demo marker: ${seedNeedle}`);
+  for (const table of ['public.automation_rules', 'public.notification_outbox', 'public.internal_inbox_messages', 'public.unified_tasks', 'public.task_events']) {
+    assert(seed.includes(table), `V28.2 seed missing table insert: ${table}`);
+  }
+  assert(!/example\.com|\+65\s?8\d{3}\s?\d{4}/i.test(seed), 'V28.2 seed should not introduce real-looking customer contact data');
 
   const smoke = exists('tools/e2e-smoke.mjs') ? read('tools/e2e-smoke.mjs') : '';
   warn(smoke.includes('/api/admin/automation-notifications') && smoke.includes('/api/ready'), 'E2E smoke should include V28.2 API and ready checks');
