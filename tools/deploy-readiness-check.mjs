@@ -25,6 +25,7 @@ const requiredFiles = [
   ".env.example",
   "middleware.ts",
   "docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md",
+  "docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md",
   "components/AutomationNotificationWorkspace.tsx",
   "components/WorkflowAuditTrail.tsx",
   "components/WorkflowSettingsWorkspace.tsx",
@@ -36,6 +37,7 @@ const requiredFiles = [
   "app/api/admin/workflow-audit/route.ts",
   "app/api/admin/workflow-settings/route.ts",
   "app/api/global-search/route.ts",
+  "app/api/ready/route.ts",
   "tools/e2e-smoke.mjs",
   "tools/static-v28-2-issue-scan.mjs",
   "tools/verify-v28-2-workflow-engine.mjs",
@@ -48,10 +50,11 @@ const requiredFiles = [
 for (const file of requiredFiles) assert(exists(file), `Missing required deployment file: ${file}`);
 
 const pkg = JSON.parse(read("package.json"));
-for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging", "verify:v28-2-workflow", "scan:v28-2-static"]) {
+for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging", "verify:v28-2-workflow", "scan:v28-2-static", "validate:package", "validate:platform"]) {
   assert(pkg.scripts?.[script], `Missing npm script: ${script}`);
 }
 assert((pkg.scripts?.["validate:predeploy"] || "").includes("scan:v28-2-static"), "validate:predeploy must run scan:v28-2-static");
+assert((pkg.scripts?.["validate:predeploy"] || "").includes("verify:v28-2-workflow"), "validate:predeploy must run verify:v28-2-workflow");
 assert(pkg.engines?.node?.includes(">=20"), "package.json should require Node >=20 for Vercel/GitHub consistency");
 assert(pkg.engines?.node?.includes("<23"), "package.json should cap Node below 23 until dependencies are verified");
 assert(String(pkg.version || "").includes("28.2.0"), "package.json version should identify the V28.2 automation/inbox/task phase");
@@ -71,18 +74,12 @@ assert(vercel.installCommand === "npm ci", "Vercel installCommand should be npm 
 assert((vercel.buildCommand || "").includes("validate:predeploy") && (vercel.buildCommand || "").includes("build:ci"), "Vercel buildCommand should run validation and build:ci");
 const cron = vercel.crons?.find((item) => item.path === "/api/system/module-health-worker");
 assert(Boolean(cron), "Vercel cron for /api/system/module-health-worker is missing");
-if (cron) {
-  assert(cron.schedule === "0 20 * * *", "Default Vercel cron should be once daily at 20:00 UTC for Hobby-plan compatibility");
-}
+if (cron) assert(cron.schedule === "0 20 * * *", "Default Vercel cron should be once daily at 20:00 UTC for Hobby-plan compatibility");
 
 const gitignore = read(".gitignore");
-for (const ignored of ["node_modules/", ".next/", ".vercel/", ".env", "*.zip"]) {
-  assert(gitignore.includes(ignored), `.gitignore should ignore ${ignored}`);
-}
+for (const ignored of ["node_modules/", ".next/", ".vercel/", ".env", "*.zip"]) assert(gitignore.includes(ignored), `.gitignore should ignore ${ignored}`);
 const vercelignore = read(".vercelignore");
-for (const ignored of ["node_modules", ".next", ".vercel", "*.zip", ".env", "*.key"]) {
-  assert(vercelignore.includes(ignored), `.vercelignore should ignore ${ignored}`);
-}
+for (const ignored of ["node_modules", ".next", ".vercel", "*.zip", ".env", "*.key"]) assert(vercelignore.includes(ignored), `.vercelignore should ignore ${ignored}`);
 
 const workflowFile = ".github/workflows/ci.yml";
 assert(exists(workflowFile), "Missing GitHub Actions quality gate workflow");
@@ -120,11 +117,8 @@ const migrations = fs.readdirSync(path.join(root, "supabase/migrations")).filter
 assert(migrations.length >= 7, "Expected complete Supabase migrations set including V28.2 settings");
 assert(migrations.every((name, index, arr) => index === 0 || arr[index - 1] <= name), "Supabase migrations should be lexically ordered");
 const joinedMigrations = migrations.map((file) => read(`supabase/migrations/${file}`)).join("\n");
-for (const table of ["profiles", "customers", "unified_intake", "leads", "service_requests", "audit_logs", "app_modules"]) {
-  assert(joinedMigrations.includes(`public.${table}`), `Supabase migrations missing core table reference: ${table}`);
-}
-for (const table of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"]) {
-  assert(joinedMigrations.includes(`public.${table}`), `V28.2 migration missing workflow table reference: ${table}`);
+for (const table of ["profiles", "customers", "unified_intake", "leads", "service_requests", "audit_logs", "app_modules", "automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"]) {
+  assert(joinedMigrations.includes(`public.${table}`), `Supabase migrations missing table reference: ${table}`);
 }
 assert(joinedMigrations.includes("revoke execute on function public.search_all_records"), "search_all_records RPC must be revoked from public/anon/authenticated");
 assert(joinedMigrations.includes("grant execute on function public.transition_status_tx"), "transition_status_tx RPC must be granted only to service_role");
@@ -134,24 +128,12 @@ assert(joinedMigrations.includes("automation.rules.safe_write_policy"), "V28.2 w
 assert(joinedMigrations.toLowerCase().includes("enable row level security"), "Supabase migrations must enable RLS");
 
 const seed = read("supabase/seed/20260529_v28_2_workflow_engine_seed.sql");
-for (const marker of [
-  "service_request.created.p0_triage",
-  "quotation.approval.overdue",
-  "review.privacy.redaction_required",
-  "payment.mismatch.finance_review",
-  "public.automation_rules",
-  "public.notification_outbox",
-  "public.internal_inbox_messages",
-  "public.unified_tasks",
-  "public.task_events"
-]) {
+for (const marker of ["service_request.created.p0_triage", "quotation.approval.overdue", "review.privacy.redaction_required", "payment.mismatch.finance_review", "public.automation_rules", "public.notification_outbox", "public.internal_inbox_messages", "public.unified_tasks", "public.task_events"]) {
   assert(seed.includes(marker), `V28.2 seed missing marker/table: ${marker}`);
 }
 
 const readyRoute = read("app/api/ready/route.ts");
-for (const table of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"]) {
-  assert(readyRoute.includes(table), `/api/ready missing V28.2 table readiness check: ${table}`);
-}
+for (const table of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"]) assert(readyRoute.includes(table), `/api/ready missing V28.2 table readiness check: ${table}`);
 assert(readyRoute.includes("28.2.0-automation-inbox-task-engine"), "/api/ready should expose the V28.2 readiness version");
 
 const dashboard = read("app/dashboard/page.tsx");
@@ -161,52 +143,37 @@ assert(systemSettings.includes("WorkflowSettingsWorkspace"), "System Settings mu
 assert(!systemSettings.includes("AutomationNotificationWorkspace"), "System Settings should not render the Dashboard workflow operation workspace");
 
 const workflowWorkspace = read("components/AutomationNotificationWorkspace.tsx");
-for (const marker of ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks", "WorkflowAuditTrail", "writeApi", "Demo rows cannot be acknowledged", "Demo rows cannot be updated"]) {
-  assert(workflowWorkspace.includes(marker), `AutomationNotificationWorkspace missing V28.2 marker: ${marker}`);
-}
+for (const marker of ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks", "WorkflowAuditTrail", "writeApi", "Demo rows cannot be acknowledged", "Demo rows cannot be updated"]) assert(workflowWorkspace.includes(marker), `AutomationNotificationWorkspace missing V28.2 marker: ${marker}`);
 assert(!/localStorage|sessionStorage/.test(workflowWorkspace), "AutomationNotificationWorkspace must not use browser storage for workflow state");
 
 const auditTrail = read("components/WorkflowAuditTrail.tsx");
-for (const marker of ["/api/admin/workflow-audit?limit=12", "task_events", "audit_logs", "notification_delivery", "Workflow Audit Trail"]) {
-  assert(auditTrail.includes(marker), `WorkflowAuditTrail missing marker: ${marker}`);
-}
+for (const marker of ["/api/admin/workflow-audit?limit=12", "task_events", "audit_logs", "notification_delivery", "Workflow Audit Trail"]) assert(auditTrail.includes(marker), `WorkflowAuditTrail missing marker: ${marker}`);
 assert(!/localStorage|sessionStorage/.test(auditTrail), "WorkflowAuditTrail must not use browser storage for audit data");
 
 const settingsWorkspace = read("components/WorkflowSettingsWorkspace.tsx");
-for (const marker of ["/api/admin/workflow-settings", "automation_rule_setting", "notification_channel", "unified_task_sla", "PATCH", "Workflow setting updated"]) {
-  assert(settingsWorkspace.includes(marker), `WorkflowSettingsWorkspace missing marker: ${marker}`);
-}
+for (const marker of ["/api/admin/workflow-settings", "automation_rule_setting", "notification_channel", "unified_task_sla", "PATCH", "Workflow setting updated"]) assert(settingsWorkspace.includes(marker), `WorkflowSettingsWorkspace missing marker: ${marker}`);
 assert(!/localStorage|sessionStorage/.test(settingsWorkspace), "WorkflowSettingsWorkspace must not use browser storage for settings data");
 
 const workflowAuditApi = read("app/api/admin/workflow-audit/route.ts");
-for (const marker of ["requireActorApi", "task_events", "audit_logs", "notification_outbox", "workflow_audit_trail_read", "writeAuditLog"]) {
-  assert(workflowAuditApi.includes(marker), `Workflow audit API missing marker: ${marker}`);
-}
-assert(!/select\('\*'\)/.test(workflowAuditApi), "Workflow audit API must use explicit field whitelists, not select('*')");
+for (const marker of ["requireActorApi", "task_events", "audit_logs", "notification_outbox", "workflow_audit_trail_read", "writeAuditLog"]) assert(workflowAuditApi.includes(marker), `Workflow audit API missing marker: ${marker}`);
+assert(!/select\(['"]\*['"]\)/.test(workflowAuditApi), "Workflow audit API must use explicit field whitelists, not select('*')");
 
 const workflowSettingsApi = read("app/api/admin/workflow-settings/route.ts");
-for (const marker of ["requireActorApi", "workflow_settings", "workflow_settings_read", "workflow_setting_upsert", "workflow_setting_update", "writeAuditLog"]) {
-  assert(workflowSettingsApi.includes(marker), `Workflow settings API missing marker: ${marker}`);
-}
-assert(!/select\('\*'\)/.test(workflowSettingsApi), "Workflow settings API must use explicit field whitelists, not select('*')");
+for (const marker of ["requireActorApi", "workflow_settings", "workflow_settings_read", "workflow_setting_upsert", "workflow_setting_update", "writeAuditLog"]) assert(workflowSettingsApi.includes(marker), `Workflow settings API missing marker: ${marker}`);
+assert(!/select\(['"]\*['"]\)/.test(workflowSettingsApi), "Workflow settings API must use explicit field whitelists, not select('*')");
 
 const globalSearch = read("app/api/global-search/route.ts");
-for (const needle of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "workflow_settings"]) {
-  assert(globalSearch.includes(needle), `Global search fallback missing V28.2 source: ${needle}`);
-}
-for (const marker of ["workflowSettingHref", "/system-settings#automation-rule-settings", "/system-settings#notification-channel-settings", "/system-settings#unified-task-sla-settings", "mergeResults", "rpc_result_count", "fallback_result_count"]) {
-  assert(globalSearch.includes(marker), `Global search missing V28.2 settings marker: ${marker}`);
-}
+for (const needle of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "workflow_settings"]) assert(globalSearch.includes(needle), `Global search fallback missing V28.2 source: ${needle}`);
+for (const marker of ["workflowSettingHref", "/system-settings#automation-rule-settings", "/system-settings#notification-channel-settings", "/system-settings#unified-task-sla-settings", "mergeResults", "rpc_result_count", "fallback_result_count"]) assert(globalSearch.includes(marker), `Global search missing V28.2 settings marker: ${marker}`);
 
 const smoke = read("tools/e2e-smoke.mjs");
-for (const marker of ["/api/admin/workflow-audit", "/api/admin/workflow-settings", "workflow_settings", "checkStaticV282SettingsSearchMarkers", "/system-settings#automation-rule-settings"]) {
-  assert(smoke.includes(marker), `E2E smoke missing V28.2 final preflight marker: ${marker}`);
-}
+for (const marker of ["/api/admin/workflow-audit", "/api/admin/workflow-settings", "workflow_settings", "checkStaticV282SettingsSearchMarkers", "/system-settings#automation-rule-settings"]) assert(smoke.includes(marker), `E2E smoke missing V28.2 final preflight marker: ${marker}`);
 
 const staticScan = read("tools/static-v28-2-issue-scan.mjs");
-for (const marker of ["select(\"*\")", "localStorage", "sessionStorage", "Admin API route", "workflow_settings", "Conflicting stale memory file"]) {
-  assert(staticScan.includes(marker), `Static issue scan missing marker: ${marker}`);
-}
+for (const marker of ["Supabase select", "localStorage", "sessionStorage", "Admin API route", "workflow_settings", "Conflicting stale memory file"]) assert(staticScan.includes(marker), `Static issue scan missing marker: ${marker}`);
+
+const runbook = read("docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md");
+for (const marker of ["Supabase deployment order", "scan:v28-2-static", "workflow_settings", "Final go/no-go checklist", "Rollback plan", "NANOFIX_V28_2_MASTER_MEMORY_20260529.md"]) assert(runbook.includes(marker), `Deployment runbook missing marker: ${marker}`);
 
 const nextConfig = read("next.config.mjs");
 assert(nextConfig.includes("Content-Security-Policy"), "next.config.mjs should define CSP");
