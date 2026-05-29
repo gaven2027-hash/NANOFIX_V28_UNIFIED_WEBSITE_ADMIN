@@ -14,7 +14,12 @@ const requiredTables = [
   "ai_logs",
   "backup_jobs",
   "audit_logs",
-  "app_modules"
+  "app_modules",
+  "automation_rules",
+  "notification_outbox",
+  "internal_inbox_messages",
+  "unified_tasks",
+  "task_events"
 ];
 
 type TableCheck = {
@@ -81,7 +86,7 @@ export async function GET() {
     {
       ok,
       service: "nanofix-v28-unified-website-admin",
-      version: "28.0.4-ready-rest-check",
+      version: "28.2.0-automation-inbox-task-engine",
       environment: process.env.NODE_ENV || "development",
       env_ready: envReady,
       database_ready: dbReady,
