@@ -18,6 +18,7 @@ const requiredFiles = [
   'app/api/customer-portal/uploads/route.ts',
   'app/api/customer-portal/records/route.ts',
   'app/api/customer-portal/service-requests/route.ts',
+  'app/api/customer-portal/storage-upload-url/route.ts',
   'app/customer-portal/page.tsx',
   'app/customer-portal/uploads/page.tsx',
   'app/customer-portal/records/page.tsx',
@@ -30,6 +31,7 @@ const requiredFiles = [
   'components/CustomerPortalShell.tsx',
   'components/CustomerPortalDashboard.tsx',
   'components/CustomerPortalApprovedUploads.tsx',
+  'components/CustomerPortalLinkedUploader.tsx',
   'components/CustomerPortalRecordsOverview.tsx',
   'components/CustomerPortalRequestWorkspace.tsx',
   'data/adminModuleReality.ts',
@@ -64,6 +66,7 @@ if (requiredFiles.every(exists)) {
   const customerUploadsApi = read('app/api/customer-portal/uploads/route.ts');
   const customerRecordsApi = read('app/api/customer-portal/records/route.ts');
   const customerSubmitApi = read('app/api/customer-portal/service-requests/route.ts');
+  const customerStorageApi = read('app/api/customer-portal/storage-upload-url/route.ts');
   const customerPortalPage = read('app/customer-portal/page.tsx');
   const customerUploadsPage = read('app/customer-portal/uploads/page.tsx');
   const customerRecordsPage = read('app/customer-portal/records/page.tsx');
@@ -76,6 +79,7 @@ if (requiredFiles.every(exists)) {
   const shell = read('components/CustomerPortalShell.tsx');
   const dashboard = read('components/CustomerPortalDashboard.tsx');
   const customerUploads = read('components/CustomerPortalApprovedUploads.tsx');
+  const customerLinkedUploader = read('components/CustomerPortalLinkedUploader.tsx');
   const customerRecords = read('components/CustomerPortalRecordsOverview.tsx');
   const customerRequest = read('components/CustomerPortalRequestWorkspace.tsx');
   const registry = read('data/adminModuleReality.ts');
@@ -99,8 +103,8 @@ if (requiredFiles.every(exists)) {
   assertMarkers(inspectionApi, ['service_operations_inspection_upload_read','service_operations_inspection_schedule','service_operations_inspection_form_submit','service_operations_engineer_assign','service_operations_upload_review_create','service_operations_upload_review_update','service_operations_upload_path_prepare','service_operations_customer_notification_queue','service_operations_upload_customer_visibility_set','set_upload_customer_visibility','visible_to_customer','customer_visible_at','customer_visible_by','customer_visibility_notes','Only approved uploads can be visible to customer','service_inspections','service_upload_reviews','notification_outbox','unified_tasks','task_events','queueCustomerNotification','createFollowUpTask','uploadReviewSelect','writeAuditLog','requireActorApi','export async function GET','export async function POST'], 'Inspection/upload API');
   assertNoSelectStar(inspectionApi, 'Inspection/upload API');
 
-  assertMarkers(storageApi, ['service_operations_signed_upload_url_create','service_operations_completed_upload_register','createSignedUploadUrl','register_completed_upload','create_signed_upload_url','service-uploads','MAX_SIZE_BYTES','MIME_TO_TYPE','service_upload_reviews','compression_status','checksum_sha256','storage_path','writeAuditLog','export async function POST'], 'Storage upload URL API');
-  assertNoSelectStar(storageApi, 'Storage upload URL API');
+  assertMarkers(storageApi, ['service_operations_signed_upload_url_create','service_operations_completed_upload_register','createSignedUploadUrl','register_completed_upload','create_signed_upload_url','service-uploads','MAX_SIZE_BYTES','MIME_TO_TYPE','service_upload_reviews','compression_status','checksum_sha256','storage_path','writeAuditLog','export async function POST'], 'Admin storage upload URL API');
+  assertNoSelectStar(storageApi, 'Admin storage upload URL API');
 
   assertMarkers(customerUploadsApi, ['CUSTOMER_AND_INTERNAL_ROLES',"'customer'",'customerIdsForProfile','allowedRelatedIdsForCustomers','belongsToAllowed','review_status','approved','visible_to_customer','createSignedUrl','customer_portal_uploads_signed_download_read','service-uploads','requireActorApi','writeAuditLog','export async function GET'], 'Customer Portal uploads API');
   assertNoSelectStar(customerUploadsApi, 'Customer Portal uploads API');
@@ -117,10 +121,21 @@ if (requiredFiles.every(exists)) {
   ], 'Customer Portal linked service request API');
   assertNoSelectStar(customerSubmitApi, 'Customer Portal linked service request API');
 
+  assertMarkers(customerStorageApi, [
+    'CUSTOMER_ROLES', "'customer'", 'requireActorApi', 'assertCustomerOwnsServiceRequest',
+    'customer_portal_signed_upload_url_create', 'customer_portal_completed_upload_register',
+    'createSignedUploadUrl', 'register_completed_upload', 'create_signed_upload_url',
+    'service-uploads', 'MAX_SIZE_BYTES', 'MIME_TO_TYPE', 'service_request_id',
+    'service_upload_reviews', 'unified_tasks', 'task_events', 'internal_inbox_messages',
+    'storage_path does not match the service request scope', 'visible_to_customer: false',
+    'export async function POST'
+  ], 'Customer Portal linked storage upload API');
+  assertNoSelectStar(customerStorageApi, 'Customer Portal linked storage upload API');
+
   assertMarkers(customerPortalPage, ['CustomerPortalShell','CustomerPortalDashboard','CustomerPortalDataLoop','CustomerPortalRequestWorkspace','Customer360','CustomerPortalAnchors'], 'Customer Portal home page');
   assert(!customerPortalPage.includes('AdminShell'), 'Customer Portal home page must not use AdminShell.');
   assert(!customerPortalPage.includes('PortalShell type="customer"'), 'Customer Portal home page should use CustomerPortalShell after B.2.');
-  assertMarkers(customerUploadsPage, ['CustomerPortalShell','CustomerPortalApprovedUploads'], 'Customer uploads page');
+  assertMarkers(customerUploadsPage, ['CustomerPortalShell','CustomerPortalLinkedUploader','CustomerPortalApprovedUploads','Suspense'], 'Customer uploads page');
   assert(!customerUploadsPage.includes('AdminShell'), 'Customer uploads page must not use AdminShell.');
   assertMarkers(customerRecordsPage, ['CustomerPortalShell','CustomerPortalRecordsOverview'], 'Customer records page');
   assert(!customerRecordsPage.includes('AdminShell'), 'Customer records page must not use AdminShell.');
@@ -153,6 +168,16 @@ if (requiredFiles.every(exists)) {
   assertNoBrowserStorage(customerUploads, 'CustomerPortalApprovedUploads');
   assert(!customerUploads.includes('<main'), 'CustomerPortalApprovedUploads should not render a nested main after B.2 shell.');
 
+  assertMarkers(customerLinkedUploader, [
+    'CustomerPortalLinkedUploader', 'useSearchParams', 'service_request_id',
+    '/api/customer-portal/storage-upload-url', 'create_signed_upload_url', 'register_completed_upload',
+    'uploadToSignedUrl', 'service-uploads', 'Upload and link to request', 'Auto-filled after submit',
+    'File uploaded and linked to your repair request for admin review',
+    "credentials: 'same-origin'", "cache: 'no-store'", 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  ], 'CustomerPortalLinkedUploader');
+  assertNoBrowserStorage(customerLinkedUploader, 'CustomerPortalLinkedUploader');
+  assert(!customerLinkedUploader.includes('/api/admin/service-operations/storage-upload-url'), 'CustomerPortalLinkedUploader must not call admin storage upload API.');
+
   assertMarkers(customerRecords, ['CustomerPortalRecordsOverview','/api/customer-portal/records?limit=20','My NANOFIX Records','Repair Requests','Jobs & Site Works','Invoices','Payments','Warranties','filtered by your linked customer profile','id: \'invoices\'','id: \'warranties\'',"credentials: 'same-origin'","cache: 'no-store'"], 'CustomerPortalRecordsOverview');
   assertNoBrowserStorage(customerRecords, 'CustomerPortalRecordsOverview');
   assert(!customerRecords.includes('<main'), 'CustomerPortalRecordsOverview should not render a nested main after B.2 shell.');
@@ -160,7 +185,9 @@ if (requiredFiles.every(exists)) {
   assertMarkers(customerRequest, [
     'CustomerPortalRequestWorkspace', '/api/customer-portal/service-requests',
     "credentials: 'same-origin'", "cache: 'no-store'", "'content-type': 'application/json'",
-    'linked to your customer account', 'serviceRequestId', 'Submit New Repair', 'Submit Warranty Claim'
+    'linked to your customer account', 'serviceRequestId', 'Submit New Repair', 'Submit Warranty Claim',
+    '/customer-portal/records#repair-requests', '/customer-portal/uploads?service_request_id=',
+    'View in Records / 查看记录', 'Upload Files / 上传文件'
   ], 'CustomerPortalRequestWorkspace');
   assertNoBrowserStorage(customerRequest, 'CustomerPortalRequestWorkspace');
   assert(!customerRequest.includes('/api/public/service-requests'), 'CustomerPortalRequestWorkspace must not submit to public service request API after B.3.');
