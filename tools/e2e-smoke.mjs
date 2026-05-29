@@ -24,8 +24,12 @@ const publicRoutes = [
 const protectedRoutes = [
   "/admin",
   "/dashboard",
+  "/dashboard#automation-notification-engine",
+  "/dashboard#internal-inbox",
+  "/dashboard#unified-task-engine",
   "/customer-portal",
   "/engineer-portal",
+  "/system-settings",
   "/admin/advertising-center",
   "/admin/advertising-center/import",
   "/admin/advertising-center/insights",
@@ -44,7 +48,18 @@ const apiRoutes = [
   ["/api/admin/advertising-center/import", 401],
   ["/api/admin/advertising-center/insights", 401],
   ["/api/admin/advertising-center/creatives", 401],
-  ["/api/admin/advertising-center/budgets", 401]
+  ["/api/admin/advertising-center/budgets", 401],
+  ["/api/admin/automation-notifications", 401],
+  ["/api/admin/internal-inbox", 401],
+  ["/api/admin/unified-tasks", 401]
+];
+
+const readyTables = [
+  "automation_rules",
+  "notification_outbox",
+  "internal_inbox_messages",
+  "unified_tasks",
+  "task_events"
 ];
 
 let server = null;
@@ -84,7 +99,8 @@ function startServer() {
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
       NANOFIX_ADMIN_PUBLIC_PREVIEW: "false",
-      NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED: "false"
+      NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED: "false",
+      ALLOW_ADMIN_API_SECRET_FALLBACK: "false"
     },
     stdio: ["ignore", "pipe", "pipe"],
     detached: process.platform !== "win32"
@@ -107,6 +123,33 @@ async function stopServer() {
   } catch {
     if (!server.killed) server.kill("SIGKILL");
   }
+}
+
+function parseJson(text, route) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${route} did not return valid JSON`);
+  }
+}
+
+async function checkReadyRoute() {
+  const { response, text } = await request("/api/ready");
+  if (![200, 503].includes(response.status)) {
+    throw new Error(`/api/ready expected 200 or 503; got ${response.status}`);
+  }
+  const body = parseJson(text, "/api/ready");
+  if (body.service !== "nanofix-v28-unified-website-admin") {
+    throw new Error(`/api/ready service marker mismatch: ${body.service}`);
+  }
+  if (!String(body.version || "").includes("28.2.0-automation-inbox-task-engine")) {
+    throw new Error(`/api/ready missing V28.2 readiness version; got ${body.version}`);
+  }
+  const tableNames = Array.isArray(body.required_tables) ? body.required_tables.map((item) => item.table) : [];
+  for (const table of readyTables) {
+    if (!tableNames.includes(table)) throw new Error(`/api/ready missing V28.2 table check: ${table}`);
+  }
+  log(`/api/ready ok for V28.2 table coverage -> ${response.status}`);
 }
 
 async function run() {
@@ -141,6 +184,8 @@ async function run() {
     }
     log(`api route ok: ${route} -> ${response.status}`);
   }
+
+  await checkReadyRoute();
 
   log("E2E smoke checks passed.");
 }
