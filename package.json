@@ -20,6 +20,7 @@
     "verify:v28-2-workflow": "node tools/verify-v28-2-workflow-engine.mjs",
     "verify:admin-reality": "node tools/verify-admin-module-reality.mjs",
     "verify:service-ops-core": "node tools/verify-service-operations-live-core.mjs",
+    "verify:quote-acceptance": "node tools/verify-quote-acceptance-flow.mjs",
     "scan:v28-2-static": "node tools/static-v28-2-issue-scan.mjs",
     "audit:oa-erp": "node tools/oa-erp-readiness-audit.mjs",
     "verify:ad-center": "node tools/verify-ad-center.mjs",
@@ -44,7 +45,7 @@
     "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
-    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:admin-reality && npm run verify:service-ops-core && npm run scan:v28-2-static && npm run audit:oa-erp && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:admin-reality && npm run verify:service-ops-core && npm run verify:quote-acceptance && npm run scan:v28-2-static && npm run audit:oa-erp && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
     "check:staging": "node tools/staging-supabase-check.mjs",
     "validate:platform": "node tools/deploy-readiness-check.mjs"
   },
