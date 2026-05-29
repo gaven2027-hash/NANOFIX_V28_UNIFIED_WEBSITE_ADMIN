@@ -24,7 +24,8 @@ const requiredTables = [
   "service_inspections",
   "service_upload_reviews",
   "quotation_acceptances",
-  "payment_intents"
+  "payment_intents",
+  "payment_webhook_events"
 ];
 
 type TableCheck = {
