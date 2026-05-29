@@ -26,7 +26,8 @@ const requiredTables = [
   "quotation_acceptances",
   "payment_intents",
   "payment_webhook_events",
-  "payment_checkout_sessions"
+  "payment_checkout_sessions",
+  "invoice_pdf_documents"
 ];
 
 type TableCheck = {
