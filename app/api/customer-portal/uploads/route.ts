@@ -23,7 +23,11 @@ type UploadRow = {
 };
 
 function isUuid(value: string | null | undefined) {
-  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+}
+
+function unique(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
 async function customerIdsForProfile(profileId: string) {
@@ -35,11 +39,7 @@ async function customerIdsForProfile(profileId: string) {
     .eq('account_status', 'active')
     .limit(20);
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => row.customer_id as string).filter(Boolean);
-}
-
-function unique(values: Array<string | null | undefined>) {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+  return unique((data ?? []).map((row) => row.customer_id as string));
 }
 
 async function allowedRelatedIdsForCustomers(customerIds: string[]) {
@@ -51,22 +51,42 @@ async function allowedRelatedIdsForCustomers(customerIds: string[]) {
     .select('service_request_id')
     .in('customer_id', customerIds);
   if (requestError) throw new Error(requestError.message);
+  const serviceRequestIds = unique((requests ?? []).map((row) => row.service_request_id as string));
 
-  const requestIds = unique((requests ?? []).map((row) => row.service_request_id as string));
   const { data: jobs, error: jobError } = await supabase
     .from('jobs')
     .select('job_id')
     .in('customer_id', customerIds);
   if (jobError) throw new Error(jobError.message);
-
   const jobIds = unique((jobs ?? []).map((row) => row.job_id as string));
-  const { data: inspections, error: inspectionError } = await supabase
+
+  const inspectionIds: string[] = [];
+  const byCustomer = await supabase
     .from('service_inspections')
     .select('inspection_id')
-    .or(`customer_id.in.(${customerIds.join(',')}),service_request_id.in.(${requestIds.join(',')}),job_id.in.(${jobIds.join(',')})`);
-  if (inspectionError) throw new Error(inspectionError.message);
+    .in('customer_id', customerIds);
+  if (byCustomer.error) throw new Error(byCustomer.error.message);
+  inspectionIds.push(...unique((byCustomer.data ?? []).map((row) => row.inspection_id as string)));
 
-  return { serviceRequestIds: requestIds, jobIds, inspectionIds: unique((inspections ?? []).map((row) => row.inspection_id as string)) };
+  if (serviceRequestIds.length) {
+    const byRequest = await supabase
+      .from('service_inspections')
+      .select('inspection_id')
+      .in('service_request_id', serviceRequestIds);
+    if (byRequest.error) throw new Error(byRequest.error.message);
+    inspectionIds.push(...unique((byRequest.data ?? []).map((row) => row.inspection_id as string)));
+  }
+
+  if (jobIds.length) {
+    const byJob = await supabase
+      .from('service_inspections')
+      .select('inspection_id')
+      .in('job_id', jobIds);
+    if (byJob.error) throw new Error(byJob.error.message);
+    inspectionIds.push(...unique((byJob.data ?? []).map((row) => row.inspection_id as string)));
+  }
+
+  return { serviceRequestIds, jobIds, inspectionIds: unique(inspectionIds) };
 }
 
 function belongsToAllowed(row: UploadRow, allowed: { serviceRequestIds: string[]; jobIds: string[]; inspectionIds: string[] }) {
