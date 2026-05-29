@@ -7,6 +7,7 @@ import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsD
 import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
+import { ServiceOperationsCustomerVisibility } from '@/components/ServiceOperationsCustomerVisibility';
 import { WorkflowBoard } from '@/components/WorkflowBoard';
 import { ServiceOperationsActionPanel } from '@/components/ServiceOperationsActionPanel';
 import { StatusMachineTable } from '@/components/StatusMachineTable';
@@ -22,6 +23,7 @@ export default function Page() {
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsInspectionWorkspace />
         <ServiceOperationsStorageUploader />
+        <ServiceOperationsCustomerVisibility />
         <WorkflowBoard />
         <ServiceOperationsActionPanel />
         <StatusMachineTable />
