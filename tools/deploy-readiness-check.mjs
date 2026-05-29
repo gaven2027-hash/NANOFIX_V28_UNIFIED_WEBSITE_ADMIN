@@ -24,8 +24,14 @@ const requiredFiles = [
   ".vercelignore",
   ".env.example",
   "middleware.ts",
+  "docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md",
+  "components/AutomationNotificationWorkspace.tsx",
+  "app/api/admin/automation-notifications/route.ts",
+  "app/api/admin/internal-inbox/route.ts",
+  "app/api/admin/unified-tasks/route.ts",
   "supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql",
-  "supabase/migrations/20260523_v28_production_hardening.sql"
+  "supabase/migrations/20260523_v28_production_hardening.sql",
+  "supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql"
 ];
 for (const file of requiredFiles) assert(exists(file), `Missing required deployment file: ${file}`);
 
@@ -35,6 +41,7 @@ for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate",
 }
 assert(pkg.engines?.node?.includes(">=20"), "package.json should require Node >=20 for Vercel/GitHub consistency");
 assert(pkg.engines?.node?.includes("<23"), "package.json should cap Node below 23 until dependencies are verified");
+assert(String(pkg.version || "").includes("28.2.0"), "package.json version should identify the V28.2 automation/inbox/task phase");
 
 const nvmrc = read(".nvmrc").trim();
 assert(nvmrc === "20", ".nvmrc should pin Node 20 for GitHub Actions and local parity");
@@ -94,6 +101,7 @@ for (const key of requiredEnv) assert(env.includes(key), `.env.example missing r
 const middleware = read("middleware.ts");
 assert(middleware.includes("x-admin-role") && middleware.includes("x-nanofix-role"), "middleware should explicitly strip untrusted client role headers");
 assert(middleware.includes("/login"), "middleware should redirect protected pages to /login");
+assert(middleware.includes("/api/admin/:path*"), "middleware must protect V28.2 admin APIs through the /api/admin matcher");
 
 const migrations = fs.readdirSync(path.join(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
 assert(migrations.length >= 6, "Expected complete Supabase migrations set");
@@ -102,9 +110,26 @@ const joinedMigrations = migrations.map((file) => read(`supabase/migrations/${fi
 for (const table of ["profiles", "customers", "unified_intake", "leads", "service_requests", "audit_logs", "app_modules"]) {
   assert(joinedMigrations.includes(`public.${table}`), `Supabase migrations missing core table reference: ${table}`);
 }
+for (const table of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events"]) {
+  assert(joinedMigrations.includes(`public.${table}`), `V28.2 migration missing workflow table reference: ${table}`);
+}
 assert(joinedMigrations.includes("revoke execute on function public.search_all_records"), "search_all_records RPC must be revoked from public/anon/authenticated");
 assert(joinedMigrations.includes("grant execute on function public.transition_status_tx"), "transition_status_tx RPC must be granted only to service_role");
+assert(joinedMigrations.includes("create_unified_task_with_inbox"), "V28.2 unified task + inbox RPC is missing");
 assert(joinedMigrations.toLowerCase().includes("enable row level security"), "Supabase migrations must enable RLS");
+
+const readyRoute = read("app/api/ready/route.ts");
+for (const table of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events"]) {
+  assert(readyRoute.includes(table), `/api/ready missing V28.2 table readiness check: ${table}`);
+}
+assert(readyRoute.includes("28.2.0-automation-inbox-task-engine"), "/api/ready should expose the V28.2 readiness version");
+
+const dashboard = read("app/dashboard/page.tsx");
+assert(dashboard.includes("AutomationNotificationWorkspace"), "Dashboard must render AutomationNotificationWorkspace");
+const globalSearch = read("app/api/global-search/route.ts");
+for (const needle of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks"]) {
+  assert(globalSearch.includes(needle), `Global search fallback missing V28.2 source: ${needle}`);
+}
 
 const nextConfig = read("next.config.mjs");
 assert(nextConfig.includes("Content-Security-Policy"), "next.config.mjs should define CSP");
@@ -116,4 +141,4 @@ if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log(JSON.stringify({ ok: true, checks: "github_vercel_supabase", warnings }, null, 2));
+console.log(JSON.stringify({ ok: true, checks: "github_vercel_supabase_v28_2_automation_inbox_task_engine", warnings }, null, 2));
