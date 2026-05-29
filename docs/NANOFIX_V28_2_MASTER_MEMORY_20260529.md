@@ -82,9 +82,73 @@ Rules:
 - Every task create/update should write a task event and an audit log.
 - Super Admin, Operations and Support can read broader queues; other internal roles are restricted to assigned/profile/role tasks.
 
+### 4. Workflow Audit Trail
+
+Purpose: show real traceability after workflow write actions.
+
+Core sources:
+
+- `task_events`
+- `audit_logs`
+- `notification_outbox`
+
+Core API:
+
+- `GET /api/admin/workflow-audit`
+
+Rules:
+
+- The dashboard audit component must read `/api/admin/workflow-audit?limit=12`.
+- The audit API must use `requireActorApi()` and explicit field whitelists, not `select('*')`.
+- Reading the audit trail is itself audited as `workflow_audit_trail_read`.
+- The UI must show degraded/error state if the API is unavailable.
+
+### 5. Workflow Settings
+
+Purpose: make System Settings manage workflow configuration instead of using dashboard operation panels.
+
+Core table:
+
+- `workflow_settings`
+
+Core API:
+
+- `GET /api/admin/workflow-settings`
+- `POST /api/admin/workflow-settings`
+- `PATCH /api/admin/workflow-settings`
+
+Core UI:
+
+- `components/WorkflowSettingsWorkspace.tsx`
+- `app/system-settings/page.tsx`
+
+Settings categories:
+
+- `automation_rule_setting`
+- `notification_channel`
+- `unified_task_sla`
+- `escalation_rule`
+
+Default settings:
+
+- `notification.channel.internal.default`
+- `notification.channel.email.operations`
+- `unified_task.sla.p0.repair_triage`
+- `unified_task.sla.p1.review_redaction`
+- `automation.rules.safe_write_policy`
+
+Rules:
+
+- System Settings must render `WorkflowSettingsWorkspace`, not `AutomationNotificationWorkspace`.
+- Settings changes must write Audit Logs through `workflow_setting_upsert` or `workflow_setting_update`.
+- Settings UI must use live API reads/writes, same-origin credentials and no browser storage.
+- `workflow_settings` must be included in `/api/ready`.
+
 ## Database and security baseline
 
 - V28.2 adds Supabase migration `202605290001_v28_2_automation_inbox_task_engine.sql`.
+- V28.2 adds Supabase migration `202605290002_v28_2_workflow_settings.sql`.
+- V28.2 adds seed file `supabase/seed/20260529_v28_2_workflow_engine_seed.sql` for safe local/staging demo records.
 - RLS is enabled for all V28.2 tables.
 - Internal role access is checked through `profiles.auth_user_id = auth.uid()` and `profiles.role`.
 - API routes still use `requireActorApi()` / `requireAdminApi()` and Supabase service role server-side.
@@ -94,6 +158,7 @@ Rules:
   - `internal_inbox_messages`
   - `unified_tasks`
   - `task_events`
+  - `workflow_settings`
 
 ## UI placement
 
@@ -103,17 +168,65 @@ Do not add a new first-level menu. V28.2 workflow functions are integrated under
   - Automation & Notification Engine
   - Internal Inbox
   - Unified Task Engine
+  - Workflow Audit Trail
 - Website & System Settings:
   - Automation Rule Settings
   - Notification Channel Settings
   - Unified Task SLA Settings
 
+## Global Search baseline
+
+Global Search must cover the V28.2 workflow and settings sources:
+
+- `automation_rules`
+- `notification_outbox`
+- `internal_inbox_messages`
+- `unified_tasks`
+- `workflow_settings`
+
+Workflow settings search results must route to:
+
+- `/system-settings#automation-rule-settings`
+- `/system-settings#notification-channel-settings`
+- `/system-settings#unified-task-sla-settings`
+
+Global Search must merge RPC results with fallback search results so newly added V28.2 tables are searchable even before the RPC is expanded.
+
+## Final preflight baseline
+
+The following scripts must enforce V28.2 final status:
+
+- `npm run verify:v28-2-workflow`
+- `npm run validate:platform`
+- `npm run validate:package`
+- `npm run test:e2e:smoke`
+- `npm run validate:predeploy`
+- `npm run quality:gate`
+
+The final preflight must check:
+
+- Dashboard renders `AutomationNotificationWorkspace`.
+- System Settings renders `WorkflowSettingsWorkspace` and does not render `AutomationNotificationWorkspace`.
+- Workflow read APIs are bound: automation notifications, internal inbox, unified tasks.
+- Workflow write actions are bound: queue notification, acknowledge inbox, create task, advance task.
+- Demo fallback rows are not writable live records.
+- Workflow Audit Trail reads task events, audit logs and notification delivery status.
+- Workflow Settings reads and patches live settings.
+- Global Search includes workflow settings and routes to System Settings anchors.
+- `/api/ready` includes `workflow_settings`.
+- E2E smoke checks protected System Settings anchors and unauthenticated 401 responses for workflow settings/audit APIs.
+
 ## Production rule
 
 Before deployment:
 
-1. Apply the Supabase migration.
-2. Run typecheck and production build.
-3. Confirm `/api/ready` returns the new V28.2 tables as ready.
-4. Confirm APIs return real database status instead of visual-only success.
-5. Confirm Audit Logs receive create/update/read action entries where required.
+1. Apply Supabase migrations:
+   - `202605290001_v28_2_automation_inbox_task_engine.sql`
+   - `202605290002_v28_2_workflow_settings.sql`
+2. Optionally apply safe local/staging seed data:
+   - `supabase/seed/20260529_v28_2_workflow_engine_seed.sql`
+3. Run typecheck and production build.
+4. Run `npm run validate:predeploy` and `npm run quality:gate`.
+5. Confirm `/api/ready` returns all V28.2 tables as ready.
+6. Confirm APIs return real database status instead of visual-only success.
+7. Confirm Audit Logs receive create/update/read action entries where required.
