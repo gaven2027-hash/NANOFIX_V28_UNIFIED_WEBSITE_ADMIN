@@ -32,10 +32,16 @@ if (requiredFiles.every(exists)) {
   for (const marker of [
     'requireActorApi',
     'service_operations_live_core_read',
+    'service_operations_live_core_detail_read',
+    'service_operations_live_core_record_create',
+    'service_operations_live_core_record_update',
     'service_operations_live_core_status_patch',
     'transition_status_tx',
     'writeAuditLog',
     'status_transition_logs',
+    'creationPayload',
+    'sanitizePatch',
+    'writableFields',
     'leads',
     'service_requests',
     'jobs',
@@ -44,21 +50,34 @@ if (requiredFiles.every(exists)) {
     'payments',
     'warranties'
   ]) assert(api.includes(marker), `Service Operations API missing marker: ${marker}`);
+  for (const exportMarker of ['export async function GET', 'export async function POST', 'export async function PATCH']) {
+    assert(api.includes(exportMarker), `Service Operations API missing handler: ${exportMarker}`);
+  }
+  assert(api.includes("action === 'update'"), 'Service Operations PATCH must support action:update field updates separately from status transition.');
+  assert(api.includes('select(spec.select)'), 'Service Operations API must use explicit per-machine select whitelists.');
   assert(!/select\(['"]\*['"]\)/.test(api), 'Service Operations API must use explicit field whitelists, not select("*").');
   assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support', 'engineer']"), 'Service Operations GET roles should include engineer read access.');
-  assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support']"), 'Service Operations PATCH roles should exclude engineer write access.');
+  assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support']"), 'Service Operations write roles should exclude engineer write access.');
 
   for (const marker of [
     '/api/admin/service-operations?limit=12',
+    'machine=${encodeURIComponent(machine)}&object_id=${encodeURIComponent(objectId)}',
     "fetch('/api/admin/service-operations'",
+    "method: 'POST'",
     "method: 'PATCH'",
+    "action: 'update'",
     "credentials: 'same-origin'",
     "cache: 'no-store'",
     "'content-type': 'application/json'",
     'Service Operations Live Core',
+    'Live actions / 真实操作',
+    'Live Detail / 真实详情',
     'Status Flow & Logs',
     'transition_status_tx'
   ]) assert(component.includes(marker), `ServiceOperationsLiveCore missing marker: ${marker}`);
+  for (const functionMarker of ['postCreate', 'fetchDetail', 'patchUpdate', 'patchStatus', 'runWrite', 'createRecord', 'updateRecord', 'openDetail']) {
+    assert(component.includes(functionMarker), `ServiceOperationsLiveCore missing function marker: ${functionMarker}`);
+  }
   assert(!/localStorage|sessionStorage/.test(component), 'ServiceOperationsLiveCore must not use browser storage for production state.');
 
   for (const anchor of [
