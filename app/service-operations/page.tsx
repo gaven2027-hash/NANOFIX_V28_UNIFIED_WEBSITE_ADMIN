@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ServiceOperationsLiveCore } from '@/components/ServiceOperationsLiveCore';
 import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsDedicatedForms';
 import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
+import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { WorkflowBoard } from '@/components/WorkflowBoard';
 import { ServiceOperationsActionPanel } from '@/components/ServiceOperationsActionPanel';
 import { StatusMachineTable } from '@/components/StatusMachineTable';
@@ -18,6 +19,7 @@ export default function Page() {
         <ServiceOperationsLiveCore />
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsFinancialEditors />
+        <ServiceOperationsInspectionWorkspace />
         <WorkflowBoard />
         <ServiceOperationsActionPanel />
         <StatusMachineTable />
