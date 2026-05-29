@@ -30,6 +30,7 @@ const requiredFiles = [
   'components/ServiceOperationsLiveCore.tsx',
   'components/ServiceOperationsDedicatedForms.tsx',
   'components/ServiceOperationsFinancialEditors.tsx',
+  'components/ServiceOperationsFinancialVisibility.tsx',
   'components/ServiceOperationsInspectionWorkspace.tsx',
   'components/ServiceOperationsStorageUploader.tsx',
   'components/ServiceOperationsCustomerVisibility.tsx',
@@ -56,6 +57,7 @@ for (const file of requiredFiles) assert(exists(file), `Missing Service Operatio
 
 if (requiredFiles.every(exists)) {
   const files = Object.fromEntries(requiredFiles.map((file) => [file, read(file)]));
+  const servicePage = files['app/service-operations/page.tsx'];
   const coreApi = files['app/api/admin/service-operations/route.ts'];
   const financialApi = files['app/api/admin/service-operations/financial-documents/route.ts'];
   const inspectionApi = files['app/api/admin/service-operations/inspections/route.ts'];
@@ -65,6 +67,7 @@ if (requiredFiles.every(exists)) {
   const customerSubmitApi = files['app/api/customer-portal/service-requests/route.ts'];
   const customerStorageApi = files['app/api/customer-portal/storage-upload-url/route.ts'];
   const customerFinancialApi = files['app/api/customer-portal/financial/route.ts'];
+  const financialVisibility = files['components/ServiceOperationsFinancialVisibility.tsx'];
   const shell = files['components/CustomerPortalShell.tsx'];
   const dashboard = files['components/CustomerPortalDashboard.tsx'];
   const customerRequest = files['components/CustomerPortalRequestWorkspace.tsx'];
@@ -76,7 +79,6 @@ if (requiredFiles.every(exists)) {
   const customerUploadsPage = files['app/customer-portal/uploads/page.tsx'];
   const customerRecordsPage = files['app/customer-portal/records/page.tsx'];
   const customerPortalPage = files['app/customer-portal/page.tsx'];
-  const servicePage = files['app/service-operations/page.tsx'];
   const registry = files['data/adminModuleReality.ts'];
   const bridge = files['supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql'];
   const inspectionSql = files['supabase/migrations/202605290003_service_operations_inspection_uploads.sql'];
@@ -88,11 +90,19 @@ if (requiredFiles.every(exists)) {
   const customerFinancialSql = files['supabase/migrations/202605290009_customer_portal_financial_visibility.sql'];
   const ready = files['app/api/ready/route.ts'];
 
-  assertMarkers(servicePage, ['ServiceOperationsLiveCore','ServiceOperationsDedicatedForms','ServiceOperationsFinancialEditors','ServiceOperationsInspectionWorkspace','ServiceOperationsStorageUploader','ServiceOperationsCustomerVisibility','MenuAnchorSections route="/service-operations"'], 'Service Operations page');
+  assertMarkers(servicePage, ['ServiceOperationsLiveCore','ServiceOperationsDedicatedForms','ServiceOperationsFinancialEditors','ServiceOperationsFinancialVisibility','ServiceOperationsInspectionWorkspace','ServiceOperationsStorageUploader','ServiceOperationsCustomerVisibility','MenuAnchorSections route="/service-operations"'], 'Service Operations page');
   assertMarkers(coreApi, ['requireActorApi','service_operations_live_core_read','service_operations_live_core_record_create','service_operations_live_core_record_update','service_operations_live_core_status_patch','transition_status_tx','select(spec.select)','leads','service_requests','jobs','quotations','invoices','payments','warranties','export async function GET','export async function POST','export async function PATCH'], 'Service Operations core API');
   assertNoSelectStar(coreApi, 'Service Operations core API');
-  assertMarkers(financialApi, ['service_operations_financial_document_read','service_operations_quotation_version_save','service_operations_invoice_items_save','service_operations_payment_reconcile','service_operations_warranty_issue','quotation_versions','invoice_items','payment_transactions','save_quotation_version','save_invoice_items','reconcile_payment','issue_warranty','export async function GET','export async function POST'], 'Financial document API');
+
+  assertMarkers(financialApi, [
+    'service_operations_financial_document_read','service_operations_quotation_version_save','service_operations_invoice_items_save','service_operations_payment_reconcile','service_operations_warranty_issue',
+    'service_operations_quotation_customer_visibility_set','service_operations_invoice_customer_visibility_set','service_operations_payment_customer_visibility_set',
+    'set_quotation_customer_visibility','set_invoice_customer_visibility','set_payment_customer_visibility',
+    'financialVisibilityPayload','visible_to_customer','customer_visible_at','customer_visible_by','customer_visibility_notes','pdf_storage_path','payment_url','public_ref',
+    'quotation_versions','invoice_items','payment_transactions','save_quotation_version','save_invoice_items','reconcile_payment','issue_warranty','export async function GET','export async function POST'
+  ], 'Financial document API');
   assertNoSelectStar(financialApi, 'Financial document API');
+
   assertMarkers(inspectionApi, ['service_operations_inspection_upload_read','service_operations_upload_customer_visibility_set','set_upload_customer_visibility','visible_to_customer','customer_visible_at','customer_visible_by','customer_visibility_notes','Only approved uploads can be visible to customer','service_inspections','service_upload_reviews','notification_outbox','unified_tasks','task_events','queueCustomerNotification','createFollowUpTask','uploadReviewSelect'], 'Inspection/upload API');
   assertNoSelectStar(inspectionApi, 'Inspection/upload API');
   assertMarkers(adminStorageApi, ['service_operations_signed_upload_url_create','service_operations_completed_upload_register','createSignedUploadUrl','register_completed_upload','service-uploads','service_upload_reviews','compression_status','checksum_sha256','storage_path'], 'Admin storage upload URL API');
@@ -108,6 +118,13 @@ if (requiredFiles.every(exists)) {
   assertNoSelectStar(customerStorageApi, 'Customer Portal linked storage upload API');
   assertMarkers(customerFinancialApi, ['ALLOWED_ROLES','customerIdsForProfile','jobIdsForCustomers','loadFinancialForJobs','quotations','quotation_versions','invoices','payments','visible_to_customer','createSignedUrl','pdf_download_url','payment_url','customer_portal_financial_read','service-uploads'], 'Customer Portal financial API');
   assertNoSelectStar(customerFinancialApi, 'Customer Portal financial API');
+
+  assertMarkers(financialVisibility, [
+    'ServiceOperationsFinancialVisibility','Financial Customer Visibility','Quotation / Invoice PDF / Payment Link Controls',
+    'set_quotation_customer_visibility','set_invoice_customer_visibility','set_payment_customer_visibility','visible_to_customer','customer_visibility_notes','pdf_storage_path','payment_url','public_ref',
+    '/api/admin/service-operations/financial-documents','Save financial visibility','PDF upload control','Last Financial Visibility Result',"credentials: 'same-origin'","cache: 'no-store'"
+  ], 'ServiceOperationsFinancialVisibility');
+  assertNoBrowserStorage(financialVisibility, 'ServiceOperationsFinancialVisibility');
 
   assertMarkers(customerPortalPage, ['CustomerPortalShell','CustomerPortalDashboard','CustomerPortalRequestWorkspace','Customer360','CustomerPortalAnchors'], 'Customer Portal home page');
   assert(!customerPortalPage.includes('AdminShell'), 'Customer Portal home page must not use AdminShell.');
