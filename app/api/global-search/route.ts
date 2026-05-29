@@ -19,7 +19,7 @@ function like(input: string) {
 }
 
 function normalizeCategory(category: string) {
-  return category.toLowerCase().replace(/\s+/g, '_');
+  return category.toLowerCase().replace(/[\s-]+/g, '_');
 }
 
 async function fallbackSearch(q: string, category: string): Promise<SearchResult[]> {
@@ -130,6 +130,40 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
+  if (category === 'all' || normalized === 'automation' || normalized === 'automation_rules') {
+    tasks.push(supabase
+      .from('automation_rules')
+      .select('rule_id,rule_key,name,module,trigger_event,is_enabled,priority,created_at')
+      .or(`rule_key.ilike.${pattern},name.ilike.${pattern},module.ilike.${pattern},trigger_event.ilike.${pattern},priority.ilike.${pattern}`)
+      .order('created_at', { ascending: false })
+      .limit(8)
+      .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
+        type: 'automation_rule',
+        title: row.name ?? `Automation ${row.rule_id?.slice(0, 8)}`,
+        subtitle: `${row.module ?? 'module'} · ${row.trigger_event ?? row.rule_key ?? 'trigger'} · priority ${row.priority ?? 'P2'}`,
+        href: '/dashboard#automation-notification-engine',
+        status: row.is_enabled ? 'enabled' : 'disabled',
+        created_at: row.created_at
+      }))));
+  }
+
+  if (category === 'all' || normalized === 'notifications' || normalized === 'notification_outbox') {
+    tasks.push(supabase
+      .from('notification_outbox')
+      .select('notification_id,channel,target_role,subject,delivery_status,created_at')
+      .or(`channel.ilike.${pattern},target_role.ilike.${pattern},subject.ilike.${pattern},delivery_status.ilike.${pattern}`)
+      .order('created_at', { ascending: false })
+      .limit(8)
+      .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
+        type: 'notification_outbox',
+        title: row.subject ?? `Notification ${row.notification_id?.slice(0, 8)}`,
+        subtitle: `${row.channel ?? 'internal'} · ${row.target_role ?? 'role'}`,
+        href: '/dashboard#automation-notification-engine',
+        status: row.delivery_status,
+        created_at: row.created_at
+      }))));
+  }
+
   if (category === 'all' || normalized === 'tasks' || normalized === 'unified_tasks') {
     tasks.push(supabase
       .from('unified_tasks')
@@ -141,7 +175,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
         type: 'unified_task',
         title: row.title ?? `Task ${row.task_id?.slice(0, 8)}`,
         subtitle: `${row.source_module ?? 'module'} · priority ${row.priority ?? 'P2'}`,
-        href: `/dashboard#unified-task-${row.task_id}`,
+        href: '/dashboard#unified-task-engine',
         status: row.status,
         created_at: row.created_at
       }))));
@@ -158,14 +192,14 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
         type: 'internal_inbox',
         title: row.subject ?? `Message ${row.message_id?.slice(0, 8)}`,
         subtitle: `${row.recipient_role ?? 'role'} · priority ${row.priority ?? 'P2'}`,
-        href: `/dashboard#internal-inbox-${row.message_id}`,
+        href: '/dashboard#internal-inbox',
         status: row.read_at ? 'read' : 'unread',
         created_at: row.created_at
       }))));
   }
 
   const settled = await Promise.allSettled(tasks);
-  return settled.flatMap((item) => item.status === 'fulfilled' ? item.value : []).slice(0, 24);
+  return settled.flatMap((item) => item.status === 'fulfilled' ? item.value : []).slice(0, 30);
 }
 
 export async function GET(request: NextRequest) {
