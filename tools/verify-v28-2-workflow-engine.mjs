@@ -13,15 +13,19 @@ const requiredFiles = [
   'docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md',
   'components/AutomationNotificationWorkspace.tsx',
   'components/WorkflowAuditTrail.tsx',
+  'components/WorkflowSettingsWorkspace.tsx',
   'app/dashboard/page.tsx',
+  'app/system-settings/page.tsx',
   'app/api/admin/automation-notifications/route.ts',
   'app/api/admin/internal-inbox/route.ts',
   'app/api/admin/unified-tasks/route.ts',
   'app/api/admin/workflow-audit/route.ts',
+  'app/api/admin/workflow-settings/route.ts',
   'app/api/global-search/route.ts',
   'app/api/ready/route.ts',
   'data/adminNavigation.ts',
   'supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql',
+  'supabase/migrations/202605290002_v28_2_workflow_settings.sql',
   'supabase/seed/20260529_v28_2_workflow_engine_seed.sql'
 ];
 
@@ -49,6 +53,9 @@ if (requiredFiles.every(exists)) {
 
   const dashboard = read('app/dashboard/page.tsx');
   assert(dashboard.includes('AutomationNotificationWorkspace'), 'Dashboard must render AutomationNotificationWorkspace');
+  const systemSettingsPage = read('app/system-settings/page.tsx');
+  assert(systemSettingsPage.includes('WorkflowSettingsWorkspace'), 'System Settings must render WorkflowSettingsWorkspace');
+  assert(!systemSettingsPage.includes('AutomationNotificationWorkspace'), 'System Settings should use settings workspace, not dashboard operation workspace');
 
   const workspace = read('components/AutomationNotificationWorkspace.tsx');
   for (const marker of ['automation-notification-engine', 'internal-inbox', 'unified-task-engine']) {
@@ -89,12 +96,26 @@ if (requiredFiles.every(exists)) {
   assert(!/localStorage|sessionStorage/.test(workspace), 'V28.2 workflow UI must not store production workflow state in browser storage');
   assert(!/return\s+\{\s*ok:\s*true\s*\}/.test(workspace), 'V28.2 workflow UI must not fake live API success');
 
+  const settingsComponent = read('components/WorkflowSettingsWorkspace.tsx');
+  for (const marker of ['/api/admin/workflow-settings', 'automation_rule_setting', 'notification_channel', 'unified_task_sla', 'Workflow Settings Workspace', 'PATCH', 'Workflow setting updated']) {
+    assert(settingsComponent.includes(marker), `WorkflowSettingsWorkspace missing marker: ${marker}`);
+  }
+  assert(settingsComponent.includes("credentials: 'same-origin'") && settingsComponent.includes("cache: 'no-store'"), 'WorkflowSettingsWorkspace must use same-origin no-store fetch');
+  assert(settingsComponent.includes("'content-type': 'application/json'"), 'WorkflowSettingsWorkspace writes must send JSON content-type');
+  assert(!/localStorage|sessionStorage/.test(settingsComponent), 'WorkflowSettingsWorkspace must not use browser storage for settings data');
+
   const auditComponent = read('components/WorkflowAuditTrail.tsx');
   for (const marker of ['/api/admin/workflow-audit?limit=12', 'task_events', 'audit_logs', 'notification_delivery', 'Workflow Audit Trail', 'Refresh audit']) {
     assert(auditComponent.includes(marker), `WorkflowAuditTrail missing marker: ${marker}`);
   }
   assert(auditComponent.includes("credentials: 'same-origin'") && auditComponent.includes("cache: 'no-store'"), 'WorkflowAuditTrail must use same-origin no-store fetch');
   assert(!/localStorage|sessionStorage/.test(auditComponent), 'WorkflowAuditTrail must not use browser storage for audit data');
+
+  const settingsApi = read('app/api/admin/workflow-settings/route.ts');
+  for (const marker of ['requireActorApi', 'workflow_settings', 'workflow_settings_read', 'workflow_setting_upsert', 'workflow_setting_update', 'writeAuditLog']) {
+    assert(settingsApi.includes(marker), `Workflow settings API missing marker: ${marker}`);
+  }
+  assert(!/select\('\*'\)/.test(settingsApi), 'Workflow settings API must use explicit field whitelists, not select("*")');
 
   const auditApi = read('app/api/admin/workflow-audit/route.ts');
   for (const marker of ['requireActorApi', 'task_events', 'audit_logs', 'notification_outbox', 'workflow_audit_trail_read', 'writeAuditLog']) {
@@ -124,17 +145,20 @@ if (requiredFiles.every(exists)) {
   }
 
   const ready = read('app/api/ready/route.ts');
-  for (const table of ['automation_rules', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'task_events']) {
+  for (const table of ['automation_rules', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'task_events', 'workflow_settings']) {
     assert(ready.includes(table), `/api/ready missing V28.2 table: ${table}`);
   }
   assert(ready.includes('28.2.0-automation-inbox-task-engine'), '/api/ready missing V28.2 version marker');
 
-  const sql = read('supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql');
-  for (const table of ['public.automation_rules', 'public.notification_outbox', 'public.internal_inbox_messages', 'public.unified_tasks', 'public.task_events']) {
+  const sql = read('supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql') + '\n' + read('supabase/migrations/202605290002_v28_2_workflow_settings.sql');
+  for (const table of ['public.automation_rules', 'public.notification_outbox', 'public.internal_inbox_messages', 'public.unified_tasks', 'public.task_events', 'public.workflow_settings']) {
     assert(sql.includes(table), `Migration missing table: ${table}`);
   }
   for (const phrase of ['enable row level security', 'create_unified_task_with_inbox', 'revoke all on function public.create_unified_task_with_inbox']) {
     assert(sql.toLowerCase().includes(phrase.toLowerCase()), `Migration missing security/RPC phrase: ${phrase}`);
+  }
+  for (const phrase of ['notification.channel.internal.default', 'unified_task.sla.p0.repair_triage', 'automation.rules.safe_write_policy']) {
+    assert(sql.includes(phrase), `Workflow settings migration missing default: ${phrase}`);
   }
 
   const seed = read('supabase/seed/20260529_v28_2_workflow_engine_seed.sql');
