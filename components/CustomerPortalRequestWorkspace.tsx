@@ -8,6 +8,7 @@ type SubmitState = {
   loading: boolean;
   message: string;
   ok: boolean | null;
+  serviceRequestId?: string | null;
 };
 
 const inputClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-activeBlue focus:ring-2 focus:ring-sky-100';
@@ -15,11 +16,11 @@ const labelClass = 'mb-1 block text-xs font-black uppercase tracking-[0.12em] te
 
 export function CustomerPortalRequestWorkspace() {
   const [requestKind, setRequestKind] = useState<RequestKind>('new_repair');
-  const [state, setState] = useState<SubmitState>({ loading: false, message: '', ok: null });
+  const [state, setState] = useState<SubmitState>({ loading: false, message: '', ok: null, serviceRequestId: null });
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setState({ loading: true, message: '', ok: null });
+    setState({ loading: true, message: '', ok: null, serviceRequestId: null });
     const form = new FormData(event.currentTarget);
     const payload = {
       requestType: requestKind,
@@ -34,34 +35,33 @@ export function CustomerPortalRequestWorkspace() {
       warrantyCode: String(form.get('warrantyCode') || ''),
       originalJobReference: String(form.get('originalJobReference') || ''),
       suspectedRecurringIssue: form.get('suspectedRecurringIssue') === 'on',
-      preferredAppointmentTime: String(form.get('preferredAppointmentTime') || ''),
-      sourcePlatform: requestKind === 'warranty_claim' ? 'customer_portal_warranty_claim' : 'customer_portal_new_repair',
-      sourceType: 'direct',
-      sourceMedium: 'customer_portal_form',
-      registrationMode: 'customer_portal'
+      preferredAppointmentTime: String(form.get('preferredAppointmentTime') || '')
     };
 
     try {
-      const response = await fetch('/api/public/service-requests', {
+      const response = await fetch('/api/customer-portal/service-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result?.ok) {
-        setState({ loading: false, ok: false, message: result?.error || 'Submission failed. / 提交失败。' });
+        setState({ loading: false, ok: false, message: result?.error || 'Submission failed. / 提交失败。', serviceRequestId: null });
         return;
       }
       setState({
         loading: false,
         ok: true,
+        serviceRequestId: result.serviceRequestId ?? null,
         message: requestKind === 'warranty_claim'
-          ? 'Warranty claim submitted. Our team will check whether it is within warranty scope. / 保修范围申请已提交，我们会审核是否属于保修范围。'
-          : 'Repair request submitted. Our team will review and contact you shortly. / 新增维修请求已提交，我们会尽快审核并联系您。'
+          ? `Warranty claim submitted and linked to your customer account. / 保修范围申请已提交并绑定到您的客户账号。${result.serviceRequestId ? ` ID: ${result.serviceRequestId}` : ''}`
+          : `Repair request submitted and linked to your customer account. / 新增维修请求已提交并绑定到您的客户账号。${result.serviceRequestId ? ` ID: ${result.serviceRequestId}` : ''}`
       });
       event.currentTarget.reset();
     } catch {
-      setState({ loading: false, ok: false, message: 'Submission service is not reachable. / 提交服务暂时无法连接。' });
+      setState({ loading: false, ok: false, message: 'Customer portal submission service is not reachable. / 客户门户提交服务暂时无法连接。', serviceRequestId: null });
     }
   }
 
@@ -72,23 +72,15 @@ export function CustomerPortalRequestWorkspace() {
           <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer Request / 客户提交请求</div>
           <h2 className="mt-1 text-2xl font-black text-slate-950">New Repair or Warranty Claim / 新增维修或保修范围申请</h2>
           <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">
-            Customer Portal submissions are customer-owned records. New repair creates a service request; warranty claim links to warranty review before deciding in-warranty, out-of-warranty or new quotation handling.
-            / 客户门户提交内容属于客户自己的记录。新增维修会创建报修单；保修范围申请会进入保修审核，再判断保修内、保修外或需要重新报价。
+            Customer Portal submissions are customer-owned records. New repair creates a linked service request; warranty claim enters warranty review before deciding in-warranty, out-of-warranty or new quotation handling.
+            / 客户门户提交内容属于客户自己的记录。新增维修会创建已绑定报修单；保修范围申请会进入保修审核，再判断保修内、保修外或需要重新报价。
           </p>
         </div>
         <div className="grid w-full gap-2 rounded-3xl bg-adminBg p-2 sm:w-auto sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setRequestKind('new_repair')}
-            className={`rounded-2xl px-5 py-3 text-sm font-black transition ${requestKind === 'new_repair' ? 'bg-activeBlue text-white shadow-lg shadow-sky-200' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}
-          >
+          <button type="button" onClick={() => setRequestKind('new_repair')} className={`rounded-2xl px-5 py-3 text-sm font-black transition ${requestKind === 'new_repair' ? 'bg-activeBlue text-white shadow-lg shadow-sky-200' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
             New Repair / 新增维修
           </button>
-          <button
-            type="button"
-            onClick={() => setRequestKind('warranty_claim')}
-            className={`rounded-2xl px-5 py-3 text-sm font-black transition ${requestKind === 'warranty_claim' ? 'bg-activeBlue text-white shadow-lg shadow-sky-200' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}
-          >
+          <button type="button" onClick={() => setRequestKind('warranty_claim')} className={`rounded-2xl px-5 py-3 text-sm font-black transition ${requestKind === 'warranty_claim' ? 'bg-activeBlue text-white shadow-lg shadow-sky-200' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
             Warranty Claim / 保修范围申请
           </button>
         </div>
@@ -155,7 +147,7 @@ export function CustomerPortalRequestWorkspace() {
 
         <label className="lg:col-span-2">
           <span className={labelClass}>Problem Description / 问题描述</span>
-          <textarea name="message" className={`${inputClass} min-h-32 resize-y`} placeholder="Describe leakage location, timing, visible stains, photos/videos uploaded in customer media flow, and urgency. / 描述漏水位置、发生时间、水印、照片视频和紧急程度。" />
+          <textarea name="message" className={`${inputClass} min-h-32 resize-y`} placeholder="Describe leakage location, timing, visible stains, photos/videos uploaded in customer media flow, and urgency. / 描述漏水位置、发生时间、水印、照片视频和紧急程度。" required />
         </label>
 
         {state.message ? (
@@ -169,7 +161,7 @@ export function CustomerPortalRequestWorkspace() {
             {state.loading ? 'Submitting... / 提交中...' : requestKind === 'warranty_claim' ? 'Submit Warranty Claim / 提交保修范围申请' : 'Submit New Repair / 提交新增维修'}
           </button>
           <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-500 ring-1 ring-slate-200">
-            Photos/videos should be uploaded through the customer media upload flow and linked to this request. / 图片视频应通过客户素材上传流程上传并绑定到本请求。
+            This form uses the linked customer-portal API. Photos/videos can be uploaded from the Uploads page and linked to the request. / 此表单使用已登录客户门户 API；图片视频可在文件页面上传并绑定到请求。
           </div>
         </div>
       </form>
