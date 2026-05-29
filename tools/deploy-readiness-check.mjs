@@ -31,12 +31,13 @@ const requiredFiles = [
   "app/api/admin/unified-tasks/route.ts",
   "supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql",
   "supabase/migrations/20260523_v28_production_hardening.sql",
-  "supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql"
+  "supabase/migrations/202605290001_v28_2_automation_inbox_task_engine.sql",
+  "supabase/seed/20260529_v28_2_workflow_engine_seed.sql"
 ];
 for (const file of requiredFiles) assert(exists(file), `Missing required deployment file: ${file}`);
 
 const pkg = JSON.parse(read("package.json"));
-for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging"]) {
+for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging", "verify:v28-2-workflow"]) {
   assert(pkg.scripts?.[script], `Missing npm script: ${script}`);
 }
 assert(pkg.engines?.node?.includes(">=20"), "package.json should require Node >=20 for Vercel/GitHub consistency");
@@ -117,6 +118,21 @@ assert(joinedMigrations.includes("revoke execute on function public.search_all_r
 assert(joinedMigrations.includes("grant execute on function public.transition_status_tx"), "transition_status_tx RPC must be granted only to service_role");
 assert(joinedMigrations.includes("create_unified_task_with_inbox"), "V28.2 unified task + inbox RPC is missing");
 assert(joinedMigrations.toLowerCase().includes("enable row level security"), "Supabase migrations must enable RLS");
+
+const seed = read("supabase/seed/20260529_v28_2_workflow_engine_seed.sql");
+for (const marker of [
+  "service_request.created.p0_triage",
+  "quotation.approval.overdue",
+  "review.privacy.redaction_required",
+  "payment.mismatch.finance_review",
+  "public.automation_rules",
+  "public.notification_outbox",
+  "public.internal_inbox_messages",
+  "public.unified_tasks",
+  "public.task_events"
+]) {
+  assert(seed.includes(marker), `V28.2 seed missing marker/table: ${marker}`);
+}
 
 const readyRoute = read("app/api/ready/route.ts");
 for (const table of ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events"]) {
