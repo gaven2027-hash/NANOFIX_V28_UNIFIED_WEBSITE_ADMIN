@@ -37,6 +37,7 @@ const requiredFiles = [
   "app/api/admin/workflow-settings/route.ts",
   "app/api/global-search/route.ts",
   "tools/e2e-smoke.mjs",
+  "tools/static-v28-2-issue-scan.mjs",
   "tools/verify-v28-2-workflow-engine.mjs",
   "supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql",
   "supabase/migrations/20260523_v28_production_hardening.sql",
@@ -47,9 +48,10 @@ const requiredFiles = [
 for (const file of requiredFiles) assert(exists(file), `Missing required deployment file: ${file}`);
 
 const pkg = JSON.parse(read("package.json"));
-for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging", "verify:v28-2-workflow"]) {
+for (const script of ["build", "build:ci", "validate:predeploy", "quality:gate", "verify", "test:e2e:smoke", "check:staging", "verify:v28-2-workflow", "scan:v28-2-static"]) {
   assert(pkg.scripts?.[script], `Missing npm script: ${script}`);
 }
+assert((pkg.scripts?.["validate:predeploy"] || "").includes("scan:v28-2-static"), "validate:predeploy must run scan:v28-2-static");
 assert(pkg.engines?.node?.includes(">=20"), "package.json should require Node >=20 for Vercel/GitHub consistency");
 assert(pkg.engines?.node?.includes("<23"), "package.json should cap Node below 23 until dependencies are verified");
 assert(String(pkg.version || "").includes("28.2.0"), "package.json version should identify the V28.2 automation/inbox/task phase");
@@ -199,6 +201,11 @@ for (const marker of ["workflowSettingHref", "/system-settings#automation-rule-s
 const smoke = read("tools/e2e-smoke.mjs");
 for (const marker of ["/api/admin/workflow-audit", "/api/admin/workflow-settings", "workflow_settings", "checkStaticV282SettingsSearchMarkers", "/system-settings#automation-rule-settings"]) {
   assert(smoke.includes(marker), `E2E smoke missing V28.2 final preflight marker: ${marker}`);
+}
+
+const staticScan = read("tools/static-v28-2-issue-scan.mjs");
+for (const marker of ["select(\"*\")", "localStorage", "sessionStorage", "Admin API route", "workflow_settings", "Conflicting stale memory file"]) {
+  assert(staticScan.includes(marker), `Static issue scan missing marker: ${marker}`);
 }
 
 const nextConfig = read("next.config.mjs");
