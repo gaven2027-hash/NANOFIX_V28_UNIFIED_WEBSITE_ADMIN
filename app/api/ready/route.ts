@@ -22,7 +22,9 @@ const requiredTables = [
   "task_events",
   "workflow_settings",
   "service_inspections",
-  "service_upload_reviews"
+  "service_upload_reviews",
+  "quotation_acceptances",
+  "payment_intents"
 ];
 
 type TableCheck = {
