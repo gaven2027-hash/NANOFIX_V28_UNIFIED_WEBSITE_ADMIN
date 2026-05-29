@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 
 type PaymentIntent = Record<string, unknown>;
 type State = { loading: boolean; error: string | null; intents: PaymentIntent[]; result: Record<string, unknown> | null };
-type Values = { payment_intent_id: string; invoice_id: string; status: string; payment_url: string; provider: string; amount: string; expires_at: string; notes: string };
+type Values = { payment_intent_id: string; invoice_id: string; status: string; payment_url: string; provider: string; provider_external_id: string; amount: string; expires_at: string; notes: string };
 
 const statuses = ['pending_invoice', 'pending_payment_link', 'ready', 'paid', 'cancelled', 'failed'];
 const inputClass = 'rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 focus:ring-blue-100';
@@ -31,6 +31,7 @@ async function updatePaymentIntent(values: Values) {
       status: values.status,
       payment_url: values.payment_url,
       provider: values.provider,
+      provider_external_id: values.provider_external_id,
       amount: values.amount,
       expires_at: values.expires_at,
       notes: values.notes
@@ -55,7 +56,7 @@ function formatValue(value: unknown) {
 
 export function ServiceOperationsPaymentIntentPanel() {
   const [state, setState] = useState<State>({ loading: true, error: null, intents: [], result: null });
-  const [values, setValues] = useState<Values>({ payment_intent_id: '', invoice_id: '', status: 'pending_payment_link', payment_url: '', provider: 'manual', amount: '', expires_at: '', notes: '' });
+  const [values, setValues] = useState<Values>({ payment_intent_id: '', invoice_id: '', status: 'pending_payment_link', payment_url: '', provider: 'manual', provider_external_id: '', amount: '', expires_at: '', notes: '' });
 
   async function load() {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -74,6 +75,7 @@ export function ServiceOperationsPaymentIntentPanel() {
       status: String(intent.status ?? 'pending_payment_link'),
       payment_url: String(intent.payment_url ?? ''),
       provider: String(intent.provider ?? 'manual'),
+      provider_external_id: String(intent.provider_external_id ?? ''),
       amount: String(intent.amount ?? ''),
       expires_at: String(intent.expires_at ?? ''),
       notes: ''
@@ -99,7 +101,7 @@ export function ServiceOperationsPaymentIntentPanel() {
       <div className="bg-slate-50 px-6 py-5">
         <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Finance Payment Intent / 财务付款意图</div>
         <h2 className="mt-2 text-xl font-black text-slate-950">Payment Intent Admin Panel</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-600">After a customer accepts a quotation, Finance links an invoice, fills the payment URL, and moves the payment intent status. This is a real database workflow with audit logs and customer notification queue. / 客户接受报价后，财务绑定发票、填写付款链接并推进付款意图状态；这是写入数据库、审计日志和客户通知队列的真实流程。</p>
+        <p className="mt-2 text-sm font-semibold text-slate-600">After a customer accepts a quotation, Finance links an invoice, fills the payment URL, stores the provider external ID, and moves the payment intent status. / 客户接受报价后，财务绑定发票、填写付款链接、保存支付网关外部 ID 并推进付款状态。</p>
       </div>
 
       <div className="grid gap-6 p-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -123,6 +125,7 @@ export function ServiceOperationsPaymentIntentPanel() {
                 <div>Quotation: {formatValue(intent.quotation_id)}</div>
                 <div>Invoice: {formatValue(intent.invoice_id)}</div>
                 <div>Provider: {formatValue(intent.provider)}</div>
+                <div>External ID: {formatValue(intent.provider_external_id)}</div>
                 <div>Updated: {formatValue(intent.updated_at)}</div>
               </div>
             </button>
@@ -137,6 +140,7 @@ export function ServiceOperationsPaymentIntentPanel() {
           <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Payment URL<input className={inputClass} value={values.payment_url} onChange={(event) => setValues((current) => ({ ...current, payment_url: event.target.value }))} placeholder="Required when status=ready" /></label>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Provider<input className={inputClass} value={values.provider} onChange={(event) => setValues((current) => ({ ...current, provider: event.target.value }))} /></label>
+            <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Provider External ID<input className={inputClass} value={values.provider_external_id} onChange={(event) => setValues((current) => ({ ...current, provider_external_id: event.target.value }))} placeholder="checkout/session/payment id" /></label>
             <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Amount<input className={inputClass} value={values.amount} onChange={(event) => setValues((current) => ({ ...current, amount: event.target.value }))} /></label>
           </div>
           <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Expires At<input className={inputClass} value={values.expires_at} onChange={(event) => setValues((current) => ({ ...current, expires_at: event.target.value }))} placeholder="2026-06-30T12:00:00+08:00" /></label>
