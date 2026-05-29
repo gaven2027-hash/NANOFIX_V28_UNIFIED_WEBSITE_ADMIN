@@ -12,7 +12,7 @@ type StatusValue = typeof STATUS_VALUES[number];
 type ApiPayload = Record<string, unknown>;
 
 function isUuid(value: string | null | undefined) {
-  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
 
 function cleanStatus(value: unknown): StatusValue | null {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   const status = cleanStatus(request.nextUrl.searchParams.get('status'));
   const query = supabase
     .from('payment_intents')
-    .select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,expires_at,metadata_json,created_by,created_at,updated_at')
+    .select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,provider_external_id,payment_url,expires_at,metadata_json,created_by,created_at,updated_at')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (status) query.eq('status', status);
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
   const invoiceId = cleanText(body.invoice_id, 120);
   const paymentUrl = cleanText(body.payment_url, 500);
   const provider = cleanText(body.provider, 120);
+  const providerExternalId = cleanText(body.provider_external_id, 240);
   const amount = cleanNumber(body.amount);
   const expiresAt = cleanText(body.expires_at, 120);
   const notes = cleanText(body.notes, 1000);
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { data: before } = await supabase
     .from('payment_intents')
-    .select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,expires_at,metadata_json,created_at,updated_at')
+    .select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,provider_external_id,payment_url,expires_at,metadata_json,created_at,updated_at')
     .eq('payment_intent_id', paymentIntentId)
     .maybeSingle();
 
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
     invoice_id: invoiceId || null,
     payment_url: paymentUrl,
     provider: provider ?? 'manual',
+    provider_external_id: providerExternalId,
     expires_at: expiresAt || null,
     metadata_json: { ...(before?.metadata_json && typeof before.metadata_json === 'object' ? before.metadata_json as Record<string, unknown> : {}), ...metadata, finance_notes: notes, updated_by: auth.actor.profileId }
   };
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
     .from('payment_intents')
     .update(patch)
     .eq('payment_intent_id', paymentIntentId)
-    .select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,expires_at,metadata_json,created_by,created_at,updated_at')
+    .select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,provider_external_id,payment_url,expires_at,metadata_json,created_by,created_at,updated_at')
     .single();
   if (error) return jsonError(error.message, 400);
 
@@ -115,7 +117,7 @@ export async function POST(request: NextRequest) {
     recipient_customer_id: data.customer_id,
     subject: status === 'ready' ? 'NANOFIX payment link is ready' : 'NANOFIX payment status updated',
     body: status === 'ready' ? 'Your NANOFIX payment link is ready in Customer Portal.' : `Your NANOFIX payment status is now ${status}.`,
-    payload_json: { source: 'finance_payment_intent_update', payment_intent_id: data.payment_intent_id, invoice_id: data.invoice_id, payment_url: data.payment_url },
+    payload_json: { source: 'finance_payment_intent_update', payment_intent_id: data.payment_intent_id, invoice_id: data.invoice_id, payment_url: data.payment_url, provider_external_id: data.provider_external_id },
     delivery_status: 'queued',
     related_object_type: 'payment_intent',
     related_object_id: data.payment_intent_id
