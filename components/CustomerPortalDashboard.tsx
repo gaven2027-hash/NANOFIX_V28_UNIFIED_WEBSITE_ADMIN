@@ -19,7 +19,7 @@ const quickLinks = [
   { href: '/customer-portal/records', title: 'My Records', zh: '我的记录', text: 'Repair requests, jobs, invoices, payments and warranties.' },
   { href: '/customer-portal/uploads', title: 'Approved Uploads', zh: '已审核文件', text: 'Customer-visible approved photos, videos and PDFs.' },
   { href: '/customer-portal/records#warranties', title: 'Warranty', zh: '保修', text: 'View warranty coverage and dates.' },
-  { href: '/customer-portal/records#invoices', title: 'Invoices & Payments', zh: '发票与付款', text: 'Track invoice and payment status.' }
+  { href: '/customer-portal/financial', title: 'Finance', zh: '财务', text: 'Quotations, invoice PDFs, payment links and payment status.' }
 ];
 
 async function loadRecords() {
