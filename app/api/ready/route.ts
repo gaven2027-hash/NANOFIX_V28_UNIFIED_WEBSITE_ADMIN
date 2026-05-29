@@ -20,7 +20,9 @@ const requiredTables = [
   "internal_inbox_messages",
   "unified_tasks",
   "task_events",
-  "workflow_settings"
+  "workflow_settings",
+  "service_inspections",
+  "service_upload_reviews"
 ];
 
 type TableCheck = {
