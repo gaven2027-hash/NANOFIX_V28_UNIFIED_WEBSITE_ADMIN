@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { WorkflowAuditTrail } from '@/components/WorkflowAuditTrail';
 
 type Lane = { id: string; title: string; zh: string; metric: string; note: string };
 type AutomationRule = { rule_id?: string; rule_key?: string | null; name?: string | null; module?: string | null; trigger_event?: string | null; is_enabled?: boolean | null; priority?: string | null; created_at?: string | null };
@@ -164,7 +165,7 @@ export function AutomationNotificationWorkspace() {
       addLog(`Failed / 失败: ${label}`);
       return;
     }
-    setActionState({ loading: false, message: `${label} completed. Live data refreshed. / 已完成并刷新真实数据。`, error: null });
+    setActionState({ loading: false, message: `${label} completed. Live data and audit trail can now be refreshed. / 已完成，可刷新真实数据和审计轨迹。`, error: null });
     addLog(`Completed / 已完成: ${label}`);
     await loadLiveData();
   }
@@ -282,7 +283,7 @@ export function AutomationNotificationWorkspace() {
               <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200"><div className="text-2xl font-black text-slate-950">{displayMessages.length}</div><div className="text-xs font-black text-slate-500">Inbox / 内部消息</div></div>
               <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200"><div className="text-2xl font-black text-slate-950">{displayTasks.length}</div><div className="text-xs font-black text-slate-500">Tasks / 任务</div></div>
             </div>
-            <dl className="mt-5 grid gap-2 text-sm font-semibold text-slate-600"><div><dt className="text-xs font-black uppercase text-slate-400">Queued outbox / 排队通知</dt><dd>{queuedOutbox}</dd></div><div><dt className="text-xs font-black uppercase text-slate-400">APIs</dt><dd>/api/admin/automation-notifications · /api/admin/internal-inbox · /api/admin/unified-tasks</dd></div><div><dt className="text-xs font-black uppercase text-slate-400">Tables</dt><dd>automation_rules · notification_outbox · internal_inbox_messages · unified_tasks · task_events</dd></div></dl>
+            <dl className="mt-5 grid gap-2 text-sm font-semibold text-slate-600"><div><dt className="text-xs font-black uppercase text-slate-400">Queued outbox / 排队通知</dt><dd>{queuedOutbox}</dd></div><div><dt className="text-xs font-black uppercase text-slate-400">APIs</dt><dd>/api/admin/automation-notifications · /api/admin/internal-inbox · /api/admin/unified-tasks · /api/admin/workflow-audit</dd></div><div><dt className="text-xs font-black uppercase text-slate-400">Tables</dt><dd>automation_rules · notification_outbox · internal_inbox_messages · unified_tasks · task_events · audit_logs</dd></div></dl>
           </aside>
         </div>
 
@@ -303,6 +304,8 @@ export function AutomationNotificationWorkspace() {
           <div className="grid grid-cols-[1fr_140px_120px_110px] gap-3 px-5 py-3 text-xs font-black uppercase tracking-[0.1em] text-slate-500 md:grid-cols-[1.5fr_150px_130px_100px_110px]"><span>Task / 任务</span><span>Assignee</span><span>Status</span><span className="hidden md:block">Due</span><span>Action</span></div>
           {displayTasks.map((task) => (<div key={task.task_id ?? task.title ?? 'task'} className="grid w-full grid-cols-[1fr_140px_120px_110px] gap-3 border-t border-slate-200 px-5 py-4 text-left text-sm transition hover:bg-blue-50 md:grid-cols-[1.5fr_150px_130px_100px_110px]"><span><span className="block font-black text-slate-950">{task.title ?? 'Unified task'}</span><span className="mt-1 block text-xs font-bold text-activeBlue">{shortId(task.task_id, 'task')} · {task.source_module ?? 'module'} · {task.priority ?? 'P2'}</span></span><span className="font-bold text-slate-600">{task.assignee_role ?? '—'}</span><span className="font-bold text-slate-600">{task.status ?? 'open'}</span><span className="hidden font-black text-slate-700 md:block">{formatDate(task.due_at)}</span><button type="button" disabled={actionState.loading || !isUuid(task.task_id)} onClick={() => void advanceTask(task)} className="rounded-xl bg-activeBlue px-3 py-2 text-xs font-black text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Advance / 推进</button></div>))}
         </div>
+
+        <WorkflowAuditTrail />
 
         <div className="mt-5 rounded-3xl bg-white p-4 ring-1 ring-slate-200"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-900">Action log / 页面操作日志</div><p className="mt-1 text-xs font-semibold text-slate-500">This panel displays client-side notes only; success is shown only after the server API returns OK and live data refreshes. / 本面板只显示前端备注；只有服务端 API 返回 OK 并刷新真实数据后才显示成功。</p></div><button type="button" onClick={() => setLog([])} className="rounded-2xl bg-slate-100 px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-200">Clear / 清空</button></div><div className="mt-3 grid gap-2">{log.length ? log.map((item) => (<div key={item} className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-100">{item}</div>)) : <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 ring-1 ring-slate-100">No actions yet / 暂无页面操作</div>}</div></div>
       </div>
