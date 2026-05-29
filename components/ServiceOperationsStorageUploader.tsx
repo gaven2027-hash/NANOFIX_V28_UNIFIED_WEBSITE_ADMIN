@@ -1,5 +1,6 @@
 'use client';
 
+import { createClient } from '@supabase/supabase-js';
 import { ChangeEvent, FormEvent, useState } from 'react';
 
 type ApiPayload = Record<string, unknown>;
@@ -9,6 +10,7 @@ type FormValues = { inspection_id: string; service_request_id: string; job_id: s
 const defaults: FormValues = { inspection_id: '', service_request_id: '', job_id: '', review_notes: '', checksum_sha256: '' };
 const supportedMime = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'video/mp4', 'video/quicktime', 'application/pdf'];
 const maxSize = 50 * 1024 * 1024;
+const bucket = 'service-uploads';
 
 async function jsonPost(url: string, body: Record<string, unknown>) {
   const response = await fetch(url, {
@@ -26,13 +28,20 @@ async function jsonPost(url: string, body: Record<string, unknown>) {
   return { ok, payload, error: ok ? null : error };
 }
 
-async function uploadViaSignedUrl(signedUrl: string, file: File) {
-  const response = await fetch(signedUrl, {
-    method: 'PUT',
-    headers: { 'content-type': file.type || 'application/octet-stream' },
-    body: file
-  });
-  if (!response.ok) return { ok: false, error: `Signed upload returned ${response.status}` };
+function createBrowserStorageClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for signed upload.');
+  return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+async function uploadViaSignedToken(payload: ApiPayload, file: File) {
+  const storagePath = typeof payload.storage_path === 'string' ? payload.storage_path : '';
+  const token = typeof payload.token === 'string' ? payload.token : '';
+  if (!storagePath || !token) return { ok: false, error: 'Signed upload response did not include storage_path/token.' };
+  const supabase = createBrowserStorageClient();
+  const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(storagePath, token, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+  if (error) return { ok: false, error: error.message };
   return { ok: true, error: null };
 }
 
@@ -80,15 +89,14 @@ export function ServiceOperationsStorageUploader() {
       return;
     }
 
-    const signedUrl = typeof signed.payload.signed_url === 'string' ? signed.payload.signed_url : '';
     const storagePath = typeof signed.payload.storage_path === 'string' ? signed.payload.storage_path : '';
-    if (!signedUrl || !storagePath) {
-      setState({ loading: false, message: null, error: 'Signed upload response did not include signed_url/storage_path.', result: signed.payload });
+    if (!storagePath || typeof signed.payload.token !== 'string') {
+      setState({ loading: false, message: null, error: 'Signed upload response did not include token/storage_path.', result: signed.payload });
       return;
     }
 
-    setState({ loading: true, message: 'Uploading file to Supabase Storage… / 正在上传文件到 Supabase Storage…', error: null, result: signed.payload });
-    const uploaded = await uploadViaSignedUrl(signedUrl, file);
+    setState({ loading: true, message: 'Uploading file to Supabase Storage using uploadToSignedUrl… / 正在通过 uploadToSignedUrl 上传文件…', error: null, result: signed.payload });
+    const uploaded = await uploadViaSignedToken(signed.payload, file);
     if (!uploaded.ok) {
       setState({ loading: false, message: null, error: uploaded.error ?? 'Signed upload failed.', result: signed.payload });
       return;
@@ -123,7 +131,7 @@ export function ServiceOperationsStorageUploader() {
       <div className="bg-slate-50 px-6 py-5">
         <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Signed Storage Upload / 签名文件上传</div>
         <h2 className="mt-2 text-xl font-black text-slate-950">Upload Service Photos / Videos / PDFs</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-600">This uploader requests a signed Supabase Storage URL, uploads the file directly to the private `service-uploads` bucket, then registers the upload for review. / 本上传器申请 Supabase 签名上传链接，将文件直接上传到私有 bucket，然后登记审核记录。</p>
+        <p className="mt-2 text-sm font-semibold text-slate-600">This uploader requests a signed Supabase Storage URL, uploads the file directly to the private `service-uploads` bucket with `uploadToSignedUrl`, then registers the upload for review. / 本上传器申请 Supabase 签名上传链接，通过 uploadToSignedUrl 直接上传到私有 bucket，然后登记审核记录。</p>
       </div>
       <div className="p-6">
         {state.loading || state.message || state.error ? <div className={`mb-5 rounded-3xl p-4 text-xs font-bold ring-1 ${state.error ? 'bg-red-50 text-red-950 ring-red-200' : 'bg-blue-50 text-blue-950 ring-blue-200'}`}>{state.loading ? state.message : state.error ?? state.message}</div> : null}
