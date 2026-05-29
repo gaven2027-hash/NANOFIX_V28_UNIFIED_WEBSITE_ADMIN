@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { CustomerPortalApprovedUploads } from '@/components/CustomerPortalApprovedUploads';
+import { CustomerPortalShell } from '@/components/CustomerPortalShell';
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-slate-50">
+    <CustomerPortalShell>
       <CustomerPortalApprovedUploads />
-    </main>
+    </CustomerPortalShell>
   );
 }
