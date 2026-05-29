@@ -130,8 +130,42 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
+  if (category === 'all' || normalized === 'tasks' || normalized === 'unified_tasks') {
+    tasks.push(supabase
+      .from('unified_tasks')
+      .select('task_id,title,source_module,status,priority,created_at')
+      .or(`title.ilike.${pattern},description.ilike.${pattern},source_module.ilike.${pattern},status.ilike.${pattern},priority.ilike.${pattern}`)
+      .order('created_at', { ascending: false })
+      .limit(8)
+      .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
+        type: 'unified_task',
+        title: row.title ?? `Task ${row.task_id?.slice(0, 8)}`,
+        subtitle: `${row.source_module ?? 'module'} · priority ${row.priority ?? 'P2'}`,
+        href: `/dashboard#unified-task-${row.task_id}`,
+        status: row.status,
+        created_at: row.created_at
+      }))));
+  }
+
+  if (category === 'all' || normalized === 'inbox' || normalized === 'internal_inbox') {
+    tasks.push(supabase
+      .from('internal_inbox_messages')
+      .select('message_id,subject,recipient_role,priority,read_at,created_at')
+      .or(`subject.ilike.${pattern},body.ilike.${pattern},recipient_role.ilike.${pattern},priority.ilike.${pattern}`)
+      .order('created_at', { ascending: false })
+      .limit(8)
+      .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
+        type: 'internal_inbox',
+        title: row.subject ?? `Message ${row.message_id?.slice(0, 8)}`,
+        subtitle: `${row.recipient_role ?? 'role'} · priority ${row.priority ?? 'P2'}`,
+        href: `/dashboard#internal-inbox-${row.message_id}`,
+        status: row.read_at ? 'read' : 'unread',
+        created_at: row.created_at
+      }))));
+  }
+
   const settled = await Promise.allSettled(tasks);
-  return settled.flatMap((item) => item.status === 'fulfilled' ? item.value : []).slice(0, 20);
+  return settled.flatMap((item) => item.status === 'fulfilled' ? item.value : []).slice(0, 24);
 }
 
 export async function GET(request: NextRequest) {
