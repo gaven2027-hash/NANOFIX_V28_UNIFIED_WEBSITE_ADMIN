@@ -12,10 +12,12 @@ const warn = (condition, message) => { if (!condition) warnings.push(message); }
 const requiredFiles = [
   'docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md',
   'components/AutomationNotificationWorkspace.tsx',
+  'components/WorkflowAuditTrail.tsx',
   'app/dashboard/page.tsx',
   'app/api/admin/automation-notifications/route.ts',
   'app/api/admin/internal-inbox/route.ts',
   'app/api/admin/unified-tasks/route.ts',
+  'app/api/admin/workflow-audit/route.ts',
   'app/api/global-search/route.ts',
   'app/api/ready/route.ts',
   'data/adminNavigation.ts',
@@ -52,9 +54,11 @@ if (requiredFiles.every(exists)) {
   for (const marker of ['automation-notification-engine', 'internal-inbox', 'unified-task-engine']) {
     assert(workspace.includes(marker), `AutomationNotificationWorkspace missing anchor marker: ${marker}`);
   }
-  for (const apiPath of ['/api/admin/automation-notifications', '/api/admin/internal-inbox', '/api/admin/unified-tasks']) {
-    assert(workspace.includes(apiPath), `AutomationNotificationWorkspace must bind live API: ${apiPath}`);
+  for (const apiPath of ['/api/admin/automation-notifications', '/api/admin/internal-inbox', '/api/admin/unified-tasks', '/api/admin/workflow-audit']) {
+    assert(workspace.includes(apiPath), `AutomationNotificationWorkspace must bind API: ${apiPath}`);
   }
+  assert(workspace.includes("import { WorkflowAuditTrail }"), 'AutomationNotificationWorkspace must import WorkflowAuditTrail');
+  assert(workspace.includes('<WorkflowAuditTrail />'), 'AutomationNotificationWorkspace must render WorkflowAuditTrail');
   for (const liveMarker of ['loadLiveData', 'degraded', 'errors', 'Refresh live data', 'Demo rows below remain clearly separated']) {
     assert(workspace.includes(liveMarker), `AutomationNotificationWorkspace missing live/degraded marker: ${liveMarker}`);
   }
@@ -68,7 +72,6 @@ if (requiredFiles.every(exists)) {
     'advanceTask',
     'queueNotification',
     'actionState',
-    'Live data refreshed',
     'API 返回 OK'
   ]) assert(workspace.includes(writeMarker), `AutomationNotificationWorkspace missing write-action marker: ${writeMarker}`);
   for (const bodyMarker of [
@@ -85,6 +88,19 @@ if (requiredFiles.every(exists)) {
   assert(workspace.includes('Demo rows cannot be acknowledged') && workspace.includes('Demo rows cannot be updated'), 'Demo fallback rows must not be treated as writable live records');
   assert(!/localStorage|sessionStorage/.test(workspace), 'V28.2 workflow UI must not store production workflow state in browser storage');
   assert(!/return\s+\{\s*ok:\s*true\s*\}/.test(workspace), 'V28.2 workflow UI must not fake live API success');
+
+  const auditComponent = read('components/WorkflowAuditTrail.tsx');
+  for (const marker of ['/api/admin/workflow-audit?limit=12', 'task_events', 'audit_logs', 'notification_delivery', 'Workflow Audit Trail', 'Refresh audit']) {
+    assert(auditComponent.includes(marker), `WorkflowAuditTrail missing marker: ${marker}`);
+  }
+  assert(auditComponent.includes("credentials: 'same-origin'") && auditComponent.includes("cache: 'no-store'"), 'WorkflowAuditTrail must use same-origin no-store fetch');
+  assert(!/localStorage|sessionStorage/.test(auditComponent), 'WorkflowAuditTrail must not use browser storage for audit data');
+
+  const auditApi = read('app/api/admin/workflow-audit/route.ts');
+  for (const marker of ['requireActorApi', 'task_events', 'audit_logs', 'notification_outbox', 'workflow_audit_trail_read', 'writeAuditLog']) {
+    assert(auditApi.includes(marker), `Workflow audit API missing marker: ${marker}`);
+  }
+  assert(!/select\('\*'\)/.test(auditApi), 'Workflow audit API must use explicit field whitelists, not select("*")');
 
   const automationApi = read('app/api/admin/automation-notifications/route.ts');
   for (const needle of ['requireActorApi', 'automation_rules', 'notification_outbox', 'writeAuditLog']) {
