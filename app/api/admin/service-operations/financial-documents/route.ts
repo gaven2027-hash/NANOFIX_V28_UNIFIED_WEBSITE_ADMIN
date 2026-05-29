@@ -25,6 +25,22 @@ function cleanDate(value: unknown) {
   return text || null;
 }
 
+function cleanBoolean(value: unknown) {
+  return value === true || value === 'true';
+}
+
+function financialVisibilityPayload(body: ApiPayload, actorId: string) {
+  const visible = cleanBoolean(body.visible_to_customer);
+  return {
+    visible_to_customer: visible,
+    customer_visible_at: visible ? new Date().toISOString() : null,
+    customer_visible_by: visible ? actorId : null,
+    customer_visibility_notes: cleanText(body.customer_visibility_notes, 1000),
+    pdf_storage_path: cleanText(body.pdf_storage_path, 500),
+    public_ref: cleanText(body.public_ref, 160)
+  };
+}
+
 function parseLineItems(value: unknown): { ok: true; items: LineItem[]; total: number } | { ok: false; error: string } {
   if (!Array.isArray(value) || value.length === 0) return { ok: false, error: 'At least one line item is required.' };
   const items: LineItem[] = [];
@@ -118,6 +134,55 @@ export async function POST(request: NextRequest) {
   const action = cleanText(body.action, 100);
   const supabase = createAdminClient();
 
+  if (action === 'set_quotation_customer_visibility') {
+    const quotationId = cleanText(body.quotation_id, 120);
+    if (!isUuid(quotationId)) return jsonError('Valid quotation_id is required.', 400);
+    const { data: before } = await supabase.from('quotations').select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,customer_visibility_notes,pdf_storage_path,public_ref,created_at').eq('quotation_id', quotationId).maybeSingle();
+    const patch = financialVisibilityPayload(body, auth.actor.profileId);
+    const { data, error } = await supabase
+      .from('quotations')
+      .update(patch)
+      .eq('quotation_id', quotationId)
+      .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,customer_visible_at,customer_visible_by,customer_visibility_notes,pdf_storage_path,public_ref,created_at')
+      .single();
+    if (error) return jsonError(error.message, 400);
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_quotation_customer_visibility_set', objectType: 'quotation', objectId: quotationId, before, after: data, ip: getClientIp(request) }).catch(() => undefined);
+    return NextResponse.json({ ok: true, action, quotation: data });
+  }
+
+  if (action === 'set_invoice_customer_visibility') {
+    const invoiceId = cleanText(body.invoice_id, 120);
+    if (!isUuid(invoiceId)) return jsonError('Valid invoice_id is required.', 400);
+    const { data: before } = await supabase.from('invoices').select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,customer_visibility_notes,pdf_storage_path,payment_url,public_ref,created_at').eq('invoice_id', invoiceId).maybeSingle();
+    const patch = { ...financialVisibilityPayload(body, auth.actor.profileId), payment_url: cleanText(body.payment_url, 500) };
+    const { data, error } = await supabase
+      .from('invoices')
+      .update(patch)
+      .eq('invoice_id', invoiceId)
+      .select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,customer_visible_at,customer_visible_by,customer_visibility_notes,pdf_storage_path,payment_url,public_ref,created_at')
+      .single();
+    if (error) return jsonError(error.message, 400);
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_invoice_customer_visibility_set', objectType: 'invoice', objectId: invoiceId, before, after: data, ip: getClientIp(request) }).catch(() => undefined);
+    return NextResponse.json({ ok: true, action, invoice: data });
+  }
+
+  if (action === 'set_payment_customer_visibility') {
+    const paymentId = cleanText(body.payment_id, 120);
+    if (!isUuid(paymentId)) return jsonError('Valid payment_id is required.', 400);
+    const visible = cleanBoolean(body.visible_to_customer);
+    const patch = { visible_to_customer: visible, payment_url: cleanText(body.payment_url, 500) };
+    const { data: before } = await supabase.from('payments').select('payment_id,invoice_id,amount,status,fee,reconciled_at,payment_url,visible_to_customer,created_at').eq('payment_id', paymentId).maybeSingle();
+    const { data, error } = await supabase
+      .from('payments')
+      .update(patch)
+      .eq('payment_id', paymentId)
+      .select('payment_id,invoice_id,amount,status,fee,reconciled_at,payment_url,visible_to_customer,created_at')
+      .single();
+    if (error) return jsonError(error.message, 400);
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_payment_customer_visibility_set', objectType: 'payment', objectId: paymentId, before, after: data, ip: getClientIp(request) }).catch(() => undefined);
+    return NextResponse.json({ ok: true, action, payment: data });
+  }
+
   if (action === 'save_quotation_version') {
     const quotationId = cleanText(body.quotation_id, 120);
     if (!isUuid(quotationId)) return jsonError('Valid quotation_id is required.', 400);
@@ -144,7 +209,7 @@ export async function POST(request: NextRequest) {
       .from('quotations')
       .update({ current_version: nextVersion, total: parsed.total, approval_status: 'draft' })
       .eq('quotation_id', quotationId)
-      .select('quotation_id,job_id,current_version,total,approval_status,created_at')
+      .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,pdf_storage_path,public_ref,created_at')
       .single();
     if (quotationError) return jsonError(quotationError.message, 400);
 
@@ -171,7 +236,7 @@ export async function POST(request: NextRequest) {
       .from('invoices')
       .update({ total: parsed.total, status: cleanText(body.status, 80) ?? 'draft' })
       .eq('invoice_id', invoiceId)
-      .select('invoice_id,invoice_no,job_id,total,status,created_at')
+      .select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,pdf_storage_path,payment_url,public_ref,created_at')
       .single();
     if (invoiceError) return jsonError(invoiceError.message, 400);
 
@@ -191,15 +256,15 @@ export async function POST(request: NextRequest) {
 
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
-      .update({ amount, fee, status, reconciled_at: new Date().toISOString() })
+      .update({ amount, fee, status, reconciled_at: new Date().toISOString(), payment_url: cleanText(body.payment_url, 500) })
       .eq('payment_id', paymentId)
-      .select('payment_id,invoice_id,amount,status,fee,reconciled_at,created_at')
+      .select('payment_id,invoice_id,amount,status,fee,reconciled_at,payment_url,visible_to_customer,created_at')
       .single();
     if (paymentError) return jsonError(paymentError.message, 400);
 
     const { data: transaction, error: transactionError } = await supabase
       .from('payment_transactions')
-      .insert({ payment_id: paymentId, provider, external_id: externalId, status, amount, payload: { source: 'service_operations_financial_editor', fee } })
+      .insert({ payment_id: paymentId, provider, external_id: externalId, status, amount, payload: { source: 'service_operations_financial_editor', fee, payment_url: cleanText(body.payment_url, 500) } })
       .select('transaction_log_id,payment_id,provider,external_id,status,amount,payload,created_at')
       .single();
     if (transactionError) return jsonError(transactionError.message, 400);
