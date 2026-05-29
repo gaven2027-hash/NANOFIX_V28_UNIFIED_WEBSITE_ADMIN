@@ -21,7 +21,8 @@ const requiredFiles = [
   'data/adminModuleReality.ts',
   'app/api/ready/route.ts',
   'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql',
-  'supabase/migrations/202605290003_service_operations_inspection_uploads.sql'
+  'supabase/migrations/202605290003_service_operations_inspection_uploads.sql',
+  'supabase/migrations/202605290004_service_operations_upload_notification_hooks.sql'
 ];
 
 for (const file of requiredFiles) assert(exists(file), `Missing Service Operations live core file: ${file}`);
@@ -38,6 +39,7 @@ if (requiredFiles.every(exists)) {
   const registry = read('data/adminModuleReality.ts');
   const bridge = read('supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql');
   const inspectionSql = read('supabase/migrations/202605290003_service_operations_inspection_uploads.sql');
+  const hookSql = read('supabase/migrations/202605290004_service_operations_upload_notification_hooks.sql');
   const ready = read('app/api/ready/route.ts');
 
   assert(page.includes('ServiceOperationsLiveCore'), 'Service Operations page must render ServiceOperationsLiveCore above contract panels.');
@@ -103,13 +105,25 @@ if (requiredFiles.every(exists)) {
     'service_operations_engineer_assign',
     'service_operations_upload_review_create',
     'service_operations_upload_review_update',
+    'service_operations_upload_path_prepare',
+    'service_operations_customer_notification_queue',
     'service_inspections',
     'service_upload_reviews',
+    'notification_outbox',
+    'unified_tasks',
+    'task_events',
+    'prepare_upload_path',
     'schedule_inspection',
     'submit_inspection_form',
     'assign_engineer',
     'create_upload_review',
     'review_upload',
+    'queue_customer_notification',
+    'queueCustomerNotification',
+    'createFollowUpTask',
+    'compression_status',
+    'attached_to_record',
+    'notification_id',
     'writeAuditLog',
     'requireActorApi'
   ]) assert(inspectionApi.includes(marker), `Inspection/upload API missing marker: ${marker}`);
@@ -187,17 +201,25 @@ if (requiredFiles.every(exists)) {
   assert(!/localStorage|sessionStorage/.test(financialEditors), 'ServiceOperationsFinancialEditors must not use browser storage for production state.');
 
   for (const marker of [
-    "type ActionKind = 'schedule_inspection' | 'submit_inspection_form' | 'assign_engineer' | 'create_upload_review' | 'review_upload'",
+    "type ActionKind = 'prepare_upload_path' | 'schedule_inspection' | 'submit_inspection_form' | 'assign_engineer' | 'create_upload_review' | 'review_upload' | 'queue_customer_notification'",
     'ServiceOperationsInspectionWorkspace',
     'Inspection Scheduling & Execution Workspace',
     '/api/admin/service-operations/inspections',
     'service_inspections',
     'service_upload_reviews',
+    'Prepare Upload Path',
     'Schedule Inspection',
     'Inspection Form',
     'Engineer Assignment',
     'Create Upload Review',
     'Review Upload',
+    'Queue Notification',
+    'compression_status',
+    'original_size_bytes',
+    'compressed_size_bytes',
+    'checksum_sha256',
+    'attached_to_record',
+    'notification_id',
     'Submit via live API',
     'Recent Inspections',
     'Upload Reviews',
@@ -205,7 +227,7 @@ if (requiredFiles.every(exists)) {
     "cache: 'no-store'",
     "'content-type': 'application/json'"
   ]) assert(inspectionWorkspace.includes(marker), `ServiceOperationsInspectionWorkspace missing marker: ${marker}`);
-  for (const field of ['inspection_id', 'service_request_id', 'job_id', 'customer_id', 'engineer_id', 'scheduled_at', 'findings', 'diagnosis', 'recommended_action', 'file_name', 'file_type', 'storage_path', 'review_status', 'review_notes']) {
+  for (const field of ['inspection_id', 'service_request_id', 'job_id', 'customer_id', 'engineer_id', 'scheduled_at', 'findings', 'diagnosis', 'recommended_action', 'file_name', 'file_type', 'storage_path', 'review_status', 'review_notes', 'related_object_type', 'related_object_id', 'subject', 'body']) {
     assert(inspectionWorkspace.includes(field), `ServiceOperationsInspectionWorkspace missing field marker: ${field}`);
   }
   assert(!/localStorage|sessionStorage/.test(inspectionWorkspace), 'ServiceOperationsInspectionWorkspace must not use browser storage for production state.');
@@ -241,6 +263,18 @@ if (requiredFiles.every(exists)) {
     'operations roles can write service inspections',
     'operations roles can write upload reviews'
   ]) assert(inspectionSql.includes(marker), `Inspection/upload migration missing marker: ${marker}`);
+
+  for (const marker of [
+    'compression_status',
+    'original_size_bytes',
+    'compressed_size_bytes',
+    'checksum_sha256',
+    'notification_id',
+    'attached_to_record',
+    'service_upload_reviews_compression_status_check',
+    'service_upload_reviews_notification_idx',
+    'service_upload_reviews_attachment_idx'
+  ]) assert(hookSql.includes(marker), `Upload notification hook migration missing marker: ${marker}`);
 
   assert(ready.includes('service_inspections'), '/api/ready must include service_inspections table check.');
   assert(ready.includes('service_upload_reviews'), '/api/ready must include service_upload_reviews table check.');
