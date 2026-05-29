@@ -1,6 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
+const root = process.cwd();
 const port = Number(process.env.NANOFIX_E2E_PORT || 3941);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
 const shouldStartServer = process.env.NANOFIX_E2E_USE_EXISTING_SERVER !== "true";
@@ -30,6 +33,9 @@ const protectedRoutes = [
   "/customer-portal",
   "/engineer-portal",
   "/system-settings",
+  "/system-settings#automation-rule-settings",
+  "/system-settings#notification-channel-settings",
+  "/system-settings#unified-task-sla-settings",
   "/admin/advertising-center",
   "/admin/advertising-center/import",
   "/admin/advertising-center/insights",
@@ -51,7 +57,9 @@ const apiRoutes = [
   ["/api/admin/advertising-center/budgets", 401],
   ["/api/admin/automation-notifications", 401],
   ["/api/admin/internal-inbox", 401],
-  ["/api/admin/unified-tasks", 401]
+  ["/api/admin/unified-tasks", 401],
+  ["/api/admin/workflow-audit", 401],
+  ["/api/admin/workflow-settings", 401]
 ];
 
 const readyTables = [
@@ -59,13 +67,18 @@ const readyTables = [
   "notification_outbox",
   "internal_inbox_messages",
   "unified_tasks",
-  "task_events"
+  "task_events",
+  "workflow_settings"
 ];
 
 let server = null;
 
 function log(message) {
   console.log(`[nanofix-e2e] ${message}`);
+}
+
+function readRepoFile(file) {
+  return fs.readFileSync(path.join(root, file), "utf8");
 }
 
 async function request(pathname, init = {}) {
@@ -133,6 +146,32 @@ function parseJson(text, route) {
   }
 }
 
+function checkStaticV282SettingsSearchMarkers() {
+  const globalSearch = readRepoFile("app/api/global-search/route.ts");
+  for (const marker of [
+    "workflow_settings",
+    "workflowSettingHref",
+    "/system-settings#automation-rule-settings",
+    "/system-settings#notification-channel-settings",
+    "/system-settings#unified-task-sla-settings",
+    "mergeResults",
+    "rpc_result_count",
+    "fallback_result_count"
+  ]) {
+    if (!globalSearch.includes(marker)) throw new Error(`Global Search missing V28.2 settings marker: ${marker}`);
+  }
+
+  const settingsPage = readRepoFile("app/system-settings/page.tsx");
+  if (!settingsPage.includes("WorkflowSettingsWorkspace")) throw new Error("System Settings page must render WorkflowSettingsWorkspace");
+  if (settingsPage.includes("AutomationNotificationWorkspace")) throw new Error("System Settings page must not render dashboard AutomationNotificationWorkspace");
+
+  const settingsComponent = readRepoFile("components/WorkflowSettingsWorkspace.tsx");
+  for (const marker of ["/api/admin/workflow-settings", "automation_rule_setting", "notification_channel", "unified_task_sla", "PATCH"]) {
+    if (!settingsComponent.includes(marker)) throw new Error(`WorkflowSettingsWorkspace missing marker: ${marker}`);
+  }
+  log("static V28.2 settings/search markers ok");
+}
+
 async function checkReadyRoute() {
   const { response, text } = await request("/api/ready");
   if (![200, 503].includes(response.status)) {
@@ -153,6 +192,8 @@ async function checkReadyRoute() {
 }
 
 async function run() {
+  checkStaticV282SettingsSearchMarkers();
+
   if (shouldStartServer) startServer();
   await waitForServer();
   log(`server ready at ${baseURL}`);
