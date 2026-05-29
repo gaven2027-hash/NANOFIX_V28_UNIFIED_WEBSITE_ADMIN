@@ -5,6 +5,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const nextBin = process.platform === "win32" ? join(root, "node_modules", ".bin", "next.cmd") : join(root, "node_modules", ".bin", "next");
 const port = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
+const v282ReadyTables = ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events"];
 
 function run(cmd, args) {
   const label = `${cmd} ${args.join(" ")}`;
@@ -50,13 +51,14 @@ async function waitForServer(baseUrl, timeoutMs = 30000) {
   throw new Error(`next start did not become ready at ${baseUrl}`);
 }
 
-async function expectStatus(baseUrl, path, expectedStatus) {
-  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store", redirect: "manual" });
+async function expectStatus(baseUrl, path, expectedStatus, init = {}) {
+  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store", redirect: "manual", ...init });
   if (response.status !== expectedStatus) {
     const text = await response.text().catch(() => "");
     throw new Error(`${path} expected ${expectedStatus} but got ${response.status}. ${text.slice(0, 160)}`);
   }
   console.log(`NANOFIX route check passed: ${path} -> ${response.status}`);
+  return response;
 }
 
 async function expectRedirectToLogin(baseUrl, path) {
@@ -66,6 +68,23 @@ async function expectRedirectToLogin(baseUrl, path) {
     throw new Error(`${path} expected redirect to /login but got ${response.status} ${location}`);
   }
   console.log(`NANOFIX protected page check passed: ${path} -> ${response.status} ${location}`);
+}
+
+async function expectReadyCoverage(baseUrl) {
+  const response = await fetch(`${baseUrl}/api/ready`, { cache: "no-store" });
+  if (![200, 503].includes(response.status)) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`/api/ready expected 200 or 503 but got ${response.status}. ${text.slice(0, 160)}`);
+  }
+  const body = await response.json();
+  if (!String(body.version || "").includes("28.2.0-automation-inbox-task-engine")) {
+    throw new Error(`/api/ready missing V28.2 version marker: ${body.version}`);
+  }
+  const tableNames = Array.isArray(body.required_tables) ? body.required_tables.map((item) => item.table) : [];
+  for (const table of v282ReadyTables) {
+    if (!tableNames.includes(table)) throw new Error(`/api/ready missing V28.2 table check: ${table}`);
+  }
+  console.log(`NANOFIX ready coverage check passed: V28.2 tables present -> ${response.status}`);
 }
 
 run("npm", ["run", "typecheck"]);
@@ -81,7 +100,14 @@ console.log("NANOFIX verify: existing Next.js production artifacts found.");
 
 const server = spawn(nextBin, ["start", "-p", String(port)], {
   cwd: root,
-  env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1", NODE_ENV: "production" },
+  env: {
+    ...process.env,
+    NEXT_TELEMETRY_DISABLED: "1",
+    NODE_ENV: "production",
+    NANOFIX_ADMIN_PUBLIC_PREVIEW: "false",
+    NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED: "false",
+    ALLOW_ADMIN_API_SECRET_FALLBACK: "false"
+  },
   stdio: ["ignore", "pipe", "pipe"]
 });
 server.stdout.on("data", (chunk) => process.stdout.write(chunk));
@@ -104,13 +130,16 @@ try {
   ];
   for (const [path, status] of checks) await expectStatus(baseUrl, path, status);
 
-  for (const path of ["/admin", "/dashboard", "/website-management", "/customer-portal", "/engineer-portal"]) {
+  for (const path of ["/admin", "/dashboard", "/dashboard#automation-notification-engine", "/dashboard#internal-inbox", "/dashboard#unified-task-engine", "/website-management", "/customer-portal", "/engineer-portal"]) {
     await expectRedirectToLogin(baseUrl, path);
   }
 
-  for (const path of ["/api/admin/search", "/api/global-search", "/api/portal/customer", "/api/portal/engineer", "/api/service-requests"]) {
-    await expectStatus(baseUrl, path, 401);
+  const spoofHeaders = { headers: { "x-admin-role": "super_admin", "x-nanofix-role": "super_admin" } };
+  for (const path of ["/api/admin/search", "/api/global-search", "/api/portal/customer", "/api/portal/engineer", "/api/service-requests", "/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks"]) {
+    await expectStatus(baseUrl, path, 401, spoofHeaders);
   }
+
+  await expectReadyCoverage(baseUrl);
   console.log("\nNANOFIX V28 production verification completed successfully.");
 } catch (error) {
   console.error(error);
