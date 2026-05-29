@@ -12,8 +12,10 @@ const warn = (condition, message) => { if (!condition) warnings.push(message); }
 const requiredFiles = [
   'app/service-operations/page.tsx',
   'app/api/admin/service-operations/route.ts',
+  'app/api/admin/service-operations/financial-documents/route.ts',
   'components/ServiceOperationsLiveCore.tsx',
   'components/ServiceOperationsDedicatedForms.tsx',
+  'components/ServiceOperationsFinancialEditors.tsx',
   'data/adminModuleReality.ts',
   'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql'
 ];
@@ -23,13 +25,16 @@ for (const file of requiredFiles) assert(exists(file), `Missing Service Operatio
 if (requiredFiles.every(exists)) {
   const page = read('app/service-operations/page.tsx');
   const api = read('app/api/admin/service-operations/route.ts');
+  const financialApi = read('app/api/admin/service-operations/financial-documents/route.ts');
   const component = read('components/ServiceOperationsLiveCore.tsx');
   const forms = read('components/ServiceOperationsDedicatedForms.tsx');
+  const financialEditors = read('components/ServiceOperationsFinancialEditors.tsx');
   const registry = read('data/adminModuleReality.ts');
   const bridge = read('supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql');
 
   assert(page.includes('ServiceOperationsLiveCore'), 'Service Operations page must render ServiceOperationsLiveCore above contract panels.');
   assert(page.includes('ServiceOperationsDedicatedForms'), 'Service Operations page must render ServiceOperationsDedicatedForms.');
+  assert(page.includes('ServiceOperationsFinancialEditors'), 'Service Operations page must render ServiceOperationsFinancialEditors.');
   assert(page.includes('MenuAnchorSections route="/service-operations"'), 'Service Operations page must retain menu anchor reality panels.');
 
   for (const marker of [
@@ -61,6 +66,26 @@ if (requiredFiles.every(exists)) {
   assert(!/select\(['"]\*['"]\)/.test(api), 'Service Operations API must use explicit field whitelists, not select("*").');
   assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support', 'engineer']"), 'Service Operations GET roles should include engineer read access.');
   assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support']"), 'Service Operations write roles should exclude engineer write access.');
+
+  for (const marker of [
+    'service_operations_financial_document_read',
+    'service_operations_quotation_version_save',
+    'service_operations_invoice_items_save',
+    'service_operations_payment_reconcile',
+    'service_operations_warranty_issue',
+    'quotation_versions',
+    'invoice_items',
+    'payment_transactions',
+    'save_quotation_version',
+    'save_invoice_items',
+    'reconcile_payment',
+    'issue_warranty',
+    'parseLineItems',
+    'writeAuditLog',
+    'requireActorApi'
+  ]) assert(financialApi.includes(marker), `Financial document API missing marker: ${marker}`);
+  assert(financialApi.includes('export async function GET') && financialApi.includes('export async function POST'), 'Financial document API must expose GET and POST.');
+  assert(!/select\(['"]\*['"]\)/.test(financialApi), 'Financial document API must use explicit field whitelists, not select("*").');
 
   for (const marker of [
     '/api/admin/service-operations?limit=12',
@@ -107,6 +132,31 @@ if (requiredFiles.every(exists)) {
   }
   assert(!/localStorage|sessionStorage/.test(forms), 'ServiceOperationsDedicatedForms must not use browser storage for production state.');
 
+  for (const marker of [
+    "type EditorKind = 'quotation' | 'invoice' | 'payment' | 'warranty'",
+    'ServiceOperationsFinancialEditors',
+    'Quotation Line Items',
+    'Invoice Items',
+    'Payment Reconciliation',
+    'Warranty Issue',
+    '/api/admin/service-operations/financial-documents',
+    'save_quotation_version',
+    'save_invoice_items',
+    'reconcile_payment',
+    'issue_warranty',
+    'lineItems',
+    'uuidPattern',
+    'Save via live API',
+    'Last Financial API Result',
+    "credentials: 'same-origin'",
+    "cache: 'no-store'",
+    "'content-type': 'application/json'"
+  ]) assert(financialEditors.includes(marker), `ServiceOperationsFinancialEditors missing marker: ${marker}`);
+  for (const field of ['quotation_id', 'invoice_id', 'payment_id', 'warranty_id', 'job_id', 'description_1', 'qty_1', 'unit_price_1', 'amount', 'fee', 'provider', 'external_id', 'coverage', 'starts_at', 'ends_at']) {
+    assert(financialEditors.includes(field), `ServiceOperationsFinancialEditors missing field marker: ${field}`);
+  }
+  assert(!/localStorage|sessionStorage/.test(financialEditors), 'ServiceOperationsFinancialEditors must not use browser storage for production state.');
+
   for (const anchor of [
     '/service-operations#leads',
     '/service-operations#service-requests',
@@ -123,8 +173,11 @@ if (requiredFiles.every(exists)) {
     'create or replace function public.transition_status_tx',
     'insert into public.status_transition_logs',
     "'status.transition'",
-    'grant execute on function public.transition_status_tx'
-  ]) assert(bridge.includes(marker), `Schema bridge missing status transition RPC marker: ${marker}`);
+    'grant execute on function public.transition_status_tx',
+    'public.quotation_versions',
+    'public.invoice_items',
+    'public.payment_transactions'
+  ]) assert(bridge.includes(marker), `Schema bridge missing financial/status marker: ${marker}`);
 
   warn(component.includes('Set approved') && component.includes('Set reconciled'), 'Quotation/payment next-status labels are present; verify these transitions are allowed in staging before production use.');
 }
