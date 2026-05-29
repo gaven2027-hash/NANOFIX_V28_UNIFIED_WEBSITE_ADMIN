@@ -44,8 +44,10 @@ const requiredFiles = [
   "lib/nanofix/system-events.ts",
   "data/admin_backend_seed.json",
   "docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md",
+  "docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md",
   "tools/e2e-smoke.mjs",
   "tools/deploy-readiness-check.mjs",
+  "tools/static-v28-2-issue-scan.mjs",
   "tools/verify-v28-2-workflow-engine.mjs",
   "supabase/seed/20260522_central_admin_seed.sql",
   "supabase/seed/20260529_v28_2_workflow_engine_seed.sql",
@@ -100,7 +102,9 @@ const workflowSettingsApiText = read("app/api/admin/workflow-settings/route.ts")
 const globalSearchText = read("app/api/global-search/route.ts");
 const readyRouteText = read("app/api/ready/route.ts");
 const e2eSmokeText = read("tools/e2e-smoke.mjs");
+const staticScanText = read("tools/static-v28-2-issue-scan.mjs");
 const masterMemoryText = read("docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md");
+const runbookText = read("docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md");
 
 const chainChecks = {
   public_to_admin_paths: ["/admin", "/member-sign-up-login", "/api/public-repair-request", "/api/customer/register"],
@@ -129,6 +133,7 @@ const securityChecks = {
 
 const v282WorkflowChecks = {
   master_memory_is_current_basis: masterMemoryText.includes("Use this file as the single project memory reference") && masterMemoryText.includes("Automation & Notification Engine → Internal Inbox → Unified Task Engine"),
+  final_runbook_present: runbookText.includes("NANOFIX V28.2 Final Deployment Runbook") && runbookText.includes("Final go/no-go checklist") && runbookText.includes("Rollback plan"),
   dashboard_renders_workflow_workspace: dashboardText.includes("AutomationNotificationWorkspace"),
   system_settings_renders_settings_workspace: systemSettingsText.includes("WorkflowSettingsWorkspace") && !systemSettingsText.includes("AutomationNotificationWorkspace"),
   live_read_apis_bound: ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks"].every((marker) => workflowWorkspaceText.includes(marker)),
@@ -136,14 +141,15 @@ const v282WorkflowChecks = {
   demo_rows_not_writable: workflowWorkspaceText.includes("Demo rows cannot be acknowledged") && workflowWorkspaceText.includes("Demo rows cannot be updated"),
   no_browser_storage_workflow_state: !/localStorage|sessionStorage/.test(workflowWorkspaceText + auditTrailText + settingsWorkspaceText),
   audit_trail_ui_bound: auditTrailText.includes("/api/admin/workflow-audit?limit=12") && auditTrailText.includes("task_events") && auditTrailText.includes("audit_logs") && auditTrailText.includes("notification_delivery"),
-  audit_api_explicit_fields_and_audited: workflowAuditApiText.includes("workflow_audit_trail_read") && workflowAuditApiText.includes("writeAuditLog") && !/select\('\*'\)/.test(workflowAuditApiText),
+  audit_api_explicit_fields_and_audited: workflowAuditApiText.includes("workflow_audit_trail_read") && workflowAuditApiText.includes("writeAuditLog") && !/select\(['"]\*['"]\)/.test(workflowAuditApiText),
   settings_ui_bound: settingsWorkspaceText.includes("/api/admin/workflow-settings") && settingsWorkspaceText.includes("automation_rule_setting") && settingsWorkspaceText.includes("notification_channel") && settingsWorkspaceText.includes("unified_task_sla") && settingsWorkspaceText.includes("PATCH"),
-  settings_api_explicit_fields_and_audited: workflowSettingsApiText.includes("workflow_settings_read") && workflowSettingsApiText.includes("workflow_setting_upsert") && workflowSettingsApiText.includes("workflow_setting_update") && workflowSettingsApiText.includes("writeAuditLog") && !/select\('\*'\)/.test(workflowSettingsApiText),
+  settings_api_explicit_fields_and_audited: workflowSettingsApiText.includes("workflow_settings_read") && workflowSettingsApiText.includes("workflow_setting_upsert") && workflowSettingsApiText.includes("workflow_setting_update") && workflowSettingsApiText.includes("writeAuditLog") && !/select\(['"]\*['"]\)/.test(workflowSettingsApiText),
   workflow_tables_exist_in_migrations: ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"].every((table) => (workflowSql + workflowSettingsSql).includes(`public.${table}`)),
   workflow_settings_defaults_exist: ["notification.channel.internal.default", "unified_task.sla.p0.repair_triage", "automation.rules.safe_write_policy"].every((marker) => workflowSettingsSql.includes(marker)),
   ready_checks_workflow_settings: ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"].every((table) => readyRouteText.includes(table)),
   global_search_includes_workflow_settings: ["workflow_settings", "workflowSettingHref", "/system-settings#automation-rule-settings", "/system-settings#notification-channel-settings", "/system-settings#unified-task-sla-settings", "mergeResults", "rpc_result_count", "fallback_result_count"].every((marker) => globalSearchText.includes(marker)),
-  e2e_smoke_covers_settings_audit: ["/api/admin/workflow-audit", "/api/admin/workflow-settings", "workflow_settings", "checkStaticV282SettingsSearchMarkers"].every((marker) => e2eSmokeText.includes(marker))
+  e2e_smoke_covers_settings_audit: ["/api/admin/workflow-audit", "/api/admin/workflow-settings", "workflow_settings", "checkStaticV282SettingsSearchMarkers"].every((marker) => e2eSmokeText.includes(marker)),
+  static_scan_present_and_guarding: ["Supabase select", "localStorage", "sessionStorage", "Admin API route", "workflow_settings", "Conflicting stale memory file"].every((marker) => staticScanText.includes(marker))
 };
 
 const report = {
