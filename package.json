@@ -1,6 +1,6 @@
 {
   "name": "nanofix-v28-unified-website-admin",
-  "version": "28.1.6-final-chat-memory-20260527",
+  "version": "28.2.0-automation-inbox-task-engine-20260529",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -69,5 +69,5 @@
   "overrides": {
     "postcss": "8.5.10"
   },
-  "description": "NANOFIX V28.1.6 final memory baseline: separate Customer Portal, unified Internal Admin App role login, admin menu 0-8, Super Admin takeover audit, reviews/privacy workflow and Vercel standard build:ci."
+  "description": "NANOFIX V28.2 automation, notification, internal inbox and unified task engine baseline: real Supabase tables, internal RBAC APIs, audit logging and dashboard workspaces."
 }
