@@ -1,0 +1,95 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const failures = [];
+const warnings = [];
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const exists = (file) => fs.existsSync(path.join(root, file));
+const assert = (condition, message) => { if (!condition) failures.push(message); };
+const warn = (condition, message) => { if (!condition) warnings.push(message); };
+
+const requiredFiles = [
+  'app/service-operations/page.tsx',
+  'app/api/admin/service-operations/route.ts',
+  'components/ServiceOperationsLiveCore.tsx',
+  'data/adminModuleReality.ts',
+  'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql'
+];
+
+for (const file of requiredFiles) assert(exists(file), `Missing Service Operations live core file: ${file}`);
+
+if (requiredFiles.every(exists)) {
+  const page = read('app/service-operations/page.tsx');
+  const api = read('app/api/admin/service-operations/route.ts');
+  const component = read('components/ServiceOperationsLiveCore.tsx');
+  const registry = read('data/adminModuleReality.ts');
+  const bridge = read('supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql');
+
+  assert(page.includes('ServiceOperationsLiveCore'), 'Service Operations page must render ServiceOperationsLiveCore above contract panels.');
+  assert(page.includes('MenuAnchorSections route="/service-operations"'), 'Service Operations page must retain menu anchor reality panels.');
+
+  for (const marker of [
+    'requireActorApi',
+    'service_operations_live_core_read',
+    'service_operations_live_core_status_patch',
+    'transition_status_tx',
+    'writeAuditLog',
+    'status_transition_logs',
+    'leads',
+    'service_requests',
+    'jobs',
+    'quotations',
+    'invoices',
+    'payments',
+    'warranties'
+  ]) assert(api.includes(marker), `Service Operations API missing marker: ${marker}`);
+  assert(!/select\(['"]\*['"]\)/.test(api), 'Service Operations API must use explicit field whitelists, not select("*").');
+  assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support', 'engineer']"), 'Service Operations GET roles should include engineer read access.');
+  assert(api.includes("['super_admin', 'operations_admin', 'finance', 'support']"), 'Service Operations PATCH roles should exclude engineer write access.');
+
+  for (const marker of [
+    '/api/admin/service-operations?limit=12',
+    "fetch('/api/admin/service-operations'",
+    "method: 'PATCH'",
+    "credentials: 'same-origin'",
+    "cache: 'no-store'",
+    "'content-type': 'application/json'",
+    'Service Operations Live Core',
+    'Status Flow & Logs',
+    'transition_status_tx'
+  ]) assert(component.includes(marker), `ServiceOperationsLiveCore missing marker: ${marker}`);
+  assert(!/localStorage|sessionStorage/.test(component), 'ServiceOperationsLiveCore must not use browser storage for production state.');
+
+  for (const anchor of [
+    '/service-operations#leads',
+    '/service-operations#service-requests',
+    '/service-operations#jobs',
+    '/service-operations#quotations',
+    '/service-operations#invoices',
+    '/service-operations#payments',
+    '/service-operations#warranty-records',
+    '/service-operations#status-flow-logs'
+  ]) assert(registry.includes(`href: \`${anchor}\``) || registry.includes(`href: '${anchor}'`), `adminModuleReality missing Service Operations anchor: ${anchor}`);
+  assert(registry.includes('/api/admin/service-operations or module-specific API'), 'adminModuleReality should identify Service Operations live core/API path while full CRUD remains partial.');
+
+  for (const marker of [
+    'create or replace function public.transition_status_tx',
+    'insert into public.status_transition_logs',
+    "'status.transition'",
+    'grant execute on function public.transition_status_tx'
+  ]) assert(bridge.includes(marker), `Schema bridge missing status transition RPC marker: ${marker}`);
+
+  warn(component.includes('Set approved') && component.includes('Set reconciled'), 'Quotation/payment next-status labels are present; verify these transitions are allowed in staging before production use.');
+}
+
+const report = {
+  ok: failures.length === 0,
+  generated_at: new Date().toISOString(),
+  verifier: 'verify-service-operations-live-core',
+  failures,
+  warnings
+};
+
+console.log(JSON.stringify(report, null, 2));
+if (failures.length) process.exit(1);
