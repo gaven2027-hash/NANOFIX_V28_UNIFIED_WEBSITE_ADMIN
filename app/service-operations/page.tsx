@@ -4,6 +4,7 @@ import { AdminShell } from '@/components/AdminShell';
 import { PageHeader } from '@/components/PageHeader';
 import { ServiceOperationsLiveCore } from '@/components/ServiceOperationsLiveCore';
 import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsDedicatedForms';
+import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
 import { WorkflowBoard } from '@/components/WorkflowBoard';
 import { ServiceOperationsActionPanel } from '@/components/ServiceOperationsActionPanel';
 import { StatusMachineTable } from '@/components/StatusMachineTable';
@@ -16,6 +17,7 @@ export default function Page() {
       <div className="space-y-6">
         <ServiceOperationsLiveCore />
         <ServiceOperationsDedicatedForms />
+        <ServiceOperationsFinancialEditors />
         <WorkflowBoard />
         <ServiceOperationsActionPanel />
         <StatusMachineTable />
