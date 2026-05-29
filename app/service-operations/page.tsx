@@ -6,6 +6,7 @@ import { ServiceOperationsLiveCore } from '@/components/ServiceOperationsLiveCor
 import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsDedicatedForms';
 import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
+import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
 import { WorkflowBoard } from '@/components/WorkflowBoard';
 import { ServiceOperationsActionPanel } from '@/components/ServiceOperationsActionPanel';
 import { StatusMachineTable } from '@/components/StatusMachineTable';
@@ -20,6 +21,7 @@ export default function Page() {
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsInspectionWorkspace />
+        <ServiceOperationsStorageUploader />
         <WorkflowBoard />
         <ServiceOperationsActionPanel />
         <StatusMachineTable />
