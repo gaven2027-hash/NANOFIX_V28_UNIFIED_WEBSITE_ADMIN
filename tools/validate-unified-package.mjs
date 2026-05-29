@@ -45,6 +45,7 @@ const requiredFiles = [
   "data/admin_backend_seed.json",
   "docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md",
   "docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md",
+  "docs/NANOFIX_V28_2_FINAL_RELEASE_HANDOFF_20260529.md",
   "tools/e2e-smoke.mjs",
   "tools/deploy-readiness-check.mjs",
   "tools/static-v28-2-issue-scan.mjs",
@@ -105,6 +106,7 @@ const e2eSmokeText = read("tools/e2e-smoke.mjs");
 const staticScanText = read("tools/static-v28-2-issue-scan.mjs");
 const masterMemoryText = read("docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md");
 const runbookText = read("docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md");
+const handoffText = read("docs/NANOFIX_V28_2_FINAL_RELEASE_HANDOFF_20260529.md");
 
 const chainChecks = {
   public_to_admin_paths: ["/admin", "/member-sign-up-login", "/api/public-repair-request", "/api/customer/register"],
@@ -134,6 +136,7 @@ const securityChecks = {
 const v282WorkflowChecks = {
   master_memory_is_current_basis: masterMemoryText.includes("Use this file as the single project memory reference") && masterMemoryText.includes("Automation & Notification Engine → Internal Inbox → Unified Task Engine"),
   final_runbook_present: runbookText.includes("NANOFIX V28.2 Final Deployment Runbook") && runbookText.includes("Final go/no-go checklist") && runbookText.includes("Rollback plan"),
+  final_handoff_present: handoffText.includes("NANOFIX V28.2 Final Release Handoff") && handoffText.includes("Do-not-break rules") && handoffText.includes("Rollback notes"),
   dashboard_renders_workflow_workspace: dashboardText.includes("AutomationNotificationWorkspace"),
   system_settings_renders_settings_workspace: systemSettingsText.includes("WorkflowSettingsWorkspace") && !systemSettingsText.includes("AutomationNotificationWorkspace"),
   live_read_apis_bound: ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks"].every((marker) => workflowWorkspaceText.includes(marker)),
