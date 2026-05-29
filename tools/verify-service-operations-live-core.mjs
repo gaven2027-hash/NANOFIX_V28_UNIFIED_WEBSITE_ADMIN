@@ -16,7 +16,9 @@ const requiredFiles = [
   'app/api/admin/service-operations/inspections/route.ts',
   'app/api/admin/service-operations/storage-upload-url/route.ts',
   'app/api/customer-portal/uploads/route.ts',
+  'app/api/customer-portal/records/route.ts',
   'app/customer-portal/uploads/page.tsx',
+  'app/customer-portal/records/page.tsx',
   'components/ServiceOperationsLiveCore.tsx',
   'components/ServiceOperationsDedicatedForms.tsx',
   'components/ServiceOperationsFinancialEditors.tsx',
@@ -24,13 +26,15 @@ const requiredFiles = [
   'components/ServiceOperationsStorageUploader.tsx',
   'components/ServiceOperationsCustomerVisibility.tsx',
   'components/CustomerPortalApprovedUploads.tsx',
+  'components/CustomerPortalRecordsOverview.tsx',
   'data/adminModuleReality.ts',
   'app/api/ready/route.ts',
   'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql',
   'supabase/migrations/202605290003_service_operations_inspection_uploads.sql',
   'supabase/migrations/202605290004_service_operations_upload_notification_hooks.sql',
   'supabase/migrations/202605290005_service_uploads_storage_bucket.sql',
-  'supabase/migrations/202605290006_customer_visible_uploads.sql'
+  'supabase/migrations/202605290006_customer_visible_uploads.sql',
+  'supabase/migrations/202605290007_customer_portal_records_visibility_bridge.sql'
 ];
 
 for (const file of requiredFiles) assert(exists(file), `Missing Service Operations file: ${file}`);
@@ -54,7 +58,9 @@ if (requiredFiles.every(exists)) {
   const inspectionApi = read('app/api/admin/service-operations/inspections/route.ts');
   const storageApi = read('app/api/admin/service-operations/storage-upload-url/route.ts');
   const customerUploadsApi = read('app/api/customer-portal/uploads/route.ts');
+  const customerRecordsApi = read('app/api/customer-portal/records/route.ts');
   const customerUploadsPage = read('app/customer-portal/uploads/page.tsx');
+  const customerRecordsPage = read('app/customer-portal/records/page.tsx');
   const liveCore = read('components/ServiceOperationsLiveCore.tsx');
   const forms = read('components/ServiceOperationsDedicatedForms.tsx');
   const financialEditors = read('components/ServiceOperationsFinancialEditors.tsx');
@@ -62,12 +68,14 @@ if (requiredFiles.every(exists)) {
   const uploader = read('components/ServiceOperationsStorageUploader.tsx');
   const visibility = read('components/ServiceOperationsCustomerVisibility.tsx');
   const customerUploads = read('components/CustomerPortalApprovedUploads.tsx');
+  const customerRecords = read('components/CustomerPortalRecordsOverview.tsx');
   const registry = read('data/adminModuleReality.ts');
   const bridge = read('supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql');
   const inspectionSql = read('supabase/migrations/202605290003_service_operations_inspection_uploads.sql');
   const hookSql = read('supabase/migrations/202605290004_service_operations_upload_notification_hooks.sql');
   const storageSql = read('supabase/migrations/202605290005_service_uploads_storage_bucket.sql');
   const customerVisibleSql = read('supabase/migrations/202605290006_customer_visible_uploads.sql');
+  const customerRecordsSql = read('supabase/migrations/202605290007_customer_portal_records_visibility_bridge.sql');
   const ready = read('app/api/ready/route.ts');
 
   assertMarkers(page, [
@@ -188,7 +196,28 @@ if (requiredFiles.every(exists)) {
   assertMarkers(customerUploadsApi, ['export async function GET'], 'Customer Portal uploads API handlers');
   assertNoSelectStar(customerUploadsApi, 'Customer Portal uploads API');
 
+  assertMarkers(customerRecordsApi, [
+    'ALLOWED_ROLES',
+    "'customer'",
+    'customerIdsForProfile',
+    'loadCustomerRecords',
+    'customers',
+    'service_requests',
+    'jobs',
+    'invoices',
+    'payments',
+    'warranties',
+    'customer_id',
+    'profile_id',
+    'customer_portal_records_read',
+    'requireActorApi',
+    'writeAuditLog'
+  ], 'Customer Portal records API');
+  assertMarkers(customerRecordsApi, ['export async function GET'], 'Customer Portal records API handlers');
+  assertNoSelectStar(customerRecordsApi, 'Customer Portal records API');
+
   assertMarkers(customerUploadsPage, ['CustomerPortalApprovedUploads', 'min-h-screen bg-slate-50'], 'Customer uploads page');
+  assertMarkers(customerRecordsPage, ['CustomerPortalRecordsOverview'], 'Customer records page');
 
   assertMarkers(liveCore, [
     '/api/admin/service-operations?limit=12',
@@ -294,6 +323,21 @@ if (requiredFiles.every(exists)) {
   ], 'CustomerPortalApprovedUploads');
   assertNoBrowserStorage(customerUploads, 'CustomerPortalApprovedUploads');
 
+  assertMarkers(customerRecords, [
+    'CustomerPortalRecordsOverview',
+    '/api/customer-portal/records?limit=20',
+    'My NANOFIX Records',
+    'Repair Requests',
+    'Jobs & Site Works',
+    'Invoices',
+    'Payments',
+    'Warranties',
+    'filtered by your linked customer profile',
+    "credentials: 'same-origin'",
+    "cache: 'no-store'"
+  ], 'CustomerPortalRecordsOverview');
+  assertNoBrowserStorage(customerRecords, 'CustomerPortalRecordsOverview');
+
   for (const anchor of ['/service-operations#leads', '/service-operations#service-requests', '/service-operations#jobs', '/service-operations#quotations', '/service-operations#invoices', '/service-operations#payments', '/service-operations#warranty-records', '/service-operations#status-flow-logs']) {
     assert(registry.includes(`href: \`${anchor}\``) || registry.includes(`href: '${anchor}'`), `adminModuleReality missing Service Operations anchor: ${anchor}`);
   }
@@ -350,6 +394,17 @@ if (requiredFiles.every(exists)) {
     'customer_visibility_notes',
     'service_upload_reviews_customer_visible_idx'
   ], 'Customer visible uploads migration');
+
+  assertMarkers(customerRecordsSql, [
+    'public.service_requests',
+    'customer_id',
+    'public.jobs',
+    'service_requests_customer_idx',
+    'jobs_customer_idx',
+    'jobs_service_request_idx',
+    'invoices_job_idx',
+    'warranties_job_idx'
+  ], 'Customer portal records visibility bridge');
 
   assert(ready.includes('service_inspections'), '/api/ready must include service_inspections table check.');
   assert(ready.includes('service_upload_reviews'), '/api/ready must include service_upload_reviews table check.');
