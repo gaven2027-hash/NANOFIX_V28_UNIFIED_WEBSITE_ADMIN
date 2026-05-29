@@ -5,7 +5,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const nextBin = process.platform === "win32" ? join(root, "node_modules", ".bin", "next.cmd") : join(root, "node_modules", ".bin", "next");
 const port = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
-const v282ReadyTables = ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events"];
+const v282ReadyTables = ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"];
 
 function run(cmd, args) {
   const label = `${cmd} ${args.join(" ")}`;
@@ -130,12 +130,36 @@ try {
   ];
   for (const [path, status] of checks) await expectStatus(baseUrl, path, status);
 
-  for (const path of ["/admin", "/dashboard", "/dashboard#automation-notification-engine", "/dashboard#internal-inbox", "/dashboard#unified-task-engine", "/website-management", "/customer-portal", "/engineer-portal"]) {
+  for (const path of [
+    "/admin",
+    "/dashboard",
+    "/dashboard#automation-notification-engine",
+    "/dashboard#internal-inbox",
+    "/dashboard#unified-task-engine",
+    "/website-management",
+    "/system-settings",
+    "/system-settings#automation-rule-settings",
+    "/system-settings#notification-channel-settings",
+    "/system-settings#unified-task-sla-settings",
+    "/customer-portal",
+    "/engineer-portal"
+  ]) {
     await expectRedirectToLogin(baseUrl, path);
   }
 
   const spoofHeaders = { headers: { "x-admin-role": "super_admin", "x-nanofix-role": "super_admin" } };
-  for (const path of ["/api/admin/search", "/api/global-search", "/api/portal/customer", "/api/portal/engineer", "/api/service-requests", "/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks"]) {
+  for (const path of [
+    "/api/admin/search",
+    "/api/global-search",
+    "/api/portal/customer",
+    "/api/portal/engineer",
+    "/api/service-requests",
+    "/api/admin/automation-notifications",
+    "/api/admin/internal-inbox",
+    "/api/admin/unified-tasks",
+    "/api/admin/workflow-audit",
+    "/api/admin/workflow-settings"
+  ]) {
     await expectStatus(baseUrl, path, 401, spoofHeaders);
   }
 
