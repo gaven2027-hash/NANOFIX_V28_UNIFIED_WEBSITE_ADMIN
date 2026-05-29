@@ -48,6 +48,69 @@ function slugText(section: Section) {
 
 function profileFor(section: Section): WorkspaceProfile {
   const key = slugText(section);
+  if (key.includes('automation') || key.includes('notification engine') || key.includes('通知引擎')) {
+    return {
+      summary: 'Automation rules turn cross-module events into queued notifications, internal inbox messages and unified tasks. Every rule and enqueue action must be backed by Supabase rows and Audit Logs. / 自动化规则把跨模块事件转换为排队通知、内部消息和统一任务；每个规则和入队动作必须有 Supabase 记录和审计日志。',
+      table: 'automation_rules + notification_outbox + audit_logs',
+      api: '/api/admin/automation-notifications',
+      primaryAction: 'Create automation rule / 创建自动化规则',
+      secondaryAction: 'Queue notification / 加入通知队列',
+      auditAction: 'Open automation audit / 查看自动化审计',
+      metrics: [
+        { label: 'Rules / 规则', value: 'Live', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
+        { label: 'Queued / 已排队', value: 'DB', tone: 'border-cyan-400 bg-cyan-50 text-cyan-900' },
+        { label: 'Failed / 失败', value: 'Track', tone: 'border-red-400 bg-red-50 text-red-900' },
+        { label: 'Audited / 已审计', value: '100%', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' }
+      ],
+      rows: [
+        { id: 'AUTO-SR-001', subject: 'New repair request trigger / 新报修触发器', owner: 'Operations', status: 'enabled', priority: 'P0', next: 'Queue Operations inbox and task' },
+        { id: 'AUTO-QT-002', subject: 'Quotation overdue trigger / 报价超时触发器', owner: 'Admin', status: 'enabled', priority: 'P1', next: 'Escalate to Super Admin if overdue' },
+        { id: 'AUTO-REV-003', subject: 'Review redaction trigger / 评价脱敏触发器', owner: 'Customer Center', status: 'draft', priority: 'P1', next: 'Send to review moderation task' }
+      ]
+    };
+  }
+  if (key.includes('internal inbox') || key.includes('内部收件箱')) {
+    return {
+      summary: 'Internal Inbox is the role-based action queue for Super Admin, Operations, Finance, Content, Support and Engineer users. Customers do not access this inbox. / 内部收件箱是总管理员、运营、财务、内容、客服和工程师的角色行动队列，客户不可进入。',
+      table: 'internal_inbox_messages + profiles + audit_logs',
+      api: '/api/admin/internal-inbox',
+      primaryAction: 'Acknowledge message / 确认消息',
+      secondaryAction: 'Assign to task / 转为任务',
+      auditAction: 'Archive with audit / 审计后归档',
+      metrics: [
+        { label: 'Unread / 未读', value: 'Role', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
+        { label: 'Ack required / 待确认', value: 'SLA', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
+        { label: 'P0 / 紧急', value: 'Escalate', tone: 'border-red-400 bg-red-50 text-red-900' },
+        { label: 'Archived / 归档', value: 'Trace', tone: 'border-slate-400 bg-slate-50 text-slate-900' }
+      ],
+      rows: [
+        { id: 'INBOX-OPS-001', subject: 'New public repair needs triage / 公开报修需分配', owner: 'Operations', status: 'unread', priority: 'P0', next: 'Open related service request' },
+        { id: 'INBOX-FIN-002', subject: 'Payment confirmation review / 付款确认审核', owner: 'Finance', status: 'ack_required', priority: 'P1', next: 'Confirm payment and receipt' },
+        { id: 'INBOX-ENG-003', subject: 'Inspection photo upload missing / 查验照片未上传', owner: 'Engineer', status: 'needs_action', priority: 'P1', next: 'Upload inspection evidence' }
+      ]
+    };
+  }
+  if (key.includes('unified task') || key.includes('统一任务')) {
+    return {
+      summary: 'Unified Task Engine normalises work from all modules into a single task table with source records, owners, SLA, status, task events and Audit Logs. / 统一任务引擎把所有模块工作统一到任务表，保留来源记录、负责人、SLA、状态、任务事件和审计日志。',
+      table: 'unified_tasks + task_events + audit_logs',
+      api: '/api/admin/unified-tasks',
+      primaryAction: 'Create task / 创建任务',
+      secondaryAction: 'Update status / 更新状态',
+      auditAction: 'View task events / 查看任务事件',
+      metrics: [
+        { label: 'Open / 打开', value: 'Live', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
+        { label: 'SLA / 时限', value: 'Due', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
+        { label: 'Blocked / 阻塞', value: 'Escalate', tone: 'border-red-400 bg-red-50 text-red-900' },
+        { label: 'Done / 完成', value: 'Audit', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' }
+      ],
+      rows: [
+        { id: 'TASK-SR-001', subject: 'Schedule first inspection / 安排首次查验', owner: 'Operations', status: 'open', priority: 'P0', next: 'Assign engineer and due time' },
+        { id: 'TASK-QT-002', subject: 'Approve quotation draft / 审核报价草稿', owner: 'Admin', status: 'review', priority: 'P1', next: 'Approve or request revision' },
+        { id: 'TASK-WTY-003', subject: 'Warranty claim decision / 保修范围判断', owner: 'Operations', status: 'in_progress', priority: 'P1', next: 'Decide in-warranty or new quote' }
+      ]
+    };
+  }
   if (key.includes('dashboard') || key.includes('queue') || key.includes('summary') || key.includes('alerts')) {
     return {
       summary: 'Executive command view: counts, risks and urgent items are clickable and route to their original module for handling. / 总管理指挥视图：数量、预警和紧急事项可点击直达对应模块处理。',
