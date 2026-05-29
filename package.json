@@ -18,6 +18,7 @@
     "verify:v28-1-6-portals": "node tools/verify-v28-1-6-portal-boundaries.mjs",
     "verify:v28-1-6-owner-audit": "node tools/verify-v28-1-6-owner-audit.mjs",
     "verify:v28-2-workflow": "node tools/verify-v28-2-workflow-engine.mjs",
+    "scan:v28-2-static": "node tools/static-v28-2-issue-scan.mjs",
     "verify:ad-center": "node tools/verify-ad-center.mjs",
     "build:css": "tailwindcss -i ./app/globals.css -o ./public/static/nanofix-tailwind.css --minify",
     "build:preview": "npm run build:css && node tools/build-preview-package.mjs",
@@ -40,7 +41,7 @@
     "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
-    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run scan:v28-2-static && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
     "check:staging": "node tools/staging-supabase-check.mjs",
     "validate:platform": "node tools/deploy-readiness-check.mjs"
   },
