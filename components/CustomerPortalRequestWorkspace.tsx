@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
 type RequestKind = 'new_repair' | 'warranty_claim';
@@ -153,6 +154,12 @@ export function CustomerPortalRequestWorkspace() {
         {state.message ? (
           <div className={`rounded-2xl px-4 py-3 text-sm font-bold lg:col-span-2 ${state.ok ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100' : 'bg-rose-50 text-rose-800 ring-1 ring-rose-100'}`}>
             {state.message}
+            {state.ok && state.serviceRequestId ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href="/customer-portal/records#repair-requests" className="rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 ring-1 ring-emerald-200">View in Records / 查看记录</Link>
+                <Link href={`/customer-portal/uploads?service_request_id=${encodeURIComponent(state.serviceRequestId)}`} className="rounded-xl bg-activeBlue px-3 py-2 text-xs font-black text-white">Upload Files / 上传文件</Link>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
