@@ -19,7 +19,8 @@ const requiredTables = [
   "notification_outbox",
   "internal_inbox_messages",
   "unified_tasks",
-  "task_events"
+  "task_events",
+  "workflow_settings"
 ];
 
 type TableCheck = {
