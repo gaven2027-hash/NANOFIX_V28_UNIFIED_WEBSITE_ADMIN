@@ -22,6 +22,22 @@ function normalizeCategory(category: string) {
   return category.toLowerCase().replace(/[\s-]+/g, '_');
 }
 
+function workflowSettingHref(settingType: string | null | undefined) {
+  if (settingType === 'notification_channel') return '/system-settings#notification-channel-settings';
+  if (settingType === 'unified_task_sla' || settingType === 'escalation_rule') return '/system-settings#unified-task-sla-settings';
+  return '/system-settings#automation-rule-settings';
+}
+
+function mergeResults(primary: SearchResult[], secondary: SearchResult[]) {
+  const seen = new Set<string>();
+  return [...primary, ...secondary].filter((item) => {
+    const key = `${item.type}:${item.href}:${item.title}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 30);
+}
+
 async function fallbackSearch(q: string, category: string): Promise<SearchResult[]> {
   const supabase = createAdminClient();
   const pattern = like(q);
@@ -198,6 +214,23 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
+  if (category === 'all' || normalized === 'settings' || normalized === 'workflow_settings' || normalized === 'automation_rule_settings' || normalized === 'notification_channel_settings' || normalized === 'unified_task_sla_settings') {
+    tasks.push(supabase
+      .from('workflow_settings')
+      .select('setting_id,setting_key,setting_type,name,description,is_enabled,updated_at')
+      .or(`setting_key.ilike.${pattern},setting_type.ilike.${pattern},name.ilike.${pattern},description.ilike.${pattern}`)
+      .order('updated_at', { ascending: false })
+      .limit(10)
+      .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
+        type: 'workflow_setting',
+        title: row.name ?? row.setting_key ?? `Workflow setting ${row.setting_id?.slice(0, 8)}`,
+        subtitle: `${row.setting_type ?? 'workflow_setting'} · ${row.setting_key ?? 'setting'}`,
+        href: workflowSettingHref(row.setting_type),
+        status: row.is_enabled ? 'enabled' : 'disabled',
+        created_at: row.updated_at
+      }))));
+  }
+
   const settled = await Promise.allSettled(tasks);
   return settled.flatMap((item) => item.status === 'fulfilled' ? item.value : []).slice(0, 30);
 }
@@ -216,7 +249,9 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
   const { data, error } = await supabase.rpc('search_all_records', { search_text: q, max_results: 20 });
-  const results = !error && Array.isArray(data) ? data as SearchResult[] : await fallbackSearch(q, category);
+  const rpcResults = !error && Array.isArray(data) ? data as SearchResult[] : [];
+  const fallbackResults = await fallbackSearch(q, category);
+  const results = mergeResults(rpcResults, fallbackResults);
 
   await writeAuditLog({
     actorId: auth.actor.profileId,
@@ -224,7 +259,7 @@ export async function GET(request: NextRequest) {
     action: 'global_search',
     objectType: 'global_search',
     objectId: q,
-    after: { category, result_count: results.length }
+    after: { category, result_count: results.length, fallback_result_count: fallbackResults.length, rpc_result_count: rpcResults.length }
   }).catch(() => undefined);
 
   return NextResponse.json({ ok: true, query: q, category, results });
