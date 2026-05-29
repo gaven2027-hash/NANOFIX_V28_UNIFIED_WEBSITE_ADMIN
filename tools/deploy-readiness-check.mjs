@@ -26,6 +26,7 @@ const requiredFiles = [
   "middleware.ts",
   "docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md",
   "docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md",
+  "docs/NANOFIX_V28_2_FINAL_RELEASE_HANDOFF_20260529.md",
   "components/AutomationNotificationWorkspace.tsx",
   "components/WorkflowAuditTrail.tsx",
   "components/WorkflowSettingsWorkspace.tsx",
@@ -174,6 +175,8 @@ for (const marker of ["Supabase select", "localStorage", "sessionStorage", "Admi
 
 const runbook = read("docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md");
 for (const marker of ["Supabase deployment order", "scan:v28-2-static", "workflow_settings", "Final go/no-go checklist", "Rollback plan", "NANOFIX_V28_2_MASTER_MEMORY_20260529.md"]) assert(runbook.includes(marker), `Deployment runbook missing marker: ${marker}`);
+const handoff = read("docs/NANOFIX_V28_2_FINAL_RELEASE_HANDOFF_20260529.md");
+for (const marker of ["V28.2 Final Release Handoff", "Supabase migrations", "Final validation commands", "Rollback notes", "Do-not-break rules"]) assert(handoff.includes(marker), `Final handoff missing marker: ${marker}`);
 
 const nextConfig = read("next.config.mjs");
 assert(nextConfig.includes("Content-Security-Policy"), "next.config.mjs should define CSP");
