@@ -13,6 +13,7 @@ const requiredFiles = [
   'app/service-operations/page.tsx',
   'app/api/admin/service-operations/route.ts',
   'components/ServiceOperationsLiveCore.tsx',
+  'components/ServiceOperationsDedicatedForms.tsx',
   'data/adminModuleReality.ts',
   'supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql'
 ];
@@ -23,10 +24,12 @@ if (requiredFiles.every(exists)) {
   const page = read('app/service-operations/page.tsx');
   const api = read('app/api/admin/service-operations/route.ts');
   const component = read('components/ServiceOperationsLiveCore.tsx');
+  const forms = read('components/ServiceOperationsDedicatedForms.tsx');
   const registry = read('data/adminModuleReality.ts');
   const bridge = read('supabase/migrations/20260523_0000_unified_website_admin_schema_bridge.sql');
 
   assert(page.includes('ServiceOperationsLiveCore'), 'Service Operations page must render ServiceOperationsLiveCore above contract panels.');
+  assert(page.includes('ServiceOperationsDedicatedForms'), 'Service Operations page must render ServiceOperationsDedicatedForms.');
   assert(page.includes('MenuAnchorSections route="/service-operations"'), 'Service Operations page must retain menu anchor reality panels.');
 
   for (const marker of [
@@ -79,6 +82,30 @@ if (requiredFiles.every(exists)) {
     assert(component.includes(functionMarker), `ServiceOperationsLiveCore missing function marker: ${functionMarker}`);
   }
   assert(!/localStorage|sessionStorage/.test(component), 'ServiceOperationsLiveCore must not use browser storage for production state.');
+
+  for (const marker of [
+    "type FormKind = 'lead' | 'service_request' | 'job'",
+    'ServiceOperationsDedicatedForms',
+    'Lead Form',
+    'Service Request Form',
+    'Job Form',
+    'validate(kind',
+    'emailPattern',
+    'uuidPattern',
+    'callServiceOperations',
+    "method: validation.isUpdate ? 'PATCH' : 'POST'",
+    "credentials: 'same-origin'",
+    "cache: 'no-store'",
+    "'content-type': 'application/json'",
+    "action: 'update'",
+    'Create via live API',
+    'Update via live API',
+    'Last API Record'
+  ]) assert(forms.includes(marker), `ServiceOperationsDedicatedForms missing marker: ${marker}`);
+  for (const field of ['name', 'phone', 'email', 'contact_name', 'whatsapp', 'issue_description', 'service_request_id', 'engineer_id', 'scheduled_at', 'notes']) {
+    assert(forms.includes(field), `ServiceOperationsDedicatedForms missing field marker: ${field}`);
+  }
+  assert(!/localStorage|sessionStorage/.test(forms), 'ServiceOperationsDedicatedForms must not use browser storage for production state.');
 
   for (const anchor of [
     '/service-operations#leads',
