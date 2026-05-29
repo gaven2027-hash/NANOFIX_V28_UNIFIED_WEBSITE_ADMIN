@@ -22,6 +22,8 @@ type WorkRow = {
   next: string;
 };
 
+type IntegrationMode = 'live' | 'partial' | 'contract';
+
 type WorkspaceProfile = {
   summary: string;
   table: string;
@@ -29,6 +31,7 @@ type WorkspaceProfile = {
   primaryAction: string;
   secondaryAction: string;
   auditAction: string;
+  integrationMode: IntegrationMode;
   rows: WorkRow[];
   metrics: Array<{ label: string; value: string; tone: string }>;
 };
@@ -46,36 +49,67 @@ function slugText(section: Section) {
   return `${section.parentTitle} ${section.title} ${section.zh}`.toLowerCase();
 }
 
+function modeCopy(mode: IntegrationMode) {
+  if (mode === 'live') return {
+    label: 'Live API / 真实接口',
+    tone: 'bg-emerald-50 text-emerald-950 ring-emerald-200',
+    note: 'This module is connected to server APIs and should write real Supabase records and Audit Logs. / 此模块已连接服务端 API，应写入真实 Supabase 记录和 Audit Logs。'
+  };
+  if (mode === 'partial') return {
+    label: 'Partial live binding / 部分真实绑定',
+    tone: 'bg-amber-50 text-amber-950 ring-amber-200',
+    note: 'This module has some real components, but this generic submodule panel still contains contract/sample rows. Confirm the dedicated workspace before production use. / 此模块已有部分真实组件，但本通用二级面板仍含契约/示例行，上线前需以专用工作区为准。'
+  };
+  return {
+    label: 'Contract scaffold / 契约占位',
+    tone: 'bg-slate-50 text-slate-700 ring-slate-200',
+    note: 'This panel is an OA/ERP module contract preview. It is not a real write workflow until the listed API and tables are implemented and verified. / 本面板是 OA/ERP 模块契约预览；在所列 API 和数据表实现并验证前，不代表真实写入流程。'
+  };
+}
+
+const demoMetrics = [
+  { label: 'Records / 记录', value: 'Contract', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
+  { label: 'Actions / 操作', value: 'Verify', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
+  { label: 'Audit / 审计', value: 'Required', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
+  { label: 'Risk / 风险', value: 'No fake data', tone: 'border-red-400 bg-red-50 text-red-900' }
+];
+
+function genericRows(prefix: string, title: string): WorkRow[] {
+  return [
+    { id: `${prefix}-001`, subject: `${title} record review / ${title} 记录复核`, owner: 'Operations', status: 'contract', priority: 'P1', next: 'Implement real CRUD API before production operation' },
+    { id: `${prefix}-002`, subject: `${title} approval / ${title} 审批`, owner: 'Admin', status: 'requires_api', priority: 'P1', next: 'Connect to Supabase table and Audit Logs' },
+    { id: `${prefix}-003`, subject: `${title} exception / ${title} 异常`, owner: 'Super Admin', status: 'needs_workflow', priority: 'P0', next: 'Define escalation and takeover rule' }
+  ];
+}
+
 function profileFor(section: Section): WorkspaceProfile {
   const key = slugText(section);
   if (key.includes('automation') || key.includes('notification engine') || key.includes('通知引擎')) {
     return {
+      integrationMode: 'live',
       summary: 'Automation rules turn cross-module events into queued notifications, internal inbox messages and unified tasks. Every rule and enqueue action must be backed by Supabase rows and Audit Logs. / 自动化规则把跨模块事件转换为排队通知、内部消息和统一任务；每个规则和入队动作必须有 Supabase 记录和审计日志。',
       table: 'automation_rules + notification_outbox + audit_logs',
       api: '/api/admin/automation-notifications',
-      primaryAction: 'Create automation rule / 创建自动化规则',
-      secondaryAction: 'Queue notification / 加入通知队列',
-      auditAction: 'Open automation audit / 查看自动化审计',
+      primaryAction: 'Queue notification / 加入通知队列',
+      secondaryAction: 'Open live dashboard panel / 打开真实工作流面板',
+      auditAction: 'Open workflow audit / 查看工作流审计',
       metrics: [
         { label: 'Rules / 规则', value: 'Live', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
         { label: 'Queued / 已排队', value: 'DB', tone: 'border-cyan-400 bg-cyan-50 text-cyan-900' },
         { label: 'Failed / 失败', value: 'Track', tone: 'border-red-400 bg-red-50 text-red-900' },
         { label: 'Audited / 已审计', value: '100%', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' }
       ],
-      rows: [
-        { id: 'AUTO-SR-001', subject: 'New repair request trigger / 新报修触发器', owner: 'Operations', status: 'enabled', priority: 'P0', next: 'Queue Operations inbox and task' },
-        { id: 'AUTO-QT-002', subject: 'Quotation overdue trigger / 报价超时触发器', owner: 'Admin', status: 'enabled', priority: 'P1', next: 'Escalate to Super Admin if overdue' },
-        { id: 'AUTO-REV-003', subject: 'Review redaction trigger / 评价脱敏触发器', owner: 'Customer Center', status: 'draft', priority: 'P1', next: 'Send to review moderation task' }
-      ]
+      rows: genericRows('AUTO', section.title)
     };
   }
   if (key.includes('internal inbox') || key.includes('内部收件箱')) {
     return {
+      integrationMode: 'live',
       summary: 'Internal Inbox is the role-based action queue for Super Admin, Operations, Finance, Content, Support and Engineer users. Customers do not access this inbox. / 内部收件箱是总管理员、运营、财务、内容、客服和工程师的角色行动队列，客户不可进入。',
       table: 'internal_inbox_messages + profiles + audit_logs',
       api: '/api/admin/internal-inbox',
-      primaryAction: 'Acknowledge message / 确认消息',
-      secondaryAction: 'Assign to task / 转为任务',
+      primaryAction: 'Acknowledge live message / 确认真实消息',
+      secondaryAction: 'Create unified task / 转为统一任务',
       auditAction: 'Archive with audit / 审计后归档',
       metrics: [
         { label: 'Unread / 未读', value: 'Role', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
@@ -83,20 +117,17 @@ function profileFor(section: Section): WorkspaceProfile {
         { label: 'P0 / 紧急', value: 'Escalate', tone: 'border-red-400 bg-red-50 text-red-900' },
         { label: 'Archived / 归档', value: 'Trace', tone: 'border-slate-400 bg-slate-50 text-slate-900' }
       ],
-      rows: [
-        { id: 'INBOX-OPS-001', subject: 'New public repair needs triage / 公开报修需分配', owner: 'Operations', status: 'unread', priority: 'P0', next: 'Open related service request' },
-        { id: 'INBOX-FIN-002', subject: 'Payment confirmation review / 付款确认审核', owner: 'Finance', status: 'ack_required', priority: 'P1', next: 'Confirm payment and receipt' },
-        { id: 'INBOX-ENG-003', subject: 'Inspection photo upload missing / 查验照片未上传', owner: 'Engineer', status: 'needs_action', priority: 'P1', next: 'Upload inspection evidence' }
-      ]
+      rows: genericRows('INBOX', section.title)
     };
   }
   if (key.includes('unified task') || key.includes('统一任务')) {
     return {
+      integrationMode: 'live',
       summary: 'Unified Task Engine normalises work from all modules into a single task table with source records, owners, SLA, status, task events and Audit Logs. / 统一任务引擎把所有模块工作统一到任务表，保留来源记录、负责人、SLA、状态、任务事件和审计日志。',
       table: 'unified_tasks + task_events + audit_logs',
       api: '/api/admin/unified-tasks',
-      primaryAction: 'Create task / 创建任务',
-      secondaryAction: 'Update status / 更新状态',
+      primaryAction: 'Create live task / 创建真实任务',
+      secondaryAction: 'Update live status / 更新真实状态',
       auditAction: 'View task events / 查看任务事件',
       metrics: [
         { label: 'Open / 打开', value: 'Live', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
@@ -104,199 +135,97 @@ function profileFor(section: Section): WorkspaceProfile {
         { label: 'Blocked / 阻塞', value: 'Escalate', tone: 'border-red-400 bg-red-50 text-red-900' },
         { label: 'Done / 完成', value: 'Audit', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' }
       ],
-      rows: [
-        { id: 'TASK-SR-001', subject: 'Schedule first inspection / 安排首次查验', owner: 'Operations', status: 'open', priority: 'P0', next: 'Assign engineer and due time' },
-        { id: 'TASK-QT-002', subject: 'Approve quotation draft / 审核报价草稿', owner: 'Admin', status: 'review', priority: 'P1', next: 'Approve or request revision' },
-        { id: 'TASK-WTY-003', subject: 'Warranty claim decision / 保修范围判断', owner: 'Operations', status: 'in_progress', priority: 'P1', next: 'Decide in-warranty or new quote' }
-      ]
+      rows: genericRows('TASK', section.title)
     };
   }
   if (key.includes('dashboard') || key.includes('queue') || key.includes('summary') || key.includes('alerts')) {
     return {
-      summary: 'Executive command view: counts, risks and urgent items are clickable and route to their original module for handling. / 总管理指挥视图：数量、预警和紧急事项可点击直达对应模块处理。',
-      table: 'dashboard_snapshots + module_alerts + task_queue',
+      integrationMode: 'partial',
+      summary: 'Executive command view: counts, risks and urgent items must route to source modules for handling. The generic rows here are readiness contracts unless backed by a dedicated live widget. / 总管理指挥视图：数量、预警和紧急事项必须直达源模块处理；本通用行是上线契约，除非已有专用真实组件支撑。',
+      table: 'dashboard_snapshots + module_alerts + unified_tasks',
       api: '/api/admin/dashboard/summary',
       primaryAction: 'Open filtered urgent list / 打开筛选待处理列表',
       secondaryAction: 'Assign owner / 分配负责人',
       auditAction: 'Create takeover note / 创建接管记录',
-      metrics: [
-        { label: 'Urgent / 紧急', value: '8', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Due today / 今日到期', value: '23', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
-        { label: 'Revenue / 收款', value: '$8.4k', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'System OK / 系统正常', value: '10/11', tone: 'border-sky-400 bg-sky-50 text-sky-900' }
-      ],
-      rows: [
-        { id: 'DASH-P0-001', subject: 'Overdue quotation approval / 超时报价审批', owner: 'Operations', status: 'needs_action', priority: 'P0', next: 'Open Quotations filtered by overdue' },
-        { id: 'DASH-FIN-004', subject: 'Payment abnormal reminder / 付款异常提醒', owner: 'Finance', status: 'review_required', priority: 'P1', next: 'Open Finance Snapshot items' },
-        { id: 'DASH-ADS-002', subject: 'High spend low conversion alert / 高花费低转化预警', owner: 'Advertising', status: 'watch', priority: 'P1', next: 'Open Advertising ROI alert' }
-      ]
-    };
-  }
-  if (key.includes('review') || key.includes('testimonial') || key.includes('privacy redaction') || key.includes('评价')) {
-    return {
-      summary: 'Review workflow: customer-submitted reviews are checked, redacted, approved, archived or soft-deleted with audit logs. / 评价流程：客户提交评价后进行审核、脱敏、批准、存档或软删除，并写入审计日志。',
-      table: 'customer_reviews + review_privacy_choices + review_audit_logs',
-      api: '/api/admin/customer-reviews',
-      primaryAction: 'Approve with redaction / 脱敏后批准',
-      secondaryAction: 'Archive or soft delete / 存档或软删除',
-      auditAction: 'View consent audit / 查看授权审计',
-      metrics: [
-        { label: 'Pending / 待审核', value: '5', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
-        { label: 'Approved / 已批准', value: '31', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'Needs redaction / 需脱敏', value: '2', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Archived / 已存档', value: '9', tone: 'border-slate-400 bg-slate-50 text-slate-900' }
-      ],
-      rows: [
-        { id: 'REV-2026-001', subject: '5-star toilet no-hacking review / 厕所免敲砖五星评价', owner: 'Customer Center', status: 'pending_review', priority: 'P1', next: 'Redact name and approve for homepage carousel' },
-        { id: 'REV-2026-007', subject: 'Photo contains unit number / 图片含门牌号', owner: 'PDPA Reviewer', status: 'redaction_required', priority: 'P0', next: 'Mask image before public display' },
-        { id: 'REV-2026-011', subject: 'Customer requested deletion / 客户请求删除评价', owner: 'Super Admin', status: 'deletion_audit', priority: 'P1', next: 'Soft delete and keep audit trail' }
-      ]
-    };
-  }
-  if (key.includes('takeover') || key.includes('override') || key.includes('approval')) {
-    return {
-      summary: 'Super Admin can explicitly take over stuck role tasks, force flow changes and record every action in Audit Logs. / 总管理员可明确接管卡住的角色任务、强制流转，并将所有动作写入审计日志。',
-      table: 'workflow_tasks + approvals + audit_logs',
-      api: '/api/admin/workflow-takeover',
-      primaryAction: 'Take over task / 接管任务',
-      secondaryAction: 'Reassign owner / 重新分配',
-      auditAction: 'Open audit trail / 查看审计轨迹',
-      metrics: [
-        { label: 'Stuck / 卡住', value: '4', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Overdue / 超时', value: '7', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
-        { label: 'Reassigned / 已重分配', value: '3', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-        { label: 'Audited / 已审计', value: '100%', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' }
-      ],
-      rows: [
-        { id: 'TAKE-ENG-001', subject: 'Engineer inspection not submitted / 工程师未提交查验', owner: 'Engineer role', status: 'overdue', priority: 'P0', next: 'Super Admin act as Inspection & Repair' },
-        { id: 'TAKE-FIN-002', subject: 'Finance review pending / 财务审核未处理', owner: 'Finance', status: 'pending', priority: 'P1', next: 'Approve or reassign finance review' },
-        { id: 'TAKE-OPS-003', subject: 'Job stuck before warranty / 工单卡在保修前', owner: 'Operations', status: 'stuck', priority: 'P1', next: 'Force status flow with reason' }
-      ]
+      metrics: demoMetrics,
+      rows: genericRows('DASH', section.title)
     };
   }
   if (key.includes('service') || key.includes('lead') || key.includes('job') || key.includes('quote') || key.includes('invoice') || key.includes('payment') || key.includes('warranty')) {
     return {
-      summary: 'Service operations workspace for lead-to-warranty workflow, record ownership, status flow and SLA handling. / 服务运营工作区，处理线索到保修的完整流程、负责人、状态流转和 SLA。',
-      table: 'leads + service_requests + jobs + invoices + warranty_records',
-      api: '/api/admin/service-operations',
-      primaryAction: 'Open record / 打开记录',
-      secondaryAction: 'Update status / 更新状态',
-      auditAction: 'Show status logs / 查看状态日志',
-      metrics: [
-        { label: 'Open / 未完成', value: '18', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-        { label: 'Overdue / 超时', value: '4', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Completed / 已完成', value: '29', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'Warranty / 保修', value: '6', tone: 'border-amber-400 bg-amber-50 text-amber-900' }
-      ],
-      rows: [
-        { id: 'SR-2026-019', subject: 'HDB ceiling leak / HDB 天花漏水', owner: 'Operations', status: 'pending_inspection', priority: 'P0', next: 'Schedule inspection' },
-        { id: 'QT-2026-012', subject: 'No-hacking toilet repair quotation / 免敲砖厕所维修报价', owner: 'Admin', status: 'quote_review', priority: 'P1', next: 'Approve quotation' },
-        { id: 'WTY-2026-004', subject: 'Warranty scope claim / 保修范围申请', owner: 'Customer Center', status: 'warranty_review_required', priority: 'P1', next: 'Decide in-warranty or new quote' }
-      ]
+      integrationMode: 'partial',
+      summary: 'Service operations is the lead-to-warranty workflow. Dedicated panels exist, but each submodule still needs verified live CRUD, status transitions and Audit Logs before OA/ERP go-live. / 服务运营是线索到保修主链路；已有专用面板，但每个二级模块上线前仍需验证真实 CRUD、状态流转和审计日志。',
+      table: 'leads + service_requests + jobs + invoices + warranties + audit_logs',
+      api: '/api/admin/service-operations or module-specific API',
+      primaryAction: 'Open source record / 打开源记录',
+      secondaryAction: 'Run server status transition / 服务端状态流转',
+      auditAction: 'Show status/audit logs / 查看状态与审计日志',
+      metrics: demoMetrics,
+      rows: genericRows('OPS', section.title)
     };
   }
   if (key.includes('website') || key.includes('seo') || key.includes('guide') || key.includes('content') || key.includes('publish') || key.includes('media')) {
     return {
-      summary: 'Website CMS workspace for editable English/Chinese content, public form intake, media and publish approvals. / 网站 CMS 工作区，处理可编辑中英内容、公开表单、媒体素材和发布审批。',
-      table: 'website_pages + cms_blocks + media_assets + publish_requests',
-      api: '/api/admin/website-management',
+      integrationMode: 'partial',
+      summary: 'Website CMS manages editable content, public form intake, media and publish approvals. Dedicated CMS pieces exist; every listed submodule still needs live table/API verification before production edits are trusted. / 网站 CMS 管理可编辑内容、公开表单、媒体和发布审批；已有部分 CMS 能力，但所有二级模块仍需验证真实表/API。',
+      table: 'cms_blocks + content_drafts + media_assets + unified_intake + audit_logs',
+      api: '/api/admin/cms/blocks or module-specific API',
       primaryAction: 'Edit draft / 编辑草稿',
       secondaryAction: 'Preview / 预览',
       auditAction: 'Publish audit / 发布审计',
-      metrics: [
-        { label: 'Drafts / 草稿', value: '9', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-        { label: 'Publish holds / 发布阻止', value: '1', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Forms / 表单', value: '5', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'SEO tasks / SEO 任务', value: '14', tone: 'border-amber-400 bg-amber-50 text-amber-900' }
-      ],
-      rows: [
-        { id: 'WEB-HOME-001', subject: 'Homepage hero content / 首页大图内容', owner: 'Website Admin', status: 'editable', priority: 'P1', next: 'Edit CMS fields' },
-        { id: 'WEB-REV-003', subject: 'Homepage review carousel / 首页评价滚动区', owner: 'Customer Center', status: 'awaiting_approved_reviews', priority: 'P1', next: 'Select approved reviews' },
-        { id: 'WEB-FORM-005', subject: 'Public repair form submissions / 公开报修表单', owner: 'Operations', status: 'live', priority: 'P0', next: 'Open public submissions' }
-      ]
+      metrics: demoMetrics,
+      rows: genericRows('WEB', section.title)
     };
   }
   if (key.includes('social') || key.includes('whatsapp') || key.includes('gmb') || key.includes('google business')) {
     return {
-      summary: 'Social workspace separates organic enquiries from paid ads and keeps AI replies editable before sending. / 社媒工作区区分自然咨询和广告线索，AI 建议回复发送前可编辑。',
-      table: 'social_inbox + social_drafts + organic_leads + review_imports',
-      api: '/api/admin/social-media',
+      integrationMode: 'partial',
+      summary: 'Social modules must separate organic enquiries from paid ads and keep AI replies human-editable before sending. API/account binding must be verified per platform. / 社媒模块必须区分自然咨询和广告线索，AI 回复发送前必须人工可编辑；每个平台需验证账号/API 绑定。',
+      table: 'social_accounts + social_messages + social_content_drafts + audit_logs',
+      api: '/api/admin/social/messages or platform-specific API',
       primaryAction: 'Open inbox / 打开收件箱',
       secondaryAction: 'Edit AI reply / 编辑 AI 回复',
       auditAction: 'Conversation audit / 对话审计',
-      metrics: [
-        { label: 'Inbox / 收件箱', value: '31', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-        { label: 'Human required / 需人工', value: '6', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Organic leads / 自然线索', value: '11', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'Scheduled / 已排期', value: '4', tone: 'border-amber-400 bg-amber-50 text-amber-900' }
-      ],
-      rows: [
-        { id: 'SOC-WA-001', subject: 'WhatsApp photo consult / WhatsApp 图片咨询', owner: 'Customer Service', status: 'needs_reply', priority: 'P0', next: 'Edit AI reply then send' },
-        { id: 'SOC-ORG-009', subject: 'Instagram organic DM / Instagram 自然私信', owner: 'Operations', status: 'organic_lead', priority: 'P1', next: 'Convert to lead' },
-        { id: 'SOC-REV-002', subject: 'Google review import / Google 评论导入', owner: 'Customer Center', status: 'pending_review', priority: 'P2', next: 'Send to review approval' }
-      ]
+      metrics: demoMetrics,
+      rows: genericRows('SOC', section.title)
     };
   }
   if (key.includes('advertising') || key.includes('campaign') || key.includes('roi') || key.includes('budget') || key.includes('ads')) {
     return {
-      summary: 'Advertising workspace handles paid campaigns, budgets, ROI, finance review and Super Admin takeover. / 广告工作区处理付费广告、预算、ROI、财务审核和总管理员接管。',
-      table: 'ad_campaigns + ad_performance_daily + ad_budget_requests',
-      api: '/api/admin/advertising-center',
+      integrationMode: 'partial',
+      summary: 'Advertising modules must link campaigns, budgets, ROI, landing pages, attribution and finance review. The module requires live spend/import APIs before production use. / 广告模块必须打通广告活动、预算、ROI、落地页、归因和财务审核；生产使用前需真实花费/导入 API。',
+      table: 'ad_campaigns + ad_performance_daily + ad_budget_requests + audit_logs',
+      api: '/api/admin/advertising-center and submodule APIs',
       primaryAction: 'Review campaign / 审核广告活动',
       secondaryAction: 'Adjust budget / 调整预算',
       auditAction: 'ROI audit / ROI 审计',
-      metrics: [
-        { label: 'Spend / 花费', value: '$950', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-        { label: 'Leads / 线索', value: '38', tone: 'border-cyan-400 bg-cyan-50 text-cyan-900' },
-        { label: 'ROAS / 回报', value: '6.8x', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'Alerts / 预警', value: '2', tone: 'border-red-400 bg-red-50 text-red-900' }
-      ],
-      rows: [
-        { id: 'ADS-GGL-001', subject: 'HDB ceiling leak emergency / HDB 天花漏水广告', owner: 'Advertising', status: 'pending_review', priority: 'P1', next: 'Review ROI and approve' },
-        { id: 'ADS-META-003', subject: 'No-hacking repair campaign / 免敲砖维修广告', owner: 'Finance', status: 'budget_review', priority: 'P1', next: 'Finance review' },
-        { id: 'ADS-TTK-002', subject: 'High spend low conversion / 高花费低转化', owner: 'Super Admin', status: 'takeover_available', priority: 'P0', next: 'Pause or reduce budget' }
-      ]
+      metrics: demoMetrics,
+      rows: genericRows('ADS', section.title)
     };
   }
   if (key.includes('ai') || key.includes('prompt') || key.includes('redaction') || key.includes('attribution')) {
     return {
-      summary: 'AI workspace keeps suggestions editable, reviewed and audited before any website, social or customer-facing use. / AI 工作区确保建议内容在用于网站、社媒或客户前可编辑、可审核、可审计。',
-      table: 'ai_drafts + ai_analysis_logs + ai_alerts',
-      api: '/api/admin/ai-intelligence',
+      integrationMode: 'partial',
+      summary: 'AI modules must keep suggestions editable, reviewed and audited before any website, social or customer-facing use. / AI 模块建议内容用于网站、社媒或客户前必须可编辑、可审核、可审计。',
+      table: 'ai_logs + content_drafts + review_redaction_queue + audit_logs',
+      api: '/api/admin/ai-intelligence or module-specific API',
       primaryAction: 'Open AI draft / 打开 AI 草稿',
       secondaryAction: 'Regenerate suggestion / 重新生成建议',
       auditAction: 'Prompt audit / 提示词审计',
-      metrics: [
-        { label: 'Drafts / 草稿', value: '17', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-        { label: 'Approved / 已批准', value: '23', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-        { label: 'Blocked risk / 已阻止风险', value: '5', tone: 'border-red-400 bg-red-50 text-red-900' },
-        { label: 'Cost today / 今日成本', value: '$18', tone: 'border-amber-400 bg-amber-50 text-amber-900' }
-      ],
-      rows: [
-        { id: 'AI-REV-001', subject: 'Review redaction suggestion / 评价脱敏建议', owner: 'Customer Center', status: 'needs_human_review', priority: 'P1', next: 'Approve or edit redaction' },
-        { id: 'AI-QT-004', subject: 'Quotation assist draft / 报价辅助草稿', owner: 'Operations', status: 'draft', priority: 'P2', next: 'Edit before sending' },
-        { id: 'AI-SAFE-002', subject: 'Prompt injection check / 提示注入检查', owner: 'Super Admin', status: 'blocked', priority: 'P0', next: 'Review safety log' }
-      ]
+      metrics: demoMetrics,
+      rows: genericRows('AI', section.title)
     };
   }
   return {
-    summary: 'System settings workspace controls permissions, integrations, backups, monitoring and security. / 系统设置工作区管理权限、集成、备份、监控和安全。',
-    table: 'system_settings + role_permissions + audit_logs',
-    api: '/api/admin/system-settings',
+    integrationMode: key.includes('workflow settings') || key.includes('automation rule settings') || key.includes('notification channel') || key.includes('sla') ? 'live' : 'partial',
+    summary: 'System settings controls permissions, integrations, backups, monitoring and security. Settings that are not connected to a live API are shown as OA/ERP contracts until implemented. / 系统设置管理权限、集成、备份、监控和安全；未接入真实 API 的设置以 OA/ERP 契约显示。',
+    table: key.includes('workflow settings') || key.includes('automation rule settings') || key.includes('notification channel') || key.includes('sla') ? 'workflow_settings + audit_logs' : 'system_settings + role_permissions + audit_logs',
+    api: key.includes('workflow settings') || key.includes('automation rule settings') || key.includes('notification channel') || key.includes('sla') ? '/api/admin/workflow-settings' : '/api/admin/system-settings or module-specific API',
     primaryAction: 'Open settings / 打开设置',
-    secondaryAction: 'Save rule / 保存规则',
+    secondaryAction: 'Save via API / 通过 API 保存',
     auditAction: 'View audit log / 查看审计日志',
-    metrics: [
-      { label: 'Healthy / 健康', value: '10/11', tone: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-      { label: 'Backups / 备份', value: '8', tone: 'border-sky-400 bg-sky-50 text-sky-900' },
-      { label: 'Due secrets / 待处理密钥', value: '2', tone: 'border-amber-400 bg-amber-50 text-amber-900' },
-      { label: 'Failed jobs / 失败任务', value: '1', tone: 'border-red-400 bg-red-50 text-red-900' }
-    ],
-    rows: [
-      { id: 'SYS-RBAC-001', subject: 'Role permission matrix / 角色权限矩阵', owner: 'Super Admin', status: 'active', priority: 'P0', next: 'Review permissions' },
-      { id: 'SYS-API-002', subject: 'Public API monitor / 公开接口监控', owner: 'System', status: 'healthy', priority: 'P1', next: 'Open health details' },
-      { id: 'SYS-REV-003', subject: 'Review privacy publishing rules / 评价隐私发布规则', owner: 'Customer Center', status: 'active', priority: 'P1', next: 'Edit consent rules' }
-    ]
+    metrics: demoMetrics,
+    rows: genericRows('SYS', section.title)
   };
 }
 
@@ -326,16 +255,18 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
   const active = sections.find((section) => section.id === activeId) || sections[0];
   const profile = active ? profileFor(active) : null;
   const selected = profile?.rows.find((row) => row.id === selectedRowId) || profile?.rows[0];
+  const mode = profile ? modeCopy(profile.integrationMode) : null;
 
   useEffect(() => {
     if (profile?.rows[0]?.id) setSelectedRowId(profile.rows[0].id);
   }, [activeId, profile?.rows]);
 
-  if (!active || !profile || !selected) return null;
+  if (!active || !profile || !selected || !mode) return null;
 
   function runAction(action: string) {
     const stamp = new Date().toLocaleString();
-    setAuditTrail((items) => [`${stamp} — ${action} — ${selected.id} — ${selected.subject}`, ...items].slice(0, 5));
+    const prefix = profile.integrationMode === 'live' ? 'Live API action should be handled by the dedicated workspace' : 'Contract-only UI note, no server write';
+    setAuditTrail((items) => [`${stamp} — ${prefix} — ${action} — ${selected.id} — ${selected.subject}`, ...items].slice(0, 5));
   }
 
   return (
@@ -369,12 +300,13 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
                 <h2 className="mt-2 text-2xl font-black">{active.childOrder} {active.title}</h2>
                 <p className="mt-1 text-sm font-bold text-white/85">{active.zh}</p>
               </div>
-              <span className="rounded-2xl bg-white/20 px-3 py-2 text-xs font-black ring-1 ring-white/30">Workspace active / 工作区已打开</span>
+              <span className="rounded-2xl bg-white/20 px-3 py-2 text-xs font-black ring-1 ring-white/30">{mode.label}</span>
             </div>
             <p className="mt-4 max-w-4xl text-sm font-semibold leading-6 text-white/90">{profile.summary}</p>
           </div>
 
           <div className="p-6">
+            <div className={`mb-5 rounded-3xl p-4 text-xs font-bold ring-1 ${mode.tone}`}>{mode.note}</div>
             <div className="grid gap-3 md:grid-cols-4">
               {profile.metrics.map((card) => (
                 <button key={card.label} type="button" onClick={() => runAction(`Open metric / 打开指标: ${card.label}`)} className={`rounded-2xl border-l-4 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${card.tone}`}>
@@ -418,10 +350,11 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
                   <div><dt className="text-xs font-black uppercase text-slate-400">Next step / 下一步</dt><dd>{selected.next}</dd></div>
                   <div><dt className="text-xs font-black uppercase text-slate-400">Data source / 数据源</dt><dd>{profile.table}</dd></div>
                   <div><dt className="text-xs font-black uppercase text-slate-400">API</dt><dd>{profile.api}</dd></div>
+                  <div><dt className="text-xs font-black uppercase text-slate-400">OA/ERP status</dt><dd>{mode.label}</dd></div>
                 </dl>
                 <div className="mt-4 grid gap-2">
                   {[profile.primaryAction, profile.secondaryAction, profile.auditAction].map((action) => (
-                    <button key={action} type="button" onClick={() => runAction(action)} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700">
+                    <button key={action} type="button" onClick={() => runAction(action)} className={`rounded-2xl px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5 ${profile.integrationMode === 'contract' ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-activeBlue text-white hover:bg-blue-700'}`}>
                       {action}
                     </button>
                   ))}
@@ -433,7 +366,7 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-black text-slate-900">Action log / 页面操作日志</div>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">Actions are recorded in this workspace panel and should map to server-side Audit Logs when the connected API is enabled. / 当前工作区会记录操作，接入服务端 API 后应同步写入 Audit Logs。</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">This log is client-side only. Production write actions are valid only in dedicated live workspaces/API responses and server-side Audit Logs. / 此日志只在前端显示；生产写操作必须以专用真实工作区/API 响应和服务端 Audit Logs 为准。</p>
                 </div>
                 <button type="button" onClick={() => setAuditTrail([])} className="rounded-2xl bg-slate-100 px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-200">Clear / 清空</button>
               </div>
