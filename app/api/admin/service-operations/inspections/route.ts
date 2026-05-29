@@ -11,8 +11,10 @@ const MANAGER_ROLES = ['super_admin', 'operations_admin', 'support'] as const;
 
 type ApiPayload = Record<string, unknown>;
 
+const uploadReviewSelect = 'upload_review_id,service_request_id,job_id,inspection_id,uploaded_by,file_name,file_type,storage_path,review_status,review_notes,reviewed_by,reviewed_at,compression_status,original_size_bytes,compressed_size_bytes,checksum_sha256,notification_id,attached_to_record,visible_to_customer,customer_visible_at,customer_visible_by,customer_visibility_notes,created_at,updated_at';
+
 function isUuid(value: string | null | undefined) {
-  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
 
 function cleanDate(value: unknown) {
@@ -78,6 +80,10 @@ function stripUndefined(record: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
 }
 
+function requireManagerRole(role: string) {
+  return MANAGER_ROLES.includes(role as typeof MANAGER_ROLES[number]);
+}
+
 async function queueCustomerNotification(supabase: ReturnType<typeof createAdminClient>, input: { subject: string; body: string; relatedObjectType: string; relatedObjectId: string; customerId?: string | null; channel?: string; payload?: Record<string, unknown> }) {
   const { data, error } = await supabase
     .from('notification_outbox')
@@ -124,7 +130,7 @@ export async function GET(request: NextRequest) {
       .limit(limit),
     supabase
       .from('service_upload_reviews')
-      .select('upload_review_id,service_request_id,job_id,inspection_id,uploaded_by,file_name,file_type,storage_path,review_status,review_notes,reviewed_by,reviewed_at,compression_status,original_size_bytes,compressed_size_bytes,checksum_sha256,notification_id,attached_to_record,created_at,updated_at')
+      .select(uploadReviewSelect)
       .order('created_at', { ascending: false })
       .limit(limit)
   ]);
@@ -234,7 +240,7 @@ export async function POST(request: NextRequest) {
 
   if (action === 'assign_engineer') {
     const role = auth.role;
-    if (!MANAGER_ROLES.includes(role as typeof MANAGER_ROLES[number])) return jsonError('Only manager roles can assign engineers.', 403);
+    if (!requireManagerRole(role)) return jsonError('Only manager roles can assign engineers.', 403);
     const inspectionId = cleanText(body.inspection_id, 120);
     const engineerId = cleanText(body.engineer_id, 120);
     if (!isUuid(inspectionId) || !isUuid(engineerId)) return jsonError('Valid inspection_id and engineer_id are required.', 400);
@@ -259,7 +265,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('service_upload_reviews')
       .insert(payload)
-      .select('upload_review_id,service_request_id,job_id,inspection_id,uploaded_by,file_name,file_type,storage_path,review_status,review_notes,reviewed_by,reviewed_at,compression_status,original_size_bytes,compressed_size_bytes,checksum_sha256,notification_id,attached_to_record,created_at,updated_at')
+      .select(uploadReviewSelect)
       .single();
     if (error) return jsonError(error.message, 400);
 
@@ -271,30 +277,67 @@ export async function POST(request: NextRequest) {
     const uploadReviewId = cleanText(body.upload_review_id, 120);
     if (!isUuid(uploadReviewId)) return jsonError('Valid upload_review_id is required.', 400);
     const reviewStatus = cleanText(body.review_status, 80) ?? 'approved';
+    const visibleToCustomer = reviewStatus === 'approved' && body.visible_to_customer === true;
     const patch = {
       review_status: reviewStatus,
       review_notes: cleanText(body.review_notes, 1000),
       reviewed_by: auth.actor.profileId,
       reviewed_at: new Date().toISOString(),
-      attached_to_record: reviewStatus === 'approved'
+      attached_to_record: reviewStatus === 'approved',
+      visible_to_customer: visibleToCustomer,
+      customer_visible_at: visibleToCustomer ? new Date().toISOString() : null,
+      customer_visible_by: visibleToCustomer ? auth.actor.profileId : null,
+      customer_visibility_notes: cleanText(body.customer_visibility_notes, 1000)
     };
 
     const { data, error } = await supabase
       .from('service_upload_reviews')
       .update(patch)
       .eq('upload_review_id', uploadReviewId)
-      .select('upload_review_id,service_request_id,job_id,inspection_id,uploaded_by,file_name,file_type,storage_path,review_status,review_notes,reviewed_by,reviewed_at,compression_status,original_size_bytes,compressed_size_bytes,checksum_sha256,notification_id,attached_to_record,created_at,updated_at')
+      .select(uploadReviewSelect)
       .single();
     if (error) return jsonError(error.message, 400);
 
     let notification = null;
     if (reviewStatus === 'approved') {
-      notification = await queueCustomerNotification(supabase, { subject: 'NANOFIX upload approved', body: `Upload ${data.file_name} has been approved and attached to the service record.`, relatedObjectType: 'service_upload_review', relatedObjectId: uploadReviewId, channel: 'internal', payload: { storage_path: data.storage_path, inspection_id: data.inspection_id, service_request_id: data.service_request_id, job_id: data.job_id } });
+      notification = await queueCustomerNotification(supabase, { subject: 'NANOFIX upload approved', body: `Upload ${data.file_name} has been approved and attached to the service record.`, relatedObjectType: 'service_upload_review', relatedObjectId: uploadReviewId, channel: 'internal', payload: { storage_path: data.storage_path, inspection_id: data.inspection_id, service_request_id: data.service_request_id, job_id: data.job_id, visible_to_customer: data.visible_to_customer } });
       await supabase.from('service_upload_reviews').update({ notification_id: notification.notification_id }).eq('upload_review_id', uploadReviewId).throwOnError();
     }
 
     await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_upload_review_update', objectType: 'service_upload_review', objectId: uploadReviewId, after: { upload_review: data, notification }, ip: getClientIp(request) }).catch(() => undefined);
     return NextResponse.json({ ok: true, upload_review: data, notification });
+  }
+
+  if (action === 'set_upload_customer_visibility') {
+    if (!requireManagerRole(auth.role)) return jsonError('Only manager roles can change customer visibility.', 403);
+    const uploadReviewId = cleanText(body.upload_review_id, 120);
+    if (!isUuid(uploadReviewId)) return jsonError('Valid upload_review_id is required.', 400);
+    const visibleToCustomer = body.visible_to_customer === true;
+
+    const { data: current, error: currentError } = await supabase
+      .from('service_upload_reviews')
+      .select(uploadReviewSelect)
+      .eq('upload_review_id', uploadReviewId)
+      .maybeSingle();
+    if (currentError) return jsonError(currentError.message, 400);
+    if (!current) return jsonError('Upload review not found.', 404);
+    if (visibleToCustomer && current.review_status !== 'approved') return jsonError('Only approved uploads can be visible to customer.', 400);
+
+    const { data, error } = await supabase
+      .from('service_upload_reviews')
+      .update({
+        visible_to_customer: visibleToCustomer,
+        customer_visible_at: visibleToCustomer ? new Date().toISOString() : null,
+        customer_visible_by: visibleToCustomer ? auth.actor.profileId : null,
+        customer_visibility_notes: cleanText(body.customer_visibility_notes, 1000)
+      })
+      .eq('upload_review_id', uploadReviewId)
+      .select(uploadReviewSelect)
+      .single();
+    if (error) return jsonError(error.message, 400);
+
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_upload_customer_visibility_set', objectType: 'service_upload_review', objectId: uploadReviewId, before: current, after: data, ip: getClientIp(request) }).catch(() => undefined);
+    return NextResponse.json({ ok: true, upload_review: data });
   }
 
   if (action === 'queue_customer_notification') {
