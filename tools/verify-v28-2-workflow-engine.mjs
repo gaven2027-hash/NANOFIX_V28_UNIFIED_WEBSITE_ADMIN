@@ -58,8 +58,31 @@ if (requiredFiles.every(exists)) {
   for (const liveMarker of ['loadLiveData', 'degraded', 'errors', 'Refresh live data', 'Demo rows below remain clearly separated']) {
     assert(workspace.includes(liveMarker), `AutomationNotificationWorkspace missing live/degraded marker: ${liveMarker}`);
   }
-  assert(workspace.includes("credentials: 'same-origin'"), 'Live API fetch must use same-origin credentials');
-  assert(workspace.includes("cache: 'no-store'"), 'Live API fetch must disable cache for workflow status');
+  for (const writeMarker of [
+    'writeApi',
+    "method: 'POST'",
+    "method: 'PATCH'",
+    'runWriteAction',
+    'acknowledgeInboxMessage',
+    'createTaskFromInbox',
+    'advanceTask',
+    'queueNotification',
+    'actionState',
+    'Live data refreshed',
+    'API 返回 OK'
+  ]) assert(workspace.includes(writeMarker), `AutomationNotificationWorkspace missing write-action marker: ${writeMarker}`);
+  for (const bodyMarker of [
+    "action: 'acknowledge'",
+    "writeApi('POST', '/api/admin/internal-inbox'",
+    "writeApi('POST', '/api/admin/unified-tasks'",
+    "writeApi('PATCH', '/api/admin/unified-tasks'",
+    "writeApi('POST', '/api/admin/automation-notifications'"
+  ]) assert(workspace.includes(bodyMarker), `AutomationNotificationWorkspace missing API write call: ${bodyMarker}`);
+  assert(workspace.includes("credentials: 'same-origin'"), 'Live API fetch/write must use same-origin credentials');
+  assert(workspace.includes("cache: 'no-store'"), 'Live API fetch/write must disable cache for workflow status');
+  assert(workspace.includes("'content-type': 'application/json'"), 'Write API calls must send JSON content-type');
+  assert(workspace.includes('await loadLiveData()'), 'Successful write actions must refresh live data');
+  assert(workspace.includes('Demo rows cannot be acknowledged') && workspace.includes('Demo rows cannot be updated'), 'Demo fallback rows must not be treated as writable live records');
   assert(!/localStorage|sessionStorage/.test(workspace), 'V28.2 workflow UI must not store production workflow state in browser storage');
   assert(!/return\s+\{\s*ok:\s*true\s*\}/.test(workspace), 'V28.2 workflow UI must not fake live API success');
 
