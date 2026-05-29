@@ -12,6 +12,14 @@ docs/NANOFIX_V28_2_MASTER_MEMORY_20260529.md
 
 Do not use earlier V28.1.x continuation memory files as the active development basis. The stale V28.1.7 continuation handoff was removed to avoid project-memory conflict.
 
+Final deployment runbook:
+
+```txt
+docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md
+```
+
+The runbook is operational guidance only. It does not replace the V28.2 master memory as the canonical project memory.
+
 ## 2. Stage scope
 
 V28.2 continues from:
@@ -29,6 +37,7 @@ The stage adds a real workflow layer for internal operations:
 - Workflow settings under System Settings
 - Global Search coverage for workflow data and settings
 - Readiness, smoke, package validation and static issue scanning
+- Final deployment runbook and go/no-go checklist
 
 ## 3. Main UI placement
 
@@ -265,6 +274,8 @@ npm run quality:gate
 - `/api/ready` includes workflow settings.
 - Global Search includes workflow settings.
 - E2E smoke confirms protected route redirects and unauthenticated API 401s.
+- Package validation requires both the final runbook and the static issue scanner.
+- Deploy readiness requires `scan:v28-2-static` to be wired into `validate:predeploy`.
 
 ## 10. Static issue scan
 
@@ -299,7 +310,34 @@ It is wired into:
 npm run validate:predeploy
 ```
 
-## 11. Rollback notes
+## 11. Final runbook and package validation guard
+
+Final deployment runbook:
+
+```txt
+docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md
+```
+
+Package validation must require:
+
+- `docs/NANOFIX_V28_2_FINAL_DEPLOYMENT_RUNBOOK_20260529.md`
+- `tools/static-v28-2-issue-scan.mjs`
+
+Package validation report must include these V28.2 fields:
+
+- `final_runbook_present`
+- `static_scan_present_and_guarding`
+- `v28_2_workflow_checks`
+
+Deploy readiness must require:
+
+- final runbook exists
+- static scanner exists
+- `scan:v28-2-static` script exists
+- `validate:predeploy` runs `scan:v28-2-static`
+- `validate:predeploy` runs `verify:v28-2-workflow`
+
+## 12. Rollback notes
 
 If V28.2 causes production issues before go-live:
 
@@ -322,7 +360,7 @@ If V28.2 causes production issues before go-live:
    - `workflow_settings`
 6. Re-run `/api/ready` after rollback to confirm expected table state.
 
-## 12. Post-handoff next stage suggestions
+## 13. Post-handoff next stage suggestions
 
 Recommended next work after V28.2 preflight passes:
 
@@ -334,7 +372,7 @@ Recommended next work after V28.2 preflight passes:
 6. Add richer settings editor for JSON values with validation schema.
 7. Expand `search_all_records` RPC to include `workflow_settings` directly, while keeping fallback search.
 
-## 13. Do-not-break rules
+## 14. Do-not-break rules
 
 - Do not add a new first-level Automation menu.
 - Do not mix Customer Portal into Internal Admin App menus.
@@ -344,3 +382,4 @@ Recommended next work after V28.2 preflight passes:
 - Do not use browser storage for production workflow state.
 - Do not use visual-only success for workflow writes.
 - Do not bypass Audit Logs for workflow writes or audit reads.
+- Do not remove the final deployment runbook from package/deploy readiness checks.
