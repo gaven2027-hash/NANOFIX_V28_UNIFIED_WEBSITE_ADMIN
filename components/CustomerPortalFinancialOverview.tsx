@@ -13,6 +13,7 @@ type Payload = {
 };
 
 type State = { loading: boolean; error: string | null; payload: Payload | null };
+type AcceptState = { loadingId: string | null; message: string | null; error: string | null; result: Row | null };
 
 async function loadFinancial() {
   const response = await fetch('/api/customer-portal/financial?limit=20', { credentials: 'same-origin', cache: 'no-store' });
@@ -20,6 +21,21 @@ async function loadFinancial() {
   let payload: Payload | null = null;
   try { payload = text ? JSON.parse(text) as Payload : null; } catch { payload = null; }
   if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Customer financial API returned ${response.status}`);
+  return payload ?? { ok: true };
+}
+
+async function acceptQuotation(quotationId: string) {
+  const response = await fetch('/api/customer-portal/quote-acceptance', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ quotation_id: quotationId })
+  });
+  const text = await response.text();
+  let payload: Row | null = null;
+  try { payload = text ? JSON.parse(text) as Row : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false) throw new Error(typeof payload?.error === 'string' ? payload.error : `Quote acceptance API returned ${response.status}`);
   return payload ?? { ok: true };
 }
 
@@ -47,10 +63,12 @@ function idTitle(row: Row) {
   return typeof candidate === 'string' ? candidate : 'Record';
 }
 
-function FinanceCard({ row, type }: { row: Row; type: 'quotation' | 'invoice' | 'payment' }) {
+function FinanceCard({ row, type, onAccept, accepting }: { row: Row; type: 'quotation' | 'invoice' | 'payment'; onAccept?: (quotationId: string) => void; accepting?: boolean }) {
   const pdfUrl = typeof row.pdf_download_url === 'string' ? row.pdf_download_url : '';
   const paymentUrl = typeof row.payment_url === 'string' ? row.payment_url : '';
+  const quotationId = typeof row.quotation_id === 'string' ? row.quotation_id : '';
   const status = row.approval_status ?? row.status;
+  const canAccept = type === 'quotation' && quotationId && row.approval_status !== 'customer_accepted';
   return (
     <article className="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -65,6 +83,7 @@ function FinanceCard({ row, type }: { row: Row; type: 'quotation' | 'invoice' | 
         </div>
         <div className="flex flex-wrap gap-2">
           {pdfUrl ? <a href={pdfUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-white px-4 py-3 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Download PDF / 下载PDF</a> : null}
+          {canAccept ? <button type="button" onClick={() => onAccept?.(quotationId)} disabled={accepting} className="rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50">{accepting ? 'Accepting… / 接受中…' : 'Accept Quote / 接受报价'}</button> : null}
           {paymentUrl ? <a href={paymentUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-activeBlue px-4 py-3 text-xs font-black text-white hover:bg-blue-700">Pay Now / 立即付款</a> : null}
         </div>
       </div>
@@ -89,6 +108,7 @@ function Section({ id, title, zh, children, count }: { id: string; title: string
 
 export function CustomerPortalFinancialOverview() {
   const [state, setState] = useState<State>({ loading: true, error: null, payload: null });
+  const [acceptState, setAcceptState] = useState<AcceptState>({ loadingId: null, message: null, error: null, result: null });
 
   async function refresh() {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -97,6 +117,17 @@ export function CustomerPortalFinancialOverview() {
       setState({ loading: false, error: null, payload });
     } catch (error) {
       setState({ loading: false, error: error instanceof Error ? error.message : String(error), payload: null });
+    }
+  }
+
+  async function onAccept(quotationId: string) {
+    setAcceptState({ loadingId: quotationId, message: null, error: null, result: null });
+    try {
+      const result = await acceptQuotation(quotationId);
+      setAcceptState({ loadingId: null, message: 'Quotation accepted. NANOFIX will prepare the invoice and payment link. / 报价已接受，NANOFIX 将准备发票和付款链接。', error: null, result });
+      await refresh();
+    } catch (error) {
+      setAcceptState({ loadingId: null, message: null, error: error instanceof Error ? error.message : String(error), result: null });
     }
   }
 
@@ -119,11 +150,13 @@ export function CustomerPortalFinancialOverview() {
           <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.loading ? 'Loading… / 读取中' : 'Refresh / 刷新'}</button>
         </div>
         {state.error ? <div className="mt-5 rounded-3xl bg-red-50 p-4 text-xs font-bold text-red-950 ring-1 ring-red-200">{state.error}</div> : null}
+        {acceptState.error ? <div className="mt-5 rounded-3xl bg-red-50 p-4 text-xs font-bold text-red-950 ring-1 ring-red-200">{acceptState.error}</div> : null}
+        {acceptState.message ? <div className="mt-5 rounded-3xl bg-emerald-50 p-4 text-xs font-bold text-emerald-950 ring-1 ring-emerald-200">{acceptState.message}</div> : null}
         {!state.error && state.loading ? <div className="mt-5 rounded-3xl bg-blue-50 p-4 text-xs font-bold text-blue-950 ring-1 ring-blue-200">Loading financial records… / 正在读取财务记录…</div> : null}
       </section>
 
       <Section id="quotations" title="Quotations" zh="报价" count={quotations.length}>
-        {!quotations.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No customer-visible quotations yet. / 暂无客户可见报价。</div> : quotations.map((row, index) => <FinanceCard key={String(row.quotation_id ?? index)} row={row} type="quotation" />)}
+        {!quotations.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No customer-visible quotations yet. / 暂无客户可见报价。</div> : quotations.map((row, index) => <FinanceCard key={String(row.quotation_id ?? index)} row={row} type="quotation" onAccept={(quotationId) => void onAccept(quotationId)} accepting={acceptState.loadingId === row.quotation_id} />)}
       </Section>
 
       {quotationVersions.length ? (
