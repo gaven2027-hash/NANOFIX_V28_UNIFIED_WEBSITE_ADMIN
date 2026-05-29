@@ -6,6 +6,7 @@ import { ServiceOperationsLiveCore } from '@/components/ServiceOperationsLiveCor
 import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsDedicatedForms';
 import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
 import { ServiceOperationsFinancialVisibility } from '@/components/ServiceOperationsFinancialVisibility';
+import { ServiceOperationsPaymentIntentPanel } from '@/components/ServiceOperationsPaymentIntentPanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
 import { ServiceOperationsCustomerVisibility } from '@/components/ServiceOperationsCustomerVisibility';
@@ -23,6 +24,7 @@ export default function Page() {
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsFinancialVisibility />
+        <ServiceOperationsPaymentIntentPanel />
         <ServiceOperationsInspectionWorkspace />
         <ServiceOperationsStorageUploader />
         <ServiceOperationsCustomerVisibility />
