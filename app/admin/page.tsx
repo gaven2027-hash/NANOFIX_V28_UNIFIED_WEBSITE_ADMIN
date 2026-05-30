@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { AdminShell } from '@/components/AdminShell';
+import { MenuAnchorSections } from '@/components/MenuAnchorSections';
 import { PageHeader } from '@/components/PageHeader';
 import { menu } from '@/data/adminNavigation';
 
@@ -23,7 +24,7 @@ export default function AdminPage() {
         description="Choose a real backend module, open its submenu, and continue to the matching routed admin page. / 选择真实后台模块，打开二级栏目并进入对应后台页面。"
       />
 
-      <section id="module-launch" className="grid gap-4 xl:grid-cols-2">
+      <section id="module-launch-board" className="grid gap-4 xl:grid-cols-2">
         {coreModules.map((item) => (
           <article key={item.href} className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
             <div className="flex items-start justify-between gap-4">
@@ -52,6 +53,8 @@ export default function AdminPage() {
           </article>
         ))}
       </section>
+
+      <MenuAnchorSections route="/admin" />
     </AdminShell>
   );
 }
