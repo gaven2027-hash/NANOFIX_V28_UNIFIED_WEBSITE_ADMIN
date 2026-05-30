@@ -172,6 +172,28 @@ function buildCustomerTimeline(input: {
     });
   }
 
+  addTimeline(timeline, {
+    event_key: 'warranty_claim_completed',
+    title: 'Warranty claim completed',
+    zh: '保修维修申请已完成',
+    status: text(input.serviceRequest.warranty_claim_closure_status) || 'completed',
+    timestamp: input.serviceRequest.warranty_claim_completed_at,
+    description: text(input.serviceRequest.warranty_claim_completion_summary) || 'NANOFIX marked this warranty claim as completed.',
+    object_type: 'service_request',
+    object_id: claimId
+  });
+
+  addTimeline(timeline, {
+    event_key: 'warranty_claim_closed',
+    title: 'Warranty claim closed',
+    zh: '保修维修申请已关闭',
+    status: text(input.serviceRequest.warranty_claim_closure_status) || 'closed',
+    timestamp: input.serviceRequest.warranty_claim_closed_at,
+    description: text(input.serviceRequest.warranty_claim_closure_notes) || 'NANOFIX closed this warranty claim record.',
+    object_type: 'service_request',
+    object_id: claimId
+  });
+
   return timeline
     .filter((item) => item.timestamp)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -225,7 +247,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { data: serviceRequest, error: requestError } = await supabase
     .from('service_requests')
-    .select('service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,postal_code,issue_type,leak_location,issue_description,preferred_time_text,status,priority,request_origin,customer_portal_request_type,related_warranty_id,warranty_id,warranty_code,portal_attachment_urls,portal_customer_notes,warranty_claim_decision,warranty_claim_next_action,warranty_claim_decision_notes,warranty_claim_reviewed_at,warranty_claim_routing_status,warranty_claim_routed_job_id,warranty_claim_routed_quotation_id,warranty_claim_routed_at,warranty_claim_routing_notes,created_at,updated_at')
+    .select('service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,postal_code,issue_type,leak_location,issue_description,preferred_time_text,status,priority,request_origin,customer_portal_request_type,related_warranty_id,warranty_id,warranty_code,portal_attachment_urls,portal_customer_notes,warranty_claim_decision,warranty_claim_next_action,warranty_claim_decision_notes,warranty_claim_reviewed_at,warranty_claim_routing_status,warranty_claim_routed_job_id,warranty_claim_routed_quotation_id,warranty_claim_routed_at,warranty_claim_routing_notes,warranty_claim_closure_status,warranty_claim_completed_at,warranty_claim_closed_at,warranty_claim_closed_by,warranty_claim_completion_summary,warranty_claim_closure_notes,created_at,updated_at')
     .eq('service_request_id', serviceRequestId)
     .in('customer_id', customerIds)
     .eq('request_origin', 'customer_portal')
@@ -351,6 +373,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     after: {
       customers: customers.length,
       timeline: customer_timeline.length,
+      closure_status: serviceRequest.warranty_claim_closure_status,
       quotations: quotations.length,
       invoices: invoices.length,
       warranty_pdfs: warrantyPdfs.length
