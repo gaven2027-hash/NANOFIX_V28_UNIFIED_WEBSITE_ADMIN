@@ -39,6 +39,18 @@ async function loadCustomerOwnedCompletedClaim(profileId: string, serviceRequest
   return data;
 }
 
+function customerConfirmationSubject(satisfactionStatus: string) {
+  return satisfactionStatus === 'satisfied'
+    ? 'NANOFIX received your warranty repair satisfaction confirmation'
+    : 'NANOFIX received your warranty repair follow-up request';
+}
+
+function customerConfirmationBody(satisfactionStatus: string, notes: string | null | undefined) {
+  return satisfactionStatus === 'satisfied'
+    ? 'Thank you for confirming the completed warranty repair. Your confirmation has been recorded in Customer Portal.'
+    : `Thank you for your feedback. NANOFIX has reopened the warranty claim for follow-up.${notes ? ` Your note: ${notes}` : ''}`;
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   const auth = await requireActorApi(request, ['customer']);
   if (!auth.ok) return auth.response;
@@ -148,16 +160,56 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }).throwOnError();
   }
 
-  await supabase.from('notification_outbox').insert({
-    channel: 'internal',
-    recipient_role: 'operations_admin',
-    subject: title,
-    body: notes || title,
-    payload_json: { source: 'customer_portal_warranty_claim_satisfaction', service_request_id: serviceRequestId, satisfaction_status: satisfactionStatus, rating },
-    delivery_status: 'queued',
-    related_object_type: 'service_request',
-    related_object_id: serviceRequestId
-  }).throwOnError();
+  const notificationRows = [
+    {
+      channel: 'internal',
+      recipient_role: 'operations_admin',
+      subject: title,
+      body: notes || title,
+      payload_json: { source: 'customer_portal_warranty_claim_satisfaction', rule_id: satisfactionStatus === 'satisfied' ? 'WC-SAT-NOTIFY-001' : 'WC-SAT-NOTIFY-002', service_request_id: serviceRequestId, satisfaction_status: satisfactionStatus, rating },
+      delivery_status: 'queued',
+      related_object_type: 'service_request',
+      related_object_id: serviceRequestId
+    },
+    {
+      channel: 'customer_portal',
+      recipient_customer_id: existing.customer_id,
+      subject: customerConfirmationSubject(satisfactionStatus),
+      body: customerConfirmationBody(satisfactionStatus, notes),
+      payload_json: { source: 'customer_portal_warranty_claim_satisfaction_customer_receipt', rule_id: 'WC-SAT-NOTIFY-003', service_request_id: serviceRequestId, satisfaction_status: satisfactionStatus, rating },
+      delivery_status: 'queued',
+      related_object_type: 'service_request',
+      related_object_id: serviceRequestId
+    }
+  ];
+
+  if (rating !== null && rating <= 2) {
+    notificationRows.push({
+      channel: 'internal',
+      recipient_role: 'operations_admin',
+      subject: 'Low warranty satisfaction rating alert',
+      body: `Warranty claim received a low rating (${rating}/5). ${notes || ''}`,
+      payload_json: { source: 'customer_portal_warranty_claim_low_rating_alert', rule_id: 'WC-SAT-NOTIFY-004', service_request_id: serviceRequestId, satisfaction_status: satisfactionStatus, rating },
+      delivery_status: 'queued',
+      related_object_type: 'service_request',
+      related_object_id: serviceRequestId
+    });
+  }
+
+  if (satisfactionStatus === 'not_satisfied') {
+    notificationRows.push({
+      channel: 'internal',
+      recipient_role: 'operations_admin',
+      subject: 'Warranty claim reopened by customer feedback',
+      body: notes || 'Customer was not satisfied and requested follow-up.',
+      payload_json: { source: 'customer_portal_warranty_claim_reopened_alert', rule_id: 'WC-SAT-NOTIFY-005', service_request_id: serviceRequestId, satisfaction_status: satisfactionStatus, rating },
+      delivery_status: 'queued',
+      related_object_type: 'service_request',
+      related_object_id: serviceRequestId
+    });
+  }
+
+  await supabase.from('notification_outbox').insert(notificationRows).throwOnError();
 
   await writeAuditLog({
     actorId: auth.actor.profileId,
@@ -166,9 +218,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     objectType: 'service_request',
     objectId: serviceRequestId,
     before: existing,
-    after: { result, task, satisfaction_status: satisfactionStatus, rating },
+    after: { result, task, satisfaction_status: satisfactionStatus, rating, notification_rules: notificationRows.map((row) => row.payload_json.rule_id) },
     ip: getClientIp(request)
   }).catch(() => undefined);
 
-  return NextResponse.json({ ok: true, result, task });
+  return NextResponse.json({ ok: true, result, task, notification_rules: notificationRows.map((row) => row.payload_json.rule_id) });
 }
