@@ -1,0 +1,152 @@
+.mobileHardening {
+  min-height: 100vh;
+}
+
+.mobileHardening :global(.customer-portal-page-frame),
+.mobileHardening :global(.customer-portal-page-content) {
+  min-width: 0;
+}
+
+.mobileHardening :global(table) {
+  min-width: 760px;
+}
+
+.mobileHardening :global(td),
+.mobileHardening :global(th),
+.mobileHardening :global(code),
+.mobileHardening :global(pre) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.mobileHardening :global(.overflow-hidden) {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .mobileHardening {
+    overflow-x: clip;
+  }
+
+  .mobileHardening :global(.customer-portal-header > div) {
+    gap: 0.75rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  .mobileHardening :global(.customer-portal-header nav) {
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .mobileHardening :global(.customer-portal-header nav a) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.7rem;
+  }
+
+  .mobileHardening :global(.customer-portal-logo) {
+    height: 2.35rem;
+    width: 2.35rem;
+    border-radius: 0.9rem;
+  }
+
+  .mobileHardening :global(.customer-portal-priority-strip) {
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .mobileHardening :global(.customer-portal-shell-card) {
+    border-radius: 1.15rem;
+    padding: 0.75rem !important;
+  }
+
+  .mobileHardening :global(.customer-portal-page-frame),
+  .mobileHardening :global(.customer-portal-page-content) {
+    gap: 1rem;
+  }
+
+  .mobileHardening :global(.customer-portal-page-hero) {
+    border-radius: 1.2rem;
+    padding: 1.1rem !important;
+  }
+
+  .mobileHardening :global(.customer-portal-page-hero h1) {
+    font-size: 1.45rem;
+    line-height: 1.15;
+  }
+
+  .mobileHardening :global(.customer-portal-page-hero p) {
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .mobileHardening :global(.customer-portal-page-hero .text-right) {
+    width: 100%;
+    text-align: left;
+  }
+
+  .mobileHardening :global(section),
+  .mobileHardening :global(article),
+  .mobileHardening :global(form),
+  .mobileHardening :global(.rounded-3xl) {
+    border-radius: 1.05rem;
+  }
+
+  .mobileHardening :global(.p-6),
+  .mobileHardening :global(.p-5) {
+    padding: 1rem !important;
+  }
+
+  .mobileHardening :global(input),
+  .mobileHardening :global(select),
+  .mobileHardening :global(textarea),
+  .mobileHardening :global(button),
+  .mobileHardening :global(a.rounded-2xl) {
+    width: 100%;
+    max-width: 100%;
+    min-height: 44px;
+  }
+
+  .mobileHardening :global(button),
+  .mobileHardening :global(a.rounded-2xl) {
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .mobileHardening :global(table) {
+    min-width: 680px;
+    font-size: 0.78rem;
+  }
+
+  .mobileHardening :global(th),
+  .mobileHardening :global(td) {
+    padding: 0.65rem !important;
+  }
+
+  .mobileHardening :global(.overflow-hidden:has(table)) {
+    border-radius: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobileHardening :global(.text-2xl) {
+    font-size: 1.35rem;
+    line-height: 1.15;
+  }
+
+  .mobileHardening :global(.text-xl) {
+    font-size: 1.18rem;
+    line-height: 1.2;
+  }
+}
