@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
   if (action === 'update_customer_quotation') {
     const quotationId = cleanText(body.quotation_id, 120);
     if (!isUuid(quotationId)) return jsonError('Valid quotation_id is required.', 400);
-    const patch = {
-      total: cleanNumber(body.total, NaN),
+    const total = cleanNumber(body.total, NaN);
+    const patch: Record<string, unknown> = {
       approval_status: cleanText(body.approval_status, 80) || 'draft',
       confirmed_warranty_years: Math.min(Math.max(cleanNumber(body.confirmed_warranty_years ?? body.warranty_years, 0), 0), 30),
       warranty_terms: cleanText(body.warranty_terms, 1200),
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       pdf_storage_path: cleanText(body.pdf_storage_path, 500),
       public_ref: cleanText(body.public_ref, 160)
     };
-    if (!Number.isFinite(patch.total)) delete (patch as Partial<typeof patch>).total;
+    if (Number.isFinite(total)) patch.total = total;
     const { data: before } = await supabase.from('quotations').select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,confirmed_warranty_years,warranty_terms,pdf_storage_path,public_ref,created_at').eq('quotation_id', quotationId).maybeSingle();
     const { data, error } = await supabase.from('quotations').update(patch).eq('quotation_id', quotationId).select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,confirmed_warranty_years,warranty_terms,warranty_confirmed_at,pdf_storage_path,public_ref,created_at').single();
     if (error) return jsonError(error.message, 400);
@@ -121,9 +121,9 @@ export async function POST(request: NextRequest) {
   if (action === 'update_customer_invoice') {
     const invoiceId = cleanText(body.invoice_id, 120);
     if (!isUuid(invoiceId)) return jsonError('Valid invoice_id is required.', 400);
-    const patch = {
+    const total = cleanNumber(body.total, NaN);
+    const patch: Record<string, unknown> = {
       invoice_no: cleanText(body.invoice_no, 120),
-      total: cleanNumber(body.total, NaN),
       status: cleanText(body.status, 80) || 'draft',
       visible_to_customer: cleanBoolean(body.visible_to_customer),
       customer_visibility_notes: cleanText(body.customer_visibility_notes, 1000),
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       payment_url: cleanText(body.payment_url, 500),
       public_ref: cleanText(body.public_ref, 160)
     };
-    if (!Number.isFinite(patch.total)) delete (patch as Partial<typeof patch>).total;
+    if (Number.isFinite(total)) patch.total = total;
     const { data: before } = await supabase.from('invoices').select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,pdf_storage_path,payment_url,public_ref,created_at').eq('invoice_id', invoiceId).maybeSingle();
     const { data, error } = await supabase.from('invoices').update(patch).eq('invoice_id', invoiceId).select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,pdf_storage_path,payment_url,public_ref,created_at').single();
     if (error) return jsonError(error.message, 400);
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
   if (action === 'update_customer_warranty') {
     const warrantyId = cleanText(body.warranty_id, 120);
     if (!isUuid(warrantyId)) return jsonError('Valid warranty_id is required.', 400);
-    const patch = {
+    const patch: Record<string, unknown> = {
       status: cleanText(body.status, 80) || 'active',
       coverage: cleanText(body.coverage, 1200),
       starts_at: cleanDate(body.starts_at),
