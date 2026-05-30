@@ -24,6 +24,7 @@
     "verify:quote-response-revision": "node tools/verify-quote-response-revision-flow.mjs",
     "verify:customer-portal-service-intake": "node tools/verify-customer-portal-service-intake-flow.mjs",
     "verify:warranty-auto-generation": "node tools/verify-warranty-auto-generation-admin-documents.mjs",
+    "verify:warranty-claim-workflow": "node tools/verify-warranty-claim-workflow.mjs",
     "verify:payment-intent": "node tools/verify-payment-intent-flow.mjs",
     "verify:payment-webhook": "node tools/verify-payment-webhook-flow.mjs",
     "verify:payment-checkout": "node tools/verify-payment-checkout-flow.mjs",
@@ -54,7 +55,7 @@
     "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
-    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:admin-reality && npm run verify:service-ops-core && npm run verify:quote-acceptance && npm run verify:quote-response-revision && npm run verify:customer-portal-service-intake && npm run verify:warranty-auto-generation && npm run verify:payment-intent && npm run verify:payment-webhook && npm run verify:payment-checkout && npm run verify:invoice-pdf && npm run verify:document-settings-pdf && npm run verify:quotation-pdf && npm run scan:v28-2-static && npm run audit:oa-erp && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:admin-reality && npm run verify:service-ops-core && npm run verify:quote-acceptance && npm run verify:quote-response-revision && npm run verify:customer-portal-service-intake && npm run verify:warranty-auto-generation && npm run verify:warranty-claim-workflow && npm run verify:payment-intent && npm run verify:payment-webhook && npm run verify:payment-checkout && npm run verify:invoice-pdf && npm run verify:document-settings-pdf && npm run verify:quotation-pdf && npm run scan:v28-2-static && npm run audit:oa-erp && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
     "check:staging": "node tools/staging-supabase-check.mjs",
     "validate:platform": "node tools/deploy-readiness-check.mjs"
   },
