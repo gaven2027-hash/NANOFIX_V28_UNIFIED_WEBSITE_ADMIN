@@ -30,14 +30,14 @@ const routeToPage = {
 };
 
 const expectedRouteMarkers = {
-  '/admin': ['AdminShell', 'GlobalSearch'],
-  '/dashboard': ['AdminShell', 'AutomationNotificationWorkspace'],
+  '/admin': ['AdminShell', 'PageHeader', 'MenuAnchorSections', 'module-launch-board'],
+  '/dashboard': ['AdminShell', 'Dashboard', 'AutomationNotificationWorkspace', 'MenuAnchorSections'],
   '/service-operations': ['AdminShell', 'WorkflowBoard', 'ServiceOperationsActionPanel', 'StatusMachineTable', 'MenuAnchorSections'],
   '/website-management': ['AdminShell', 'WebsiteManagementWorkspace', 'MenuAnchorSections'],
   '/social-media': ['AdminShell', 'SocialMediaManagementWorkspace', 'MenuAnchorSections'],
-  '/admin/advertising-center': ['AdminShell', 'AdvertisingCenterWorkspace'],
-  '/ai-intelligence': ['AdminShell', 'MenuAnchorSections'],
-  '/customer-center': ['AdminShell', 'Customer360', 'CustomerCenterActionWorkspace', 'MenuAnchorSections'],
+  '/admin/advertising-center': ['AdminShell', 'AdvertisingCenterWorkspace', 'MenuAnchorSections'],
+  '/ai-intelligence': ['AdminShell', 'SocialPreview', 'StatusMachineTable', 'MenuAnchorSections'],
+  '/customer-center': ['AdminShell', 'Customer360', 'CustomerCenterActionWorkspace', 'AdminCustomerDocumentsPanel', 'MenuAnchorSections'],
   '/system-settings': ['AdminShell', 'BackupCenter', 'RbacTable', 'WorkflowSettingsWorkspace', 'MenuAnchorSections']
 };
 
@@ -90,7 +90,7 @@ for (const item of menu) {
   const text = read(page);
   const markers = expectedRouteMarkers[item.href] ?? ['AdminShell'];
   pageMarkerFindings.push({ route: item.href, page, ok: markers.every((marker) => text.includes(marker)), missing_markers: markers.filter((marker) => !text.includes(marker)) });
-  if (item.children.length > 0 && !text.includes('MenuAnchorSections') && !['/admin', '/dashboard', '/admin/advertising-center'].includes(item.href)) {
+  if (item.children.length > 0 && !text.includes('MenuAnchorSections')) {
     missingAnchors.push({ route: item.href, page, reason: 'MenuAnchorSections missing for submodule anchors' });
   }
   for (const child of item.children) {
@@ -112,11 +112,25 @@ const apiFindings = liveApiFiles.map((file) => {
   };
 });
 
+const adminShell = read('components/AdminShell.tsx');
+const tailwind = read('tailwind.config.ts');
+const globalCss = read('app/globals.css');
 const genericWorkspace = read('components/AdminSubmoduleWorkspace.tsx');
+const navSource = read('data/adminNavigation.ts');
+
+const blueStyleFinding = {
+  admin_shell_uses_adminBg: adminShell.includes('bg-adminBg'),
+  admin_shell_uses_sidebar: adminShell.includes('bg-sidebar'),
+  admin_shell_uses_blue_active: adminShell.includes('from-sky-400') && adminShell.includes('to-blue-500') && adminShell.includes('text-activeBlue'),
+  tailwind_admin_colors: tailwind.includes('adminBg: "#F3F9FF"') && tailwind.includes('sidebar: "#1E293B"') && tailwind.includes('activeBlue: "#48B8FF"'),
+  customer_orange_is_scoped: globalCss.includes('.nanofix-customer-portal .bg-activeBlue') && !adminShell.includes('nanofix-customer-portal')
+};
+
 const genericWorkspaceFinding = {
   scaffold_marking: genericWorkspace.includes('Contract scaffold') && genericWorkspace.includes('Partial live binding'),
   client_only_warning: genericWorkspace.includes('This log is client-side only'),
-  fake_success_guard: genericWorkspace.includes('no server write') && genericWorkspace.includes('dedicated live workspaces/API responses')
+  fake_success_guard: genericWorkspace.includes('no server write') && genericWorkspace.includes('dedicated live workspaces/API responses'),
+  has_reality_source_notice: genericWorkspace.includes('Source of truth') && genericWorkspace.includes('data/adminModuleReality.ts')
 };
 
 const pageQualityFindings = [];
@@ -131,6 +145,7 @@ const liveCoverage = {
   menu_primary_count: menu.length,
   submodule_count: totalSubmodules,
   expected_primary_orders_0_to_8: menu.map((item) => item.order).join(',') === '0,1,2,3,4,5,6,7,8',
+  primary_routes: menu.map((item) => item.href),
   live_api_count: apiFindings.filter((item) => item.exists && item.auth && item.explicit_fields).length,
   api_files_checked: apiFindings.length,
   fully_live_modules_known: [
@@ -150,16 +165,25 @@ const liveCoverage = {
 
 const blockers = [
   ...missingPages.map((item) => `Missing page/route: ${item.route}`),
+  ...missingAnchors.map((item) => `Missing or invalid submenu anchor: ${item.route} ${item.child ?? ''}`),
+  ...duplicateHrefs.map((href) => `Duplicate child href: ${href}`),
   ...pageMarkerFindings.filter((item) => !item.ok).map((item) => `Page missing required markers: ${item.route} -> ${item.missing_markers.join(', ')}`),
   ...apiFindings.filter((item) => item.exists && !item.auth).map((item) => `API missing auth marker: ${item.file}`),
   ...apiFindings.filter((item) => item.exists && !item.explicit_fields).map((item) => `API uses select('*'): ${item.file}`)
 ];
 
+if (!liveCoverage.expected_primary_orders_0_to_8) blockers.push('Primary admin orders are not exactly 0,1,2,3,4,5,6,7,8.');
+for (const [key, ok] of Object.entries(blueStyleFinding)) if (!ok) blockers.push(`Admin blue style integrity failed: ${key}`);
+if (!genericWorkspaceFinding.scaffold_marking) blockers.push('AdminSubmoduleWorkspace missing explicit scaffold/live status marking.');
+if (!genericWorkspaceFinding.client_only_warning) blockers.push('AdminSubmoduleWorkspace missing client-only warning.');
+if (!genericWorkspaceFinding.fake_success_guard) blockers.push('AdminSubmoduleWorkspace missing fake-success guard.');
+
 const report = {
-  ok: blockers.length === 0 && genericWorkspaceFinding.scaffold_marking && genericWorkspaceFinding.client_only_warning,
+  ok: blockers.length === 0,
   generated_at: new Date().toISOString(),
   audit: 'oa-erp-readiness-audit',
   liveCoverage,
+  blueStyleFinding,
   menu: menu.map((item) => ({ order: item.order, href: item.href, title: item.title, submodules: item.children.length })),
   missingPages,
   missingAnchors,
@@ -170,6 +194,7 @@ const report = {
   pageQualityFindings,
   blockers,
   recommendations: [
+    'Keep Customer Portal orange/gold theme scoped under .nanofix-customer-portal only; Internal Admin must remain bg-adminBg + bg-sidebar + activeBlue.',
     'Promote high-volume generic submodules to dedicated live workspaces one by one: Service Requests, Quotations, Jobs, Invoices, Payments, Warranty, Customer Reviews, Website Publish Approval.',
     'For each promoted submodule require: explicit Supabase table, GET list, POST create, PATCH update/status, Audit Log write, role permission, degraded UI and E2E smoke.',
     'Keep generic AdminSubmoduleWorkspace as contract/readiness preview only; do not use it as production write workflow.',
