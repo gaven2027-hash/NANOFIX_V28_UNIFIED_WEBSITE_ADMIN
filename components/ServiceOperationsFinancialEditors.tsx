@@ -10,17 +10,17 @@ type Values = Record<string, string>;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const tabs: Array<{ key: EditorKind; title: string; zh: string; action: string; note: string }> = [
-  { key: 'quotation', title: 'Quotation Line Items', zh: '报价明细', action: 'save_quotation_version', note: 'Create a new quotation version and update quotation total.' },
+  { key: 'quotation', title: 'Quotation Line Items', zh: '报价明细', action: 'save_quotation_version', note: 'Create a new quotation version, warranty years and update quotation total.' },
   { key: 'invoice', title: 'Invoice Items', zh: '发票明细', action: 'save_invoice_items', note: 'Replace invoice items and update invoice total.' },
   { key: 'payment', title: 'Payment Reconciliation', zh: '付款对账', action: 'reconcile_payment', note: 'Update payment amount/status and create transaction log.' },
   { key: 'warranty', title: 'Warranty Issue', zh: '保修签发', action: 'issue_warranty', note: 'Create or update warranty coverage for a job.' }
 ];
 
 const defaults: Record<EditorKind, Values> = {
-  quotation: { quotation_id: '', description_1: 'Waterproofing repair works', qty_1: '1', unit_price_1: '0', description_2: 'Materials and preparation', qty_2: '1', unit_price_2: '0' },
+  quotation: { quotation_id: '', warranty_years: '1', warranty_terms: 'NANOFIX warranty coverage is based on the confirmed quotation scope and completed repair works.', description_1: 'Waterproofing repair works', qty_1: '1', unit_price_1: '0', description_2: 'Materials and preparation', qty_2: '1', unit_price_2: '0' },
   invoice: { invoice_id: '', status: 'draft', description_1: 'Waterproofing repair works', qty_1: '1', unit_price_1: '0', description_2: 'Materials and preparation', qty_2: '1', unit_price_2: '0' },
   payment: { payment_id: '', amount: '0', fee: '0', provider: 'manual', external_id: '', status: 'reconciled' },
-  warranty: { warranty_id: '', job_id: '', status: 'active', coverage: 'NANOFIX standard workmanship warranty.', starts_at: '', ends_at: '' }
+  warranty: { warranty_id: '', job_id: '', customer_id: '', source_quotation_id: '', source_acceptance_id: '', source_invoice_id: '', warranty_years: '1', status: 'active', coverage: 'NANOFIX standard workmanship warranty.', terms_snapshot: 'NANOFIX warranty coverage is based on the completed repair scope.', starts_at: '', ends_at: '' }
 };
 
 function text(values: Values, key: string) { return values[key]?.trim() ?? ''; }
@@ -37,6 +37,8 @@ function validate(kind: EditorKind, values: Values) {
   const errors: string[] = [];
   if (kind === 'quotation') {
     if (!uuidPattern.test(text(values, 'quotation_id'))) errors.push('Valid quotation_id is required. / 必须填写有效 quotation_id。');
+    const years = numberValue(text(values, 'warranty_years'));
+    if (!Number.isFinite(years) || years < 0 || years > 30) errors.push('Warranty years must be between 0 and 30. / 保修年限必须在 0 到 30 之间。');
     for (const [index, item] of lineItems(values).entries()) {
       if (!item.description) errors.push(`Line ${index + 1} description is required. / 第 ${index + 1} 行描述必填。`);
       if (!Number.isFinite(item.qty) || item.qty <= 0) errors.push(`Line ${index + 1} qty must be greater than 0. / 第 ${index + 1} 行数量必须大于 0。`);
@@ -59,6 +61,8 @@ function validate(kind: EditorKind, values: Values) {
   if (kind === 'warranty') {
     if (text(values, 'warranty_id') && !uuidPattern.test(text(values, 'warranty_id'))) errors.push('warranty_id must be UUID when provided. / warranty_id 如填写必须是 UUID。');
     if (!uuidPattern.test(text(values, 'job_id'))) errors.push('Valid job_id is required. / 必须填写有效 job_id。');
+    const years = numberValue(text(values, 'warranty_years'));
+    if (!Number.isFinite(years) || years < 0 || years > 30) errors.push('Warranty years must be between 0 and 30. / 保修年限必须在 0 到 30 之间。');
     if (!text(values, 'coverage')) errors.push('Coverage is required. / 保修范围必填。');
   }
   return { ok: errors.length === 0, errors };
@@ -66,10 +70,10 @@ function validate(kind: EditorKind, values: Values) {
 
 function payload(kind: EditorKind, values: Values) {
   const tab = tabs.find((item) => item.key === kind) ?? tabs[0];
-  if (kind === 'quotation') return { action: tab.action, quotation_id: text(values, 'quotation_id'), line_items: lineItems(values) };
+  if (kind === 'quotation') return { action: tab.action, quotation_id: text(values, 'quotation_id'), warranty_years: numberValue(text(values, 'warranty_years')), warranty_terms: text(values, 'warranty_terms'), line_items: lineItems(values) };
   if (kind === 'invoice') return { action: tab.action, invoice_id: text(values, 'invoice_id'), status: text(values, 'status'), line_items: lineItems(values) };
   if (kind === 'payment') return { action: tab.action, payment_id: text(values, 'payment_id'), amount: numberValue(text(values, 'amount')), fee: numberValue(text(values, 'fee')), provider: text(values, 'provider'), external_id: text(values, 'external_id'), status: text(values, 'status') };
-  return { action: tab.action, warranty_id: text(values, 'warranty_id'), job_id: text(values, 'job_id'), coverage: text(values, 'coverage'), starts_at: text(values, 'starts_at'), ends_at: text(values, 'ends_at'), status: text(values, 'status') };
+  return { action: tab.action, warranty_id: text(values, 'warranty_id'), job_id: text(values, 'job_id'), customer_id: text(values, 'customer_id'), source_quotation_id: text(values, 'source_quotation_id'), source_acceptance_id: text(values, 'source_acceptance_id'), source_invoice_id: text(values, 'source_invoice_id'), warranty_years: numberValue(text(values, 'warranty_years')), coverage: text(values, 'coverage'), terms_snapshot: text(values, 'terms_snapshot'), starts_at: text(values, 'starts_at'), ends_at: text(values, 'ends_at'), status: text(values, 'status') };
 }
 
 async function submitEditor(kind: EditorKind, values: Values) {
@@ -129,7 +133,7 @@ export function ServiceOperationsFinancialEditors() {
       <div className="bg-slate-50 px-6 py-5">
         <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Financial & Warranty Editors / 财务与保修编辑器</div>
         <h2 className="mt-2 text-xl font-black text-slate-950">Quotation / Invoice / Payment / Warranty</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-600">These editors submit to `/api/admin/service-operations/financial-documents`, update real tables and write Audit Logs. / 这些编辑器提交到服务端 API，更新真实表并写入审计日志。</p>
+        <p className="mt-2 text-sm font-semibold text-slate-600">These editors submit to `/api/admin/service-operations/financial-documents`, update real tables and write Audit Logs. Warranty years confirmed here are locked when the customer accepts a quotation. / 这些编辑器提交到服务端 API，更新真实表并写入审计日志；这里确认的保修年限会在客户接受报价时锁定。</p>
       </div>
       <div className="p-6">
         <div className="grid gap-3 md:grid-cols-4">
@@ -146,7 +150,11 @@ export function ServiceOperationsFinancialEditors() {
 
         <form onSubmit={(event) => void onSubmit(event)} className="mt-5 grid gap-4 rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
           <div className="grid gap-4 md:grid-cols-2">
-            {active === 'quotation' ? <Input label="Quotation ID / 报价 ID" name="quotation_id" value={values.quotation_id} onChange={change} /> : null}
+            {active === 'quotation' ? <>
+              <Input label="Quotation ID / 报价 ID" name="quotation_id" value={values.quotation_id} onChange={change} />
+              <Input label="Warranty Years / 保修年限" name="warranty_years" value={values.warranty_years} onChange={change} placeholder="1 / 2 / 5 / 10" />
+              <Textarea label="Warranty Terms / 保修条款" name="warranty_terms" value={values.warranty_terms} onChange={change} />
+            </> : null}
             {active === 'invoice' ? <><Input label="Invoice ID / 发票 ID" name="invoice_id" value={values.invoice_id} onChange={change} /><Input label="Invoice Status / 发票状态" name="status" value={values.status} onChange={change} /></> : null}
             {usesLineItems ? <>
               <Input label="Line 1 Description / 明细 1 描述" name="description_1" value={values.description_1} onChange={change} />
@@ -167,10 +175,16 @@ export function ServiceOperationsFinancialEditors() {
             {active === 'warranty' ? <>
               <Input label="Warranty ID for update / 更新用保修 ID" name="warranty_id" value={values.warranty_id} onChange={change} placeholder="Leave blank to create / 留空新增" />
               <Input label="Job ID / 工单 ID" name="job_id" value={values.job_id} onChange={change} />
+              <Input label="Customer ID / 客户 ID" name="customer_id" value={values.customer_id} onChange={change} />
+              <Input label="Source Quotation ID / 来源报价 ID" name="source_quotation_id" value={values.source_quotation_id} onChange={change} />
+              <Input label="Source Acceptance ID / 来源接受 ID" name="source_acceptance_id" value={values.source_acceptance_id} onChange={change} />
+              <Input label="Source Invoice ID / 来源发票 ID" name="source_invoice_id" value={values.source_invoice_id} onChange={change} />
+              <Input label="Warranty Years / 保修年限" name="warranty_years" value={values.warranty_years} onChange={change} />
               <Input label="Status / 状态" name="status" value={values.status} onChange={change} />
               <Input label="Starts At / 开始日期" name="starts_at" value={values.starts_at} onChange={change} placeholder="2026-05-29" />
               <Input label="Ends At / 结束日期" name="ends_at" value={values.ends_at} onChange={change} placeholder="2027-05-29" />
               <Textarea label="Coverage / 保修范围" name="coverage" value={values.coverage} onChange={change} />
+              <Textarea label="Terms Snapshot / 条款快照" name="terms_snapshot" value={values.terms_snapshot} onChange={change} />
             </> : null}
           </div>
           <button type="submit" disabled={state.loading} className="w-fit rounded-2xl bg-activeBlue px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Save via live API / 通过真实 API 保存</button>
