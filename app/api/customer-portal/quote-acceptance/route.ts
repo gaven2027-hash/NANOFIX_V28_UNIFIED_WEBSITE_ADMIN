@@ -19,6 +19,8 @@ type QuotationRow = {
   visible_to_customer: boolean | null;
   public_ref: string | null;
   pdf_storage_path?: string | null;
+  confirmed_warranty_years?: number | null;
+  warranty_terms?: string | null;
   created_at: string | null;
 };
 
@@ -93,7 +95,7 @@ async function loadVisibleOwnedQuotation(profileId: string, quotationId: string)
 
   const { data, error } = await supabase
     .from('quotations')
-    .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,public_ref,pdf_storage_path,created_at')
+    .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,public_ref,pdf_storage_path,confirmed_warranty_years,warranty_terms,created_at')
     .eq('quotation_id', quotationId)
     .in('job_id', jobIds)
     .eq('visible_to_customer', true)
@@ -139,10 +141,10 @@ async function createCustomerResponse(input: { quotation: QuotationRow; customer
   return data;
 }
 
-async function createTaskAndInbox(input: { quotationId: string; responseId: string; response: ResponseType; total: number; customerMessage: string | null; paymentIntentId?: string | null }) {
+async function createTaskAndInbox(input: { quotationId: string; responseId: string; response: ResponseType; total: number; customerMessage: string | null; warrantyYears?: number | null; paymentIntentId?: string | null }) {
   const supabase = createAdminClient();
   const title = input.response === 'accepted' ? 'Customer accepted quotation' : input.response === 'declined' ? 'Customer declined quotation' : 'Customer requested quotation revision';
-  const description = `${title}: ${input.quotationId}. Total: ${input.total}. ${input.customerMessage ? `Customer message: ${input.customerMessage}` : ''}`;
+  const description = `${title}: ${input.quotationId}. Total: ${input.total}. Warranty years: ${input.warrantyYears ?? 0}. ${input.customerMessage ? `Customer message: ${input.customerMessage}` : ''}`;
   const { data: task, error: taskError } = await supabase
     .from('unified_tasks')
     .insert({
@@ -154,7 +156,7 @@ async function createTaskAndInbox(input: { quotationId: string; responseId: stri
       priority: input.response === 'accepted' ? 'P1' : 'P2',
       assignee_role: 'finance',
       status: 'open',
-      metadata_json: { quotation_id: input.quotationId, response_type: input.response, payment_intent_id: input.paymentIntentId ?? null, source: 'quote_response' }
+      metadata_json: { quotation_id: input.quotationId, response_type: input.response, warranty_years: input.warrantyYears ?? 0, payment_intent_id: input.paymentIntentId ?? null, source: 'quote_response' }
     })
     .select('task_id,source_module,source_table,source_id,title,status,priority,assignee_role,created_at')
     .single();
@@ -166,7 +168,7 @@ async function createTaskAndInbox(input: { quotationId: string; responseId: stri
     .insert({
       recipient_role: 'finance',
       subject: title,
-      body: input.response === 'accepted' ? `${description} Please prepare invoice/payment link.` : `${description} Please review customer feedback and prepare a revised quotation if needed.`,
+      body: input.response === 'accepted' ? `${description} Please prepare invoice/payment link. Warranty will be auto-generated after job completion if warranty years are confirmed.` : `${description} Please review customer feedback and prepare a revised quotation if needed.`,
       category: 'quote_response',
       priority: input.response === 'accepted' ? 'P1' : 'P2',
       related_object_type: 'quotation_customer_response',
@@ -219,6 +221,8 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { quotation, customerId } = await loadVisibleOwnedQuotation(auth.actor.profileId, quotationId);
   const quotePdf = await latestVisibleQuotationPdf(quotationId);
+  const warrantyYears = Number(quotation.confirmed_warranty_years ?? 0) || 0;
+  const warrantyTerms = quotation.warranty_terms || 'NANOFIX warranty coverage is based on the confirmed quotation scope and completed repair works.';
 
   if (response === 'accepted') {
     const { data: existing } = await supabase
@@ -246,6 +250,8 @@ export async function POST(request: NextRequest) {
         acceptance_status: 'accepted',
         accepted_total: quotation.total,
         accepted_version: quotation.current_version,
+        accepted_warranty_years: warrantyYears,
+        accepted_warranty_terms_snapshot: warrantyTerms,
         quotation_pdf_id: quotePdf?.quotation_pdf_id ?? null,
         accepted_pdf_storage_path: quotePdf?.storage_path ?? quotation.pdf_storage_path ?? null,
         customer_note: customerMessage,
@@ -253,7 +259,7 @@ export async function POST(request: NextRequest) {
         ip_address: getClientIp(request),
         user_agent: request.headers.get('user-agent') ?? null
       })
-      .select('acceptance_id,quotation_id,job_id,customer_id,accepted_total,accepted_version,quotation_pdf_id,accepted_pdf_storage_path,acceptance_status,customer_note,customer_message,created_at')
+      .select('acceptance_id,quotation_id,job_id,customer_id,accepted_total,accepted_version,accepted_warranty_years,accepted_warranty_terms_snapshot,quotation_pdf_id,accepted_pdf_storage_path,acceptance_status,customer_note,customer_message,created_at')
       .single();
     if (acceptanceError) return jsonError(acceptanceError.message, 400);
     acceptance = acceptanceRow;
@@ -269,7 +275,7 @@ export async function POST(request: NextRequest) {
         currency: 'SGD',
         status: 'pending_invoice',
         provider: 'manual',
-        metadata_json: { source: 'customer_quote_acceptance', quotation_public_ref: quotation.public_ref, quotation_version: quotation.current_version, quotation_pdf_id: quotePdf?.quotation_pdf_id ?? null },
+        metadata_json: { source: 'customer_quote_acceptance', quotation_public_ref: quotation.public_ref, quotation_version: quotation.current_version, quotation_pdf_id: quotePdf?.quotation_pdf_id ?? null, accepted_warranty_years: warrantyYears },
         created_by: auth.actor.profileId
       })
       .select('payment_intent_id,quotation_id,acceptance_id,job_id,customer_id,amount,currency,status,provider,payment_url,created_at')
@@ -282,7 +288,7 @@ export async function POST(request: NextRequest) {
   await supabase.from('quotations').update({ approval_status: nextStatus }).eq('quotation_id', quotationId).throwOnError();
 
   const [workflow, confirmation] = await Promise.all([
-    createTaskAndInbox({ quotationId, responseId: customerResponse.response_id, response, total: Number(quotation.total ?? 0), customerMessage, paymentIntentId: typeof paymentIntent?.payment_intent_id === 'string' ? paymentIntent.payment_intent_id : null }),
+    createTaskAndInbox({ quotationId, responseId: customerResponse.response_id, response, total: Number(quotation.total ?? 0), warrantyYears, customerMessage, paymentIntentId: typeof paymentIntent?.payment_intent_id === 'string' ? paymentIntent.payment_intent_id : null }),
     queueCustomerConfirmation({ customerId, quotationId, responseId: customerResponse.response_id, response })
   ]);
 
@@ -292,9 +298,9 @@ export async function POST(request: NextRequest) {
     action: 'customer_portal_quote_response_submit',
     objectType: 'quotation_customer_response',
     objectId: customerResponse.response_id,
-    after: { quotation, response: customerResponse, acceptance, payment_intent: paymentIntent, quote_pdf: quotePdf, workflow, confirmation },
+    after: { quotation, response: customerResponse, acceptance, payment_intent: paymentIntent, quote_pdf: quotePdf, accepted_warranty_years: warrantyYears, workflow, confirmation },
     ip: getClientIp(request)
   }).catch(() => undefined);
 
-  return NextResponse.json({ ok: true, quotation, response: customerResponse, acceptance, payment_intent: paymentIntent, quote_pdf: quotePdf, workflow, confirmation }, { status: 201 });
+  return NextResponse.json({ ok: true, quotation, response: customerResponse, acceptance, payment_intent: paymentIntent, quote_pdf: quotePdf, accepted_warranty_years: warrantyYears, workflow, confirmation }, { status: 201 });
 }
