@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 type Row = Record<string, unknown>;
 type Payload = {
@@ -19,6 +19,7 @@ type Payload = {
 };
 
 type State = { loading: boolean; error: string | null; payload: Payload | null };
+type MessageState = { loading: boolean; submitting: boolean; error: string | null; message: string | null; messages: Row[] };
 
 async function loadWarrantyClaimDetail(serviceRequestId: string) {
   const response = await fetch(`/api/customer-portal/warranty-claims/${serviceRequestId}`, { credentials: 'same-origin', cache: 'no-store' });
@@ -26,6 +27,30 @@ async function loadWarrantyClaimDetail(serviceRequestId: string) {
   let payload: Payload | null = null;
   try { payload = text ? JSON.parse(text) as Payload : null; } catch { payload = null; }
   if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Warranty claim detail API returned ${response.status}`);
+  return payload ?? { ok: true };
+}
+
+async function loadWarrantyClaimMessages(serviceRequestId: string) {
+  const response = await fetch(`/api/customer-portal/warranty-claims/${serviceRequestId}/messages`, { credentials: 'same-origin', cache: 'no-store' });
+  const text = await response.text();
+  let payload: { ok?: boolean; error?: string; messages?: Row[] } | null = null;
+  try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; messages?: Row[] } : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Warranty claim messages API returned ${response.status}`);
+  return Array.isArray(payload?.messages) ? payload.messages : [];
+}
+
+async function submitWarrantyClaimMessage(serviceRequestId: string, messageBody: string) {
+  const response = await fetch(`/api/customer-portal/warranty-claims/${serviceRequestId}/messages`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ message_body: messageBody })
+  });
+  const text = await response.text();
+  let payload: Row | null = null;
+  try { payload = text ? JSON.parse(text) as Row : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false) throw new Error(typeof payload?.error === 'string' ? payload.error : `Warranty claim message submit API returned ${response.status}`);
   return payload ?? { ok: true };
 }
 
@@ -117,6 +142,69 @@ function TimelinePanel({ items }: { items: Row[] }) {
   );
 }
 
+function MessageThreadPanel({ serviceRequestId }: { serviceRequestId: string }) {
+  const [state, setState] = useState<MessageState>({ loading: true, submitting: false, error: null, message: null, messages: [] });
+  const [draft, setDraft] = useState('');
+
+  async function refreshMessages() {
+    setState((current) => ({ ...current, loading: true, error: null, message: null }));
+    try {
+      const messages = await loadWarrantyClaimMessages(serviceRequestId);
+      setState((current) => ({ ...current, loading: false, error: null, messages }));
+    } catch (error) {
+      setState((current) => ({ ...current, loading: false, error: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const messageBody = draft.trim();
+    if (!messageBody) return;
+    setState((current) => ({ ...current, submitting: true, error: null, message: null }));
+    try {
+      await submitWarrantyClaimMessage(serviceRequestId, messageBody);
+      setDraft('');
+      const messages = await loadWarrantyClaimMessages(serviceRequestId);
+      setState({ loading: false, submitting: false, error: null, message: 'Message submitted to NANOFIX. / 留言已提交给 NANOFIX。', messages });
+    } catch (error) {
+      setState((current) => ({ ...current, submitting: false, error: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+
+  useEffect(() => { void refreshMessages(); }, [serviceRequestId]);
+
+  return (
+    <Section id="message-thread" title="Message Thread" zh="保修申请留言线程" count={state.messages.length}>
+      {state.error ? <div className="rounded-2xl bg-red-50 p-4 text-xs font-bold text-red-950 ring-1 ring-red-200">{state.error}</div> : null}
+      {state.message ? <div className="rounded-2xl bg-emerald-50 p-4 text-xs font-bold text-emerald-950 ring-1 ring-emerald-200">{state.message}</div> : null}
+      {state.loading ? <div className="rounded-2xl bg-blue-50 p-4 text-xs font-bold text-blue-950 ring-1 ring-blue-200">Loading messages… / 正在读取留言…</div> : null}
+      <div className="grid gap-3">
+        {!state.messages.length && !state.loading ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No messages yet. / 暂无留言。</div> : null}
+        {state.messages.map((message) => (
+          <article key={String(message.message_id)} className="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="text-sm font-black text-slate-950">{formatValue(message.sender_type)} · {formatValue(message.sender_role)}</div>
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-activeBlue ring-1 ring-blue-100">{formatValue(message.created_at)}</span>
+            </div>
+            <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{formatValue(message.message_body)}</p>
+          </article>
+        ))}
+      </div>
+      <form onSubmit={onSubmit} className="grid gap-3 rounded-3xl bg-white p-4 ring-1 ring-slate-200">
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.14em] text-activeBlue">Add Message / 添加留言</div>
+          <p className="mt-1 text-xs font-bold leading-5 text-slate-500">You can add notes or photos description for this warranty claim. This does not edit any quotation, invoice, warranty or payment record. / 您可以补充说明保修申请情况；这不会修改任何报价、发票、保修单或付款记录。</p>
+        </div>
+        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={5} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 focus:ring-blue-100" placeholder="Add your message here / 在这里填写留言" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs font-bold text-slate-500">{draft.length}/2000</span>
+          <button type="submit" disabled={state.submitting || !draft.trim()} className="rounded-2xl bg-activeBlue px-4 py-3 text-xs font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.submitting ? 'Submitting… / 提交中…' : 'Submit Message / 提交留言'}</button>
+        </div>
+      </form>
+    </Section>
+  );
+}
+
 function Section({ id, title, zh, children, count }: { id: string; title: string; zh: string; children: React.ReactNode; count?: number }) {
   return (
     <section id={id} className="scroll-mt-28 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
@@ -176,6 +264,7 @@ export function CustomerPortalWarrantyClaimDetail({ serviceRequestId }: { servic
       </section>
 
       <TimelinePanel items={timeline} />
+      <MessageThreadPanel serviceRequestId={serviceRequestId} />
 
       {claim ? (
         <Section id="claim-summary" title="Claim Summary" zh="申请概要">
