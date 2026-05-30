@@ -7,7 +7,7 @@ const navItems = [
   { href: '/customer-portal/records', label: 'Records', zh: '记录' },
   { href: '/customer-portal/uploads', label: 'Uploads', zh: '文件' },
   { href: '/customer-portal/financial', label: 'Finance', zh: '财务' },
-  { href: '/customer-portal/records#warranties', label: 'Warranties', zh: '保修' },
+  { href: '/customer-portal/warranties', label: 'Warranties', zh: '保修' },
   { href: '/customer-portal/financial#invoices', label: 'Invoices', zh: '发票' }
 ];
 
