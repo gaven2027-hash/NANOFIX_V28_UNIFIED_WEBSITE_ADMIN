@@ -82,6 +82,90 @@ body {
       linear-gradient(135deg, #94e7ff 0%, #58c8ff 35%, #33aaf2 70%, #a7f3ff 100%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.52), 0 14px 28px rgba(56,189,248,0.20);
   }
+
+  .nanofix-customer-portal {
+    --nf-dark: #120a06;
+    --nf-orange: #ff5f00;
+    --nf-orange-red: #ff3d00;
+    --nf-gold: #ffb000;
+    --nf-cream: #fff7ed;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(255,176,0,0.20), transparent 32%),
+      radial-gradient(circle at 88% 6%, rgba(255,61,0,0.18), transparent 30%),
+      linear-gradient(180deg, #120a06 0%, #1b0d07 38%, #fff7ed 38%, #fff7ed 100%);
+    color: #1f130c;
+  }
+
+  .nanofix-customer-portal .customer-portal-header {
+    border-color: rgba(255,176,0,0.28);
+    background: linear-gradient(90deg, rgba(18,10,6,0.98), rgba(39,17,7,0.96));
+    box-shadow: 0 16px 40px rgba(18,10,6,0.22);
+  }
+
+  .nanofix-customer-portal .customer-portal-logo {
+    background:
+      radial-gradient(circle at 25% 18%, rgba(255,255,255,0.62), transparent 25%),
+      linear-gradient(135deg, #ffb000 0%, #ff6a00 42%, #ff3d00 100%);
+    box-shadow: 0 14px 30px rgba(255,95,0,0.38), inset 0 1px 0 rgba(255,255,255,0.42);
+  }
+
+  .nanofix-customer-portal .customer-portal-shell-card {
+    background: rgba(255,247,237,0.94);
+    border: 1px solid rgba(255,176,0,0.18);
+    border-radius: 28px;
+    box-shadow: 0 20px 55px rgba(58,23,8,0.16);
+  }
+
+  .nanofix-customer-portal .customer-portal-footer {
+    color: #7c2d12;
+  }
+
+  .nanofix-customer-portal .bg-activeBlue,
+  .nanofix-customer-portal .hover\:bg-blue-700:hover {
+    background-color: #ff5f00;
+    background-image:
+      radial-gradient(circle at 20% 12%, rgba(255,255,255,0.65), transparent 26%),
+      linear-gradient(135deg, #ffb000 0%, #ff6a00 44%, #ff3d00 100%);
+    box-shadow: 0 14px 28px rgba(255,95,0,0.32), inset 0 1px 0 rgba(255,255,255,0.38);
+  }
+
+  .nanofix-customer-portal .text-activeBlue {
+    color: #ea580c;
+  }
+
+  .nanofix-customer-portal .border-activeBlue {
+    border-color: #fb923c;
+  }
+
+  .nanofix-customer-portal .ring-blue-100,
+  .nanofix-customer-portal .ring-blue-200,
+  .nanofix-customer-portal .ring-slate-200 {
+    --tw-ring-color: rgba(251,146,60,0.28);
+  }
+
+  .nanofix-customer-portal .bg-blue-50,
+  .nanofix-customer-portal .hover\:bg-blue-50:hover,
+  .nanofix-customer-portal .hover\:bg-blue-50\/50:hover {
+    background-color: #fff3e6;
+  }
+
+  .nanofix-customer-portal .text-blue-950 {
+    color: #7c2d12;
+  }
+
+  .nanofix-customer-portal .bg-white {
+    background-color: rgba(255,255,255,0.96);
+  }
+
+  .nanofix-customer-portal .shadow-soft {
+    box-shadow: 0 20px 48px rgba(58,23,8,0.14);
+  }
+
+  .nanofix-customer-portal .customer-portal-priority-strip {
+    background: linear-gradient(90deg, rgba(255,95,0,0.14), rgba(255,176,0,0.18)), rgba(255,247,237,0.92);
+    border: 1px solid rgba(255,95,0,0.30);
+    color: #7c2d12;
+  }
 }
 
 /* V28 mobile parity hardening for Next routes. */
