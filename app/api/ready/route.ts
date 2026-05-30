@@ -28,6 +28,7 @@ const requiredTables = [
   "payment_webhook_events",
   "payment_checkout_sessions",
   "invoice_pdf_documents",
+  "quotation_pdf_documents",
   "document_company_settings"
 ];
 
