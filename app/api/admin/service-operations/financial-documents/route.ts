@@ -20,6 +20,12 @@ function cleanNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function cleanWarrantyYears(value: unknown) {
+  const parsed = cleanNumber(value, 0);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.min(parsed, 30);
+}
+
 function cleanDate(value: unknown) {
   const text = cleanText(value, 80);
   return text || null;
@@ -75,7 +81,7 @@ export async function GET(request: NextRequest) {
   if (type === 'quotation') {
     const { data, error } = await supabase
       .from('quotation_versions')
-      .select('version_id,quotation_id,version,line_items,total,created_by,approval_log,created_at')
+      .select('version_id,quotation_id,version,line_items,total,warranty_years,warranty_terms,created_by,approval_log,created_at')
       .eq('quotation_id', id)
       .order('version', { ascending: false })
       .limit(8);
@@ -102,7 +108,7 @@ export async function GET(request: NextRequest) {
   } else if (type === 'warranty') {
     const { data, error } = await supabase
       .from('warranties')
-      .select('warranty_id,job_id,status,coverage,starts_at,ends_at,created_at')
+      .select('warranty_id,job_id,customer_id,status,coverage,starts_at,ends_at,warranty_years,source_quotation_id,source_acceptance_id,source_invoice_id,auto_generated,generation_source,generated_at,terms_snapshot,metadata_json,created_at')
       .eq('warranty_id', id)
       .maybeSingle();
     result = data ?? null;
@@ -137,13 +143,13 @@ export async function POST(request: NextRequest) {
   if (action === 'set_quotation_customer_visibility') {
     const quotationId = cleanText(body.quotation_id, 120);
     if (!isUuid(quotationId)) return jsonError('Valid quotation_id is required.', 400);
-    const { data: before } = await supabase.from('quotations').select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,customer_visibility_notes,pdf_storage_path,public_ref,created_at').eq('quotation_id', quotationId).maybeSingle();
+    const { data: before } = await supabase.from('quotations').select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,customer_visibility_notes,pdf_storage_path,public_ref,confirmed_warranty_years,warranty_terms,created_at').eq('quotation_id', quotationId).maybeSingle();
     const patch = financialVisibilityPayload(body, auth.actor.profileId);
     const { data, error } = await supabase
       .from('quotations')
       .update(patch)
       .eq('quotation_id', quotationId)
-      .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,customer_visible_at,customer_visible_by,customer_visibility_notes,pdf_storage_path,public_ref,created_at')
+      .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,customer_visible_at,customer_visible_by,customer_visibility_notes,pdf_storage_path,public_ref,confirmed_warranty_years,warranty_terms,created_at')
       .single();
     if (error) return jsonError(error.message, 400);
     await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_quotation_customer_visibility_set', objectType: 'quotation', objectId: quotationId, before, after: data, ip: getClientIp(request) }).catch(() => undefined);
@@ -188,6 +194,8 @@ export async function POST(request: NextRequest) {
     if (!isUuid(quotationId)) return jsonError('Valid quotation_id is required.', 400);
     const parsed = parseLineItems(body.line_items);
     if (!parsed.ok) return jsonError(parsed.error, 400);
+    const warrantyYears = cleanWarrantyYears(body.warranty_years ?? body.confirmed_warranty_years);
+    const warrantyTerms = cleanText(body.warranty_terms, 1200) ?? 'NANOFIX warranty coverage is based on the confirmed quotation scope and completed repair works.';
 
     const { data: existingVersions, error: versionError } = await supabase
       .from('quotation_versions')
@@ -200,16 +208,16 @@ export async function POST(request: NextRequest) {
 
     const { data: version, error: insertError } = await supabase
       .from('quotation_versions')
-      .insert({ quotation_id: quotationId, version: nextVersion, line_items: parsed.items, total: parsed.total, created_by: auth.actor.profileId, approval_log: { source: 'service_operations_financial_editor' } })
-      .select('version_id,quotation_id,version,line_items,total,created_by,approval_log,created_at')
+      .insert({ quotation_id: quotationId, version: nextVersion, line_items: parsed.items, total: parsed.total, warranty_years: warrantyYears, warranty_terms: warrantyTerms, created_by: auth.actor.profileId, approval_log: { source: 'service_operations_financial_editor', warranty_years: warrantyYears } })
+      .select('version_id,quotation_id,version,line_items,total,warranty_years,warranty_terms,created_by,approval_log,created_at')
       .single();
     if (insertError) return jsonError(insertError.message, 400);
 
     const { data: quotation, error: quotationError } = await supabase
       .from('quotations')
-      .update({ current_version: nextVersion, total: parsed.total, approval_status: 'draft' })
+      .update({ current_version: nextVersion, total: parsed.total, approval_status: 'draft', confirmed_warranty_years: warrantyYears, warranty_terms: warrantyTerms, warranty_confirmed_by: auth.actor.profileId, warranty_confirmed_at: new Date().toISOString() })
       .eq('quotation_id', quotationId)
-      .select('quotation_id,job_id,current_version,total,approval_status,visible_to_customer,pdf_storage_path,public_ref,created_at')
+      .select('quotation_id,job_id,current_version,total,approval_status,confirmed_warranty_years,warranty_terms,warranty_confirmed_by,warranty_confirmed_at,visible_to_customer,pdf_storage_path,public_ref,created_at')
       .single();
     if (quotationError) return jsonError(quotationError.message, 400);
 
@@ -279,16 +287,34 @@ export async function POST(request: NextRequest) {
     if (warrantyId && !isUuid(warrantyId)) return jsonError('warranty_id must be a valid UUID when provided.', 400);
     if (!isUuid(jobId)) return jsonError('Valid job_id is required.', 400);
     const coverage = cleanText(body.coverage, 1000) ?? 'NANOFIX standard workmanship warranty.';
+    const warrantyYears = cleanWarrantyYears(body.warranty_years);
     const startsAt = cleanDate(body.starts_at);
     const endsAt = cleanDate(body.ends_at);
     const status = cleanText(body.status, 80) ?? 'active';
-    const payload = { job_id: jobId, coverage, starts_at: startsAt, ends_at: endsAt, status };
+    const payload = {
+      job_id: jobId,
+      customer_id: isUuid(cleanText(body.customer_id, 120)) ? cleanText(body.customer_id, 120) : null,
+      coverage,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      status,
+      warranty_years: warrantyYears || null,
+      source_quotation_id: isUuid(cleanText(body.source_quotation_id, 120)) ? cleanText(body.source_quotation_id, 120) : null,
+      source_acceptance_id: isUuid(cleanText(body.source_acceptance_id, 120)) ? cleanText(body.source_acceptance_id, 120) : null,
+      source_invoice_id: isUuid(cleanText(body.source_invoice_id, 120)) ? cleanText(body.source_invoice_id, 120) : null,
+      auto_generated: false,
+      generation_source: 'manual',
+      generated_by: auth.actor.profileId,
+      generated_at: new Date().toISOString(),
+      terms_snapshot: cleanText(body.terms_snapshot, 1200) ?? coverage,
+      metadata_json: { source: 'service_operations_financial_editor' }
+    };
 
     const query = warrantyId
       ? supabase.from('warranties').update(payload).eq('warranty_id', warrantyId)
       : supabase.from('warranties').insert(payload);
     const { data: warranty, error: warrantyError } = await query
-      .select('warranty_id,job_id,status,coverage,starts_at,ends_at,created_at')
+      .select('warranty_id,job_id,customer_id,status,coverage,starts_at,ends_at,warranty_years,source_quotation_id,source_acceptance_id,source_invoice_id,auto_generated,generation_source,generated_at,terms_snapshot,metadata_json,created_at')
       .single();
     if (warrantyError) return jsonError(warrantyError.message, 400);
 
