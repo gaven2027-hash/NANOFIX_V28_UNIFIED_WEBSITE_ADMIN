@@ -15,6 +15,7 @@ type Payload = {
   invoices?: Row[];
   payments?: Row[];
   warranty_pdfs?: Row[];
+  customer_timeline?: Row[];
 };
 
 type State = { loading: boolean; error: string | null; payload: Payload | null };
@@ -89,6 +90,33 @@ function RecordCard({ row, label, fields }: { row: Row; label: string; fields: s
   );
 }
 
+function TimelinePanel({ items }: { items: Row[] }) {
+  return (
+    <Section id="customer-timeline" title="Customer Timeline" zh="客户可读进度时间线" count={items.length}>
+      {!items.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No timeline items yet. / 暂无时间线记录。</div> : null}
+      <div className="grid gap-3">
+        {items.map((item, index) => (
+          <article key={`${formatValue(item.event_key)}-${index}`} className="relative rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-black text-slate-950">{formatValue(item.title)}</div>
+                <div className="mt-1 text-xs font-bold text-activeBlue">{formatValue(item.zh)}</div>
+              </div>
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em] text-activeBlue ring-1 ring-blue-100">{formatValue(item.status)}</span>
+            </div>
+            <div className="mt-3 text-xs font-semibold leading-5 text-slate-600">{formatValue(item.description)}</div>
+            <div className="mt-3 grid gap-1 text-[11px] font-bold text-slate-500 md:grid-cols-3">
+              <div>Time / 时间: {formatValue(item.timestamp)}</div>
+              <div>Type / 类型: {formatValue(item.object_type)}</div>
+              <div>Ref / 编号: {formatValue(item.object_id)}</div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 function Section({ id, title, zh, children, count }: { id: string; title: string; zh: string; children: React.ReactNode; count?: number }) {
   return (
     <section id={id} className="scroll-mt-28 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
@@ -121,6 +149,7 @@ export function CustomerPortalWarrantyClaimDetail({ serviceRequestId }: { servic
 
   const claim = state.payload?.service_request ?? null;
   const relatedWarranty = state.payload?.related_warranty ?? null;
+  const timeline = list(state.payload, 'customer_timeline');
   const jobs = list(state.payload, 'routed_jobs');
   const quotations = list(state.payload, 'quotations');
   const versions = list(state.payload, 'quotation_versions');
@@ -145,6 +174,8 @@ export function CustomerPortalWarrantyClaimDetail({ serviceRequestId }: { servic
         {state.error ? <div className="mt-5 rounded-3xl bg-red-50 p-4 text-xs font-bold text-red-950 ring-1 ring-red-200">{state.error}</div> : null}
         {!state.error && state.loading ? <div className="mt-5 rounded-3xl bg-blue-50 p-4 text-xs font-bold text-blue-950 ring-1 ring-blue-200">Loading warranty claim detail… / 正在读取保修申请详情…</div> : null}
       </section>
+
+      <TimelinePanel items={timeline} />
 
       {claim ? (
         <Section id="claim-summary" title="Claim Summary" zh="申请概要">
