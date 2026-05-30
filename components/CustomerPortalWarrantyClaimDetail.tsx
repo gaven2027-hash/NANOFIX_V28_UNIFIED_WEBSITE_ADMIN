@@ -21,6 +21,7 @@ type Payload = {
 
 type State = { loading: boolean; error: string | null; payload: Payload | null };
 type MessageState = { loading: boolean; submitting: boolean; error: string | null; message: string | null; messages: Row[] };
+type SummaryCounts = { loading: boolean; message_count: number; attachment_count: number; error: string | null };
 
 async function loadWarrantyClaimDetail(serviceRequestId: string) {
   const response = await fetch(`/api/customer-portal/warranty-claims/${serviceRequestId}`, { credentials: 'same-origin', cache: 'no-store' });
@@ -38,6 +39,15 @@ async function loadWarrantyClaimMessages(serviceRequestId: string) {
   try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; messages?: Row[] } : null; } catch { payload = null; }
   if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Warranty claim messages API returned ${response.status}`);
   return Array.isArray(payload?.messages) ? payload.messages : [];
+}
+
+async function loadWarrantyClaimAttachments(serviceRequestId: string) {
+  const response = await fetch(`/api/customer-portal/warranty-claims/${serviceRequestId}/attachments`, { credentials: 'same-origin', cache: 'no-store' });
+  const text = await response.text();
+  let payload: { ok?: boolean; error?: string; attachments?: Row[] } | null = null;
+  try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; attachments?: Row[] } : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Warranty claim attachments API returned ${response.status}`);
+  return Array.isArray(payload?.attachments) ? payload.attachments : [];
 }
 
 async function submitWarrantyClaimMessage(serviceRequestId: string, messageBody: string) {
@@ -72,6 +82,10 @@ function formatValue(value: unknown) {
     return value;
   }
   return JSON.stringify(value);
+}
+
+function textValue(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : '';
 }
 
 function titleOf(row: Row) {
@@ -113,6 +127,103 @@ function RecordCard({ row, label, fields }: { row: Row; label: string; fields: s
       </div>
       <KeyValueGrid row={row} fields={fields} />
     </article>
+  );
+}
+
+function FinalSummaryCard({ serviceRequestId, claim, relatedWarranty, timeline, jobs, quotations, invoices, payments, warrantyPdfs }: { serviceRequestId: string; claim: Row | null; relatedWarranty: Row | null; timeline: Row[]; jobs: Row[]; quotations: Row[]; invoices: Row[]; payments: Row[]; warrantyPdfs: Row[] }) {
+  const [counts, setCounts] = useState<SummaryCounts>({ loading: true, message_count: 0, attachment_count: 0, error: null });
+
+  useEffect(() => {
+    let alive = true;
+    async function refreshCounts() {
+      setCounts((current) => ({ ...current, loading: true, error: null }));
+      try {
+        const [messages, attachments] = await Promise.all([
+          loadWarrantyClaimMessages(serviceRequestId),
+          loadWarrantyClaimAttachments(serviceRequestId)
+        ]);
+        if (!alive) return;
+        setCounts({ loading: false, message_count: messages.length, attachment_count: attachments.length, error: null });
+      } catch (error) {
+        if (!alive) return;
+        setCounts((current) => ({ ...current, loading: false, error: error instanceof Error ? error.message : String(error) }));
+      }
+    }
+    void refreshCounts();
+    return () => { alive = false; };
+  }, [serviceRequestId]);
+
+  if (!claim) {
+    return (
+      <section id="final-summary" className="rounded-3xl bg-white p-6 shadow-soft ring-1 ring-slate-200">
+        <div className="text-sm font-black text-slate-950">Final Summary / 最终摘要</div>
+        <p className="mt-2 text-sm font-semibold text-slate-500">Warranty claim data is loading. / 保修申请资料读取中。</p>
+      </section>
+    );
+  }
+
+  const closureStatus = textValue(claim.warranty_claim_closure_status) || textValue(claim.status) || 'open';
+  const isFinal = ['completed', 'closed', 'cancelled'].includes(closureStatus);
+  const nextAction = textValue(claim.warranty_claim_next_action) || textValue(claim.warranty_claim_completion_summary) || textValue(claim.warranty_claim_closure_notes) || (isFinal ? 'No further customer action recorded.' : 'NANOFIX will update the next action after review.');
+  const summaryItems = [
+    ['Jobs / 工单', jobs.length],
+    ['Quotations / 报价', quotations.length],
+    ['Invoices / 发票', invoices.length],
+    ['Payments / 付款', payments.length],
+    ['Warranty PDFs / 保修PDF', warrantyPdfs.length],
+    ['Messages / 留言', counts.loading ? '…' : counts.message_count],
+    ['Attachments / 附件', counts.loading ? '…' : counts.attachment_count],
+    ['Timeline / 时间线', timeline.length]
+  ];
+
+  return (
+    <section id="final-summary" className="overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ring-slate-200">
+      <div className="bg-blue-50 px-6 py-5 ring-1 ring-blue-100">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Final Summary Card / 最终摘要卡</div>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">{isFinal ? 'Warranty Claim Final Status' : 'Warranty Claim Current Status'}</h2>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">A read-only snapshot of this warranty claim, linked records and the latest next action. / 该保修申请、关联记录和下一步动作的只读摘要。</p>
+          </div>
+          <span className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-activeBlue ring-1 ring-blue-100">{closureStatus}</span>
+        </div>
+      </div>
+      <div className="grid gap-5 p-6">
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Completed / 完成</div>
+            <div className="mt-2 text-sm font-black text-slate-950">{formatValue(claim.warranty_claim_completed_at)}</div>
+          </div>
+          <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Closed / 关闭</div>
+            <div className="mt-2 text-sm font-black text-slate-950">{formatValue(claim.warranty_claim_closed_at)}</div>
+          </div>
+          <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Original Warranty / 原保修</div>
+            <div className="mt-2 text-sm font-black text-slate-950">{relatedWarranty ? formatValue(relatedWarranty.public_ref || relatedWarranty.warranty_id) : '—'}</div>
+          </div>
+          <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Decision / 审核</div>
+            <div className="mt-2 text-sm font-black text-slate-950">{formatValue(claim.warranty_claim_decision)}</div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+          <div className="text-xs font-black uppercase tracking-[0.12em] text-activeBlue">Next Action / 下一步</div>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">{nextAction}</p>
+          {counts.error ? <p className="mt-2 text-xs font-bold text-amber-700">Summary counts warning: {counts.error}</p> : null}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          {summaryItems.map(([label, value]) => (
+            <div key={String(label)} className="rounded-3xl bg-white p-4 ring-1 ring-slate-200">
+              <div className="text-2xl font-black text-slate-950">{String(value)}</div>
+              <div className="mt-1 text-xs font-black text-slate-500">{String(label)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -196,7 +307,7 @@ function MessageThreadPanel({ serviceRequestId }: { serviceRequestId: string }) 
           <div className="text-xs font-black uppercase tracking-[0.14em] text-activeBlue">Add Message / 添加留言</div>
           <p className="mt-1 text-xs font-bold leading-5 text-slate-500">You can add notes or photos description for this warranty claim. This does not edit any quotation, invoice, warranty or payment record. / 您可以补充说明保修申请情况；这不会修改任何报价、发票、保修单或付款记录。</p>
         </div>
-        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={5} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 ring-blue-100" placeholder="Add your message here / 在这里填写留言" />
+        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={5} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 focus:ring-blue-100" placeholder="Add your message here / 在这里填写留言" />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs font-bold text-slate-500">{draft.length}/2000</span>
           <button type="submit" disabled={state.submitting || !draft.trim()} className="rounded-2xl bg-activeBlue px-4 py-3 text-xs font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.submitting ? 'Submitting… / 提交中…' : 'Submit Message / 提交留言'}</button>
@@ -264,13 +375,14 @@ export function CustomerPortalWarrantyClaimDetail({ serviceRequestId }: { servic
         {!state.error && state.loading ? <div className="mt-5 rounded-3xl bg-blue-50 p-4 text-xs font-bold text-blue-950 ring-1 ring-blue-200">Loading warranty claim detail… / 正在读取保修申请详情…</div> : null}
       </section>
 
+      <FinalSummaryCard serviceRequestId={serviceRequestId} claim={claim} relatedWarranty={relatedWarranty} timeline={timeline} jobs={jobs} quotations={quotations} invoices={invoices} payments={payments} warrantyPdfs={warrantyPdfs} />
       <TimelinePanel items={timeline} />
       <MessageThreadPanel serviceRequestId={serviceRequestId} />
       <CustomerPortalWarrantyClaimAttachmentsPanel serviceRequestId={serviceRequestId} />
 
       {claim ? (
         <Section id="claim-summary" title="Claim Summary" zh="申请概要">
-          <RecordCard row={claim} label="SERVICE REQUEST / 保修申请" fields={['status','issue_type','leak_location','issue_description','related_warranty_id','warranty_claim_decision','warranty_claim_next_action','warranty_claim_routing_status','warranty_claim_reviewed_at','warranty_claim_routed_at']} />
+          <RecordCard row={claim} label="SERVICE REQUEST / 保修申请" fields={['status','issue_type','leak_location','issue_description','related_warranty_id','warranty_claim_decision','warranty_claim_next_action','warranty_claim_routing_status','warranty_claim_closure_status','warranty_claim_completed_at','warranty_claim_closed_at','warranty_claim_completion_summary','warranty_claim_closure_notes']} />
         </Section>
       ) : null}
 
