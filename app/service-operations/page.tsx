@@ -13,6 +13,7 @@ import { ServiceOperationsQuotationPdfPanel } from '@/components/ServiceOperatio
 import { ServiceOperationsDocumentSettingsPanel } from '@/components/ServiceOperationsDocumentSettingsPanel';
 import { ServiceOperationsQuoteResponsePanel } from '@/components/ServiceOperationsQuoteResponsePanel';
 import { ServiceOperationsCustomerDocumentFeedbackPanel } from '@/components/ServiceOperationsCustomerDocumentFeedbackPanel';
+import { ServiceOperationsCustomerPortalIntakePanel } from '@/components/ServiceOperationsCustomerPortalIntakePanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
 import { ServiceOperationsCustomerVisibility } from '@/components/ServiceOperationsCustomerVisibility';
@@ -28,6 +29,7 @@ export default function Page() {
       <div className="space-y-6">
         <ServiceOperationsLiveCore />
         <ServiceOperationsDedicatedForms />
+        <ServiceOperationsCustomerPortalIntakePanel />
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsFinancialVisibility />
         <ServiceOperationsPaymentIntentPanel />
