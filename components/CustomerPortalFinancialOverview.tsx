@@ -11,6 +11,8 @@ type Payload = {
   quotation_versions?: Row[];
   invoices?: Row[];
   payments?: Row[];
+  warranties?: Row[];
+  warranty_pdfs?: Row[];
 };
 
 type State = { loading: boolean; error: string | null; payload: Payload | null };
@@ -60,8 +62,12 @@ function formatValue(value: unknown) {
 }
 
 function idTitle(row: Row) {
-  const candidate = row.invoice_no || row.public_ref || row.quotation_id || row.invoice_id || row.payment_id;
+  const candidate = row.invoice_no || row.public_ref || row.file_name || row.quotation_id || row.invoice_id || row.warranty_id || row.warranty_pdf_id || row.payment_id;
   return typeof candidate === 'string' ? candidate : 'Record';
+}
+
+function OptionalPdfButton({ url }: { url: string }) {
+  return <a href={url} target="_blank" rel="noreferrer" className="rounded-2xl bg-white px-4 py-3 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">PDF</a>;
 }
 
 function FinanceCard({ row, type, onRespond, responding }: { row: Row; type: 'quotation' | 'invoice' | 'payment'; onRespond?: (quotationId: string, responseType: QuoteResponseType, message: string) => void; responding?: boolean }) {
@@ -84,7 +90,7 @@ function FinanceCard({ row, type, onRespond, responding }: { row: Row; type: 'qu
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {pdfUrl ? <a href={pdfUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-white px-4 py-3 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">Download PDF / 下载PDF</a> : null}
+          {pdfUrl ? <OptionalPdfButton url={pdfUrl} /> : null}
           {paymentUrl ? <a href={paymentUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-activeBlue px-4 py-3 text-xs font-black text-white hover:bg-blue-700">Pay Now / 立即付款</a> : null}
         </div>
       </div>
@@ -100,6 +106,29 @@ function FinanceCard({ row, type, onRespond, responding }: { row: Row; type: 'qu
           </div>
         </div>
       ) : null}
+    </article>
+  );
+}
+
+function WarrantyCard({ row }: { row: Row }) {
+  const pdfUrl = typeof row.pdf_download_url === 'string' ? row.pdf_download_url : '';
+  return (
+    <article className="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-black text-slate-950">{idTitle(row)}</div>
+          <div className="mt-1 text-xs font-bold text-activeBlue">WARRANTY · {formatValue(row.status ?? row.generation_status)}</div>
+          <div className="mt-2 grid gap-1 text-xs font-semibold text-slate-600">
+            <div>Coverage / 范围: {formatValue(row.coverage ?? row.file_name)}</div>
+            <div>Start / 开始: {formatValue(row.starts_at)}</div>
+            <div>End / 结束: {formatValue(row.ends_at)}</div>
+            <div>Created / 创建: {formatValue(row.created_at ?? row.generated_at)}</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {pdfUrl ? <OptionalPdfButton url={pdfUrl} /> : null}
+        </div>
+      </div>
     </article>
   );
 }
@@ -155,22 +184,24 @@ export function CustomerPortalFinancialOverview() {
   const quotationVersions = rows(state.payload, 'quotation_versions');
   const invoices = rows(state.payload, 'invoices');
   const payments = rows(state.payload, 'payments');
+  const warranties = rows(state.payload, 'warranties');
+  const warrantyPdfs = rows(state.payload, 'warranty_pdfs');
 
   return (
     <div className="grid gap-6">
       <section className="rounded-3xl bg-white p-6 shadow-soft ring-1 ring-slate-200">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer Finance / 客户财务</div>
-            <h1 className="mt-2 text-2xl font-black text-slate-950">Quotations, Invoices & Payments</h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">Only customer-visible quotations, invoices and payments linked to your own NANOFIX records are shown. You can respond to quotations, but cannot edit quotation or invoice content. / 这里只显示与您本人记录绑定并设置为客户可见的报价、发票和付款；您可回复报价，但不能修改报价或发票内容。</p>
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer Documents / 客户文件</div>
+            <h1 className="mt-2 text-2xl font-black text-slate-950">Quotations, Invoices & Warranties</h1>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">Only customer-visible quotations, invoices, warranties and payments linked to your own NANOFIX records are shown. You can respond to quotations, but cannot edit quotation, invoice, warranty or payment content. / 这里只显示与您本人记录绑定并设置为客户可见的报价、发票、保修和付款；您可回复报价，但不能修改报价、发票、保修或付款内容。</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.loading ? 'Loading… / 读取中' : 'Refresh / 刷新'}</button>
         </div>
         {state.error ? <div className="mt-5 rounded-3xl bg-red-50 p-4 text-xs font-bold text-red-950 ring-1 ring-red-200">{state.error}</div> : null}
         {responseState.error ? <div className="mt-5 rounded-3xl bg-red-50 p-4 text-xs font-bold text-red-950 ring-1 ring-red-200">{responseState.error}</div> : null}
         {responseState.message ? <div className="mt-5 rounded-3xl bg-emerald-50 p-4 text-xs font-bold text-emerald-950 ring-1 ring-emerald-200">{responseState.message}</div> : null}
-        {!state.error && state.loading ? <div className="mt-5 rounded-3xl bg-blue-50 p-4 text-xs font-bold text-blue-950 ring-1 ring-blue-200">Loading financial records… / 正在读取财务记录…</div> : null}
+        {!state.error && state.loading ? <div className="mt-5 rounded-3xl bg-blue-50 p-4 text-xs font-bold text-blue-950 ring-1 ring-blue-200">Loading customer records… / 正在读取客户记录…</div> : null}
       </section>
 
       <Section id="quotations" title="Quotations" zh="报价" count={quotations.length}>
@@ -191,6 +222,14 @@ export function CustomerPortalFinancialOverview() {
 
       <Section id="invoices" title="Invoices" zh="发票" count={invoices.length}>
         {!invoices.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No customer-visible invoices yet. / 暂无客户可见发票。</div> : invoices.map((row, index) => <FinanceCard key={String(row.invoice_id ?? index)} row={row} type="invoice" />)}
+      </Section>
+
+      <Section id="warranties" title="Warranties" zh="保修单" count={warranties.length}>
+        {!warranties.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No customer-visible warranties yet. / 暂无客户可见保修单。</div> : warranties.map((row, index) => <WarrantyCard key={String(row.warranty_id ?? index)} row={row} />)}
+      </Section>
+
+      <Section id="warranty-pdfs" title="Warranty PDFs" zh="保修PDF" count={warrantyPdfs.length}>
+        {!warrantyPdfs.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No customer-visible warranty PDFs yet. / 暂无客户可见保修PDF。</div> : warrantyPdfs.map((row, index) => <WarrantyCard key={String(row.warranty_pdf_id ?? index)} row={row} />)}
       </Section>
 
       <Section id="payments" title="Payments" zh="付款" count={payments.length}>
