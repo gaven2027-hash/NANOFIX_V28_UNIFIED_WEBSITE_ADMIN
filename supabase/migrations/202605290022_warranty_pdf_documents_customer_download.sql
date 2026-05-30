@@ -19,20 +19,44 @@ create table if not exists public.warranty_pdf_documents (
   job_id uuid references public.jobs(job_id) on delete set null,
   customer_id uuid references public.customers(customer_id) on delete set null,
   warranty_version integer not null default 1,
+  storage_bucket text not null default 'service-uploads',
   storage_path text not null,
+  file_name text not null default 'warranty.pdf',
+  mime_type text not null default 'application/pdf',
+  file_size_bytes bigint,
   public_ref text,
+  generation_status text not null default 'uploaded' check (generation_status in ('queued','generated','uploaded','failed')),
   visible_to_customer boolean not null default false,
+  customer_visible_at timestamptz,
+  customer_visible_by uuid references public.profiles(profile_id) on delete set null,
   generated_by uuid references public.profiles(profile_id) on delete set null,
   generated_at timestamptz not null default now(),
+  generation_notes text,
   template_key text not null default 'nanofix_standard_warranty',
   document_snapshot jsonb not null default '{}'::jsonb,
+  metadata_json jsonb not null default '{}'::jsonb,
   superseded_by uuid references public.warranty_pdf_documents(warranty_pdf_id) on delete set null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+
+alter table public.warranty_pdf_documents
+  add column if not exists storage_bucket text not null default 'service-uploads',
+  add column if not exists file_name text not null default 'warranty.pdf',
+  add column if not exists mime_type text not null default 'application/pdf',
+  add column if not exists file_size_bytes bigint,
+  add column if not exists generation_status text not null default 'uploaded',
+  add column if not exists customer_visible_at timestamptz,
+  add column if not exists customer_visible_by uuid references public.profiles(profile_id) on delete set null,
+  add column if not exists generation_notes text,
+  add column if not exists metadata_json jsonb not null default '{}'::jsonb,
+  add column if not exists updated_at timestamptz not null default now();
 
 create unique index if not exists warranty_pdf_documents_version_uq on public.warranty_pdf_documents(warranty_id, warranty_version);
 create index if not exists warranty_pdf_documents_warranty_idx on public.warranty_pdf_documents(warranty_id, generated_at desc);
 create index if not exists warranty_pdf_documents_customer_idx on public.warranty_pdf_documents(customer_id, visible_to_customer, generated_at desc);
+create index if not exists warranty_pdf_documents_customer_visible_idx on public.warranty_pdf_documents(customer_id, visible_to_customer, generation_status, created_at desc);
+create index if not exists warranty_pdf_documents_storage_idx on public.warranty_pdf_documents(storage_bucket, storage_path);
 create index if not exists warranties_customer_visible_idx on public.warranties(customer_id, visible_to_customer, created_at desc);
 create index if not exists warranties_public_ref_idx on public.warranties(public_ref);
 
