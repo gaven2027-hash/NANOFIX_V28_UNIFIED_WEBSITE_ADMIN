@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanText, getClientIp, jsonError, requireActorApi } from '@/lib/apiSecurity';
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
       .single();
     if (invoiceError) throw new Error(invoiceError.message);
 
-    await supabase.from('unified_tasks').insert({
+    const { data: task, error: taskError } = await supabase.from('unified_tasks').insert({
       source_module: 'service_operations',
       source_table: 'invoice_pdf_documents',
       source_id: doc.invoice_pdf_id,
@@ -176,6 +177,18 @@ export async function POST(request: NextRequest) {
       assignee_role: 'finance',
       status: 'open',
       metadata_json: { invoice_id: invoiceId, storage_path: storagePath }
+    }).select('task_id,source_module,source_table,source_id,title,status,priority,assignee_role,created_at').single();
+    if (taskError) throw new Error(taskError.message);
+    await supabase.from('task_events').insert({ task_id: task.task_id, action: 'invoice_pdf_generated', after_json: { invoice_pdf: doc, invoice: updatedInvoice } }).throwOnError();
+    await supabase.from('internal_inbox_messages').insert({
+      recipient_role: 'finance',
+      subject: 'Invoice PDF generated',
+      body: `Invoice PDF generated for invoice ${invoiceId}.`,
+      category: 'invoice_pdf',
+      priority: 'P2',
+      related_object_type: 'invoice_pdf_document',
+      related_object_id: doc.invoice_pdf_id,
+      task_id: task.task_id
     }).throwOnError();
 
     if (visibleToCustomer && customerId) {
@@ -191,8 +204,8 @@ export async function POST(request: NextRequest) {
       }).throwOnError();
     }
 
-    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_invoice_pdf_generate', objectType: 'invoice', objectId: invoiceId, after: { invoice_pdf: doc, invoice: updatedInvoice }, ip: getClientIp(request) }).catch(() => undefined);
-    return NextResponse.json({ ok: true, invoice_pdf: doc, invoice: updatedInvoice }, { status: 201 });
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_invoice_pdf_generate', objectType: 'invoice', objectId: invoiceId, after: { invoice_pdf: doc, invoice: updatedInvoice, task }, ip: getClientIp(request) }).catch(() => undefined);
+    return NextResponse.json({ ok: true, invoice_pdf: doc, invoice: updatedInvoice, task }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_invoice_pdf_generate_failed', objectType: 'invoice', objectId: invoiceId, after: { error: message }, ip: getClientIp(request) }).catch(() => undefined);
