@@ -25,6 +25,8 @@ const requiredTables = [
   "service_upload_reviews",
   "quotation_acceptances",
   "quotation_customer_responses",
+  "customer_portal_requests",
+  "customer_document_feedback",
   "payment_intents",
   "payment_webhook_events",
   "payment_checkout_sessions",
