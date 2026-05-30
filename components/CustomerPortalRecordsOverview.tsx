@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 type Row = Record<string, unknown>;
@@ -54,6 +55,11 @@ function rowTitle(row: Row) {
   return typeof id === 'string' ? id.slice(0, 8) : 'Record';
 }
 
+function warrantyClaimHref(row: Row) {
+  const id = typeof row.service_request_id === 'string' ? row.service_request_id : '';
+  return id ? `/customer-portal/warranty-claims/${id}` : '';
+}
+
 function Section({ id, title, zh, empty, rows, fields }: { id: string; title: string; zh: string; empty: string; rows: Row[]; fields: string[] }) {
   return (
     <section id={id} className="scroll-mt-28 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
@@ -66,22 +72,28 @@ function Section({ id, title, zh, empty, rows, fields }: { id: string; title: st
       </div>
       <div className="mt-4 grid gap-3">
         {!rows.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">{empty}</div> : null}
-        {rows.map((row, index) => (
-          <article key={`${rowTitle(row)}-${index}`} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm font-black text-slate-950">{rowTitle(row)}</div>
-              {row.visible_to_customer !== undefined ? <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-activeBlue ring-1 ring-blue-100">Customer Visible</span> : null}
-            </div>
-            <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
-              {fields.map((field) => (
-                <div key={field}>
-                  <dt className="font-black uppercase tracking-[0.08em] text-slate-400">{field}</dt>
-                  <dd className="mt-1 font-semibold text-slate-700">{formatValue(row[field])}</dd>
+        {rows.map((row, index) => {
+          const detailHref = id === 'warranty-claims' ? warrantyClaimHref(row) : '';
+          return (
+            <article key={`${rowTitle(row)}-${index}`} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm font-black text-slate-950">{rowTitle(row)}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {row.visible_to_customer !== undefined ? <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-activeBlue ring-1 ring-blue-100">Customer Visible</span> : null}
+                  {detailHref ? <Link href={detailHref} className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50">View / 查看</Link> : null}
                 </div>
-              ))}
-            </dl>
-          </article>
-        ))}
+              </div>
+              <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+                {fields.map((field) => (
+                  <div key={field}>
+                    <dt className="font-black uppercase tracking-[0.08em] text-slate-400">{field}</dt>
+                    <dd className="mt-1 font-semibold text-slate-700">{formatValue(row[field])}</dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
