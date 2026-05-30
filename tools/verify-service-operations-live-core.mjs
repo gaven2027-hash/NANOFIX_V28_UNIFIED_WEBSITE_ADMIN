@@ -110,13 +110,13 @@ if (requiredFiles.every(exists)) {
 
   assertMarkers(customerUploadsApi, ['CUSTOMER_AND_INTERNAL_ROLES','customerIdsForProfile','allowedRelatedIdsForCustomers','belongsToAllowed','review_status','approved','visible_to_customer','createSignedUrl','customer_portal_uploads_signed_download_read','service-uploads'], 'Customer Portal uploads API');
   assertNoSelectStar(customerUploadsApi, 'Customer Portal uploads API');
-  assertMarkers(customerRecordsApi, ['customerIdsForProfile','loadCustomerRecords','customers','service_requests','jobs','invoices','payments','warranties','customer_id','profile_id','customer_portal_records_read'], 'Customer Portal records API');
+  assertMarkers(customerRecordsApi, ['customerIdsForProfile','loadCustomerRecords','customers','service_requests','jobs','invoices','payments','warranties','warranty_claims','warranty_claim_decision','warranty_claim_next_action','customer_id','profile_id','customer_portal_records_read'], 'Customer Portal records API');
   assertNoSelectStar(customerRecordsApi, 'Customer Portal records API');
   assertMarkers(customerSubmitApi, ['CUSTOMER_ROLES','activeCustomerForProfile','createCustomerPortalTaskAndInbox','queueCustomerConfirmation','unified_intake','leads','service_requests','unified_tasks','task_events','internal_inbox_messages','notification_outbox','customer_portal_service_request_submit','customer_portal_linked','bindingStatus','linked'], 'Customer Portal linked service request API');
   assertNoSelectStar(customerSubmitApi, 'Customer Portal linked service request API');
   assertMarkers(customerStorageApi, ['CUSTOMER_ROLES','assertCustomerOwnsServiceRequest','customer_portal_signed_upload_url_create','customer_portal_completed_upload_register','createSignedUploadUrl','register_completed_upload','service-uploads','service_request_id','service_upload_reviews','unified_tasks','task_events','internal_inbox_messages','storage_path does not match the service request scope','visible_to_customer: false'], 'Customer Portal linked storage upload API');
   assertNoSelectStar(customerStorageApi, 'Customer Portal linked storage upload API');
-  assertMarkers(customerFinancialApi, ['ALLOWED_ROLES','customerIdsForProfile','jobIdsForCustomers','loadFinancialForJobs','quotations','quotation_versions','invoices','payments','visible_to_customer','createSignedUrl','pdf_download_url','payment_url','customer_portal_financial_read','service-uploads'], 'Customer Portal financial API');
+  assertMarkers(customerFinancialApi, ['ALLOWED_ROLES','customerIdsForProfile','jobIdsForCustomers','loadFinancialForJobs','quotations','quotation_versions','invoices','payments','warranties','warranty_pdfs','visible_to_customer','createSignedUrl','pdf_download_url','has_download','payment_url','customer_portal_financial_read','service-uploads'], 'Customer Portal financial API');
   assertNoSelectStar(customerFinancialApi, 'Customer Portal financial API');
 
   assertMarkers(financialVisibility, [
@@ -145,13 +145,14 @@ if (requiredFiles.every(exists)) {
   assertMarkers(customerLinkedUploader, ['CustomerPortalLinkedUploader','useSearchParams','service_request_id','/api/customer-portal/storage-upload-url','create_signed_upload_url','register_completed_upload','uploadToSignedUrl','service-uploads','Upload and link to request'], 'CustomerPortalLinkedUploader');
   assertNoBrowserStorage(customerLinkedUploader, 'CustomerPortalLinkedUploader');
   assert(!customerLinkedUploader.includes('/api/admin/service-operations/storage-upload-url'), 'CustomerPortalLinkedUploader must not call admin storage upload API.');
-  assertMarkers(customerRecords, ['CustomerPortalRecordsOverview','/api/customer-portal/records?limit=20','My NANOFIX Records','Repair Requests','Jobs & Site Works','Invoices','Payments','Warranties','filtered by your linked customer profile','id: \'invoices\'','id: \'warranties\''], 'CustomerPortalRecordsOverview');
+  assertMarkers(customerRecords, ['CustomerPortalRecordsOverview','/api/customer-portal/records?limit=20','My NANOFIX Records','Repair Requests','Warranty Claim Tracking','Jobs & Site Works','Invoices','Payments','Warranties','filtered by your linked customer profile','id: \'invoices\'','id: \'warranties\''], 'CustomerPortalRecordsOverview');
   assertNoBrowserStorage(customerRecords, 'CustomerPortalRecordsOverview');
   assert(!customerRecords.includes('<main'), 'CustomerPortalRecordsOverview should not render nested main.');
   assertMarkers(customerRequest, ['CustomerPortalRequestWorkspace','/api/customer-portal/service-requests','linked to your customer account','serviceRequestId','/customer-portal/records#repair-requests','/customer-portal/uploads?service_request_id=','View in Records / 查看记录','Upload Files / 上传文件'], 'CustomerPortalRequestWorkspace');
   assertNoBrowserStorage(customerRequest, 'CustomerPortalRequestWorkspace');
   assert(!customerRequest.includes('/api/public/service-requests'), 'CustomerPortalRequestWorkspace must not submit to public service request API.');
-  assertMarkers(customerFinancial, ['CustomerPortalFinancialOverview','/api/customer-portal/financial?limit=20','Quotations, Invoices & Payments','Download PDF / 下载PDF','Pay Now / 立即付款','pdf_download_url','payment_url','Quotations','Invoices','Payments'], 'CustomerPortalFinancialOverview');
+  assertMarkers(customerFinancial, ['CustomerPortalFinancialOverview','/api/customer-portal/financial?limit=20','Quotations, Invoices & Warranties','OptionalPdfButton','>PDF</a>','pdf_download_url','has_download','payment_url','Quotations','Invoices','Warranties','Warranty PDFs','Payments'], 'CustomerPortalFinancialOverview');
+  assert(!customerFinancial.includes('Download PDF / 下载PDF'), 'CustomerPortalFinancialOverview must not prompt customers to download PDFs; use optional PDF button only.');
   assertNoBrowserStorage(customerFinancial, 'CustomerPortalFinancialOverview');
   assert(!customerFinancial.includes('<main'), 'CustomerPortalFinancialOverview should not render nested main.');
 
@@ -168,16 +169,8 @@ if (requiredFiles.every(exists)) {
   assertMarkers(customerFinancialSql, ['public.quotations','public.invoices','public.payments','visible_to_customer','customer_visible_at','customer_visible_by','customer_visibility_notes','pdf_storage_path','payment_url','public_ref','quotations_customer_visible_idx','invoices_customer_visible_idx','payments_customer_visible_idx'], 'Customer portal financial visibility migration');
   assert(ready.includes('service_inspections'), '/api/ready must include service_inspections table check.');
   assert(ready.includes('service_upload_reviews'), '/api/ready must include service_upload_reviews table check.');
-
-  warn(files['components/ServiceOperationsLiveCore.tsx'].includes('Set approved') && files['components/ServiceOperationsLiveCore.tsx'].includes('Set reconciled'), 'Quotation/payment next-status labels are present; verify transitions in staging before production use.');
 }
 
-const report = {
-  ok: failures.length === 0,
-  generated_at: new Date().toISOString(),
-  verifier: 'verify-service-operations-live-core',
-  failures,
-  warnings
-};
+const report = { ok: failures.length === 0, warnings, generated_at: new Date().toISOString(), verifier: 'verify-service-operations-live-core', failures };
 console.log(JSON.stringify(report, null, 2));
 if (failures.length) process.exit(1);
