@@ -44,6 +44,15 @@ create table if not exists public.customer_document_feedback (
 );
 
 alter table public.service_requests
+  add column if not exists customer_id uuid references public.customers(customer_id) on delete set null,
+  add column if not exists title text,
+  add column if not exists issue_location text,
+  add column if not exists issue_description text,
+  add column if not exists preferred_schedule text,
+  add column if not exists status text not null default 'new',
+  add column if not exists source text,
+  add column if not exists request_channel text,
+  add column if not exists created_at timestamptz not null default now(),
   add column if not exists customer_portal_request_id uuid references public.customer_portal_requests(portal_request_id) on delete set null,
   add column if not exists portal_source_type text,
   add column if not exists portal_related_warranty_id uuid references public.warranties(warranty_id) on delete set null,
