@@ -8,6 +8,7 @@ type Payload = {
   error?: string;
   customers?: Row[];
   service_requests?: Row[];
+  warranty_claims?: Row[];
   jobs?: Row[];
   invoices?: Row[];
   payments?: Row[];
@@ -18,10 +19,11 @@ type State = { loading: boolean; error: string | null; payload: Payload | null }
 
 const sections: Array<{ key: keyof Payload; title: string; zh: string; empty: string; fields: string[]; id: string }> = [
   { key: 'service_requests', title: 'Repair Requests', zh: '报修记录', empty: 'No repair requests yet. / 暂无报修记录。', fields: ['status', 'leak_location', 'issue_description', 'address_text', 'created_at'], id: 'repair-requests' },
+  { key: 'warranty_claims', title: 'Warranty Claim Tracking', zh: '保修维修申请跟踪', empty: 'No warranty claims yet. / 暂无保修维修申请。', fields: ['status', 'related_warranty_id', 'warranty_claim_decision', 'warranty_claim_next_action', 'warranty_claim_routing_status', 'warranty_claim_routed_job_id', 'warranty_claim_routed_quotation_id', 'warranty_claim_reviewed_at', 'warranty_claim_routed_at'], id: 'warranty-claims' },
   { key: 'jobs', title: 'Jobs & Site Works', zh: '工单与施工', empty: 'No jobs yet. / 暂无工单。', fields: ['status', 'scheduled_at', 'notes', 'created_at'], id: 'jobs' },
-  { key: 'invoices', title: 'Invoices', zh: '发票', empty: 'No invoices yet. / 暂无发票。', fields: ['invoice_no', 'total', 'status', 'created_at'], id: 'invoices' },
-  { key: 'payments', title: 'Payments', zh: '付款', empty: 'No payments yet. / 暂无付款记录。', fields: ['amount', 'status', 'fee', 'reconciled_at', 'created_at'], id: 'payments' },
-  { key: 'warranties', title: 'Warranties', zh: '保修', empty: 'No warranties yet. / 暂无保修记录。', fields: ['status', 'coverage', 'starts_at', 'ends_at', 'created_at'], id: 'warranties' }
+  { key: 'invoices', title: 'Invoices', zh: '发票', empty: 'No invoices yet. / 暂无发票。', fields: ['invoice_no', 'total', 'status', 'visible_to_customer', 'public_ref', 'created_at'], id: 'invoices' },
+  { key: 'payments', title: 'Payments', zh: '付款', empty: 'No payments yet. / 暂无付款记录。', fields: ['amount', 'status', 'fee', 'reconciled_at', 'visible_to_customer', 'created_at'], id: 'payments' },
+  { key: 'warranties', title: 'Warranties', zh: '保修', empty: 'No warranties yet. / 暂无保修记录。', fields: ['status', 'coverage', 'starts_at', 'ends_at', 'visible_to_customer', 'public_ref', 'created_at'], id: 'warranties' }
 ];
 
 async function loadRecords() {
@@ -66,7 +68,10 @@ function Section({ id, title, zh, empty, rows, fields }: { id: string; title: st
         {!rows.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">{empty}</div> : null}
         {rows.map((row, index) => (
           <article key={`${rowTitle(row)}-${index}`} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-            <div className="text-sm font-black text-slate-950">{rowTitle(row)}</div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm font-black text-slate-950">{rowTitle(row)}</div>
+              {row.visible_to_customer !== undefined ? <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-activeBlue ring-1 ring-blue-100">Customer Visible</span> : null}
+            </div>
             <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
               {fields.map((field) => (
                 <div key={field}>
@@ -106,7 +111,7 @@ export function CustomerPortalRecordsOverview() {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer Portal / 客户门户</div>
             <h1 className="mt-2 text-2xl font-black text-slate-950">My NANOFIX Records</h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">View your own repair requests, jobs, invoices, payments and warranties. All records are filtered by your linked customer profile. / 查看自己的报修、工单、发票、付款与保修；所有记录按已绑定客户资料过滤。</p>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">View your own repair requests, warranty claim progress, jobs, invoices, payments and warranties. All records are filtered by your linked customer profile. / 查看自己的报修、保修维修申请进度、工单、发票、付款与保修；所有记录按已绑定客户资料过滤。</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.loading ? 'Loading… / 读取中' : 'Refresh / 刷新'}</button>
         </div>
@@ -117,8 +122,8 @@ export function CustomerPortalRecordsOverview() {
 
       <div className="grid gap-5">
         {sections.map((section) => {
-          const rows = Array.isArray(state.payload?.[section.key]) ? state.payload?.[section.key] as Row[] : [];
-          return <Section key={section.key} id={section.id} title={section.title} zh={section.zh} empty={section.empty} rows={rows} fields={section.fields} />;
+          const sectionRows = Array.isArray(state.payload?.[section.key]) ? state.payload?.[section.key] as Row[] : [];
+          return <Section key={section.key} id={section.id} title={section.title} zh={section.zh} empty={section.empty} rows={sectionRows} fields={section.fields} />;
         })}
       </div>
     </div>
