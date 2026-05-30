@@ -25,6 +25,7 @@
     "verify:payment-webhook": "node tools/verify-payment-webhook-flow.mjs",
     "verify:payment-checkout": "node tools/verify-payment-checkout-flow.mjs",
     "verify:invoice-pdf": "node tools/verify-invoice-pdf-flow.mjs",
+    "verify:document-settings-pdf": "node tools/verify-document-settings-pdf-flow.mjs",
     "scan:v28-2-static": "node tools/static-v28-2-issue-scan.mjs",
     "audit:oa-erp": "node tools/oa-erp-readiness-audit.mjs",
     "verify:ad-center": "node tools/verify-ad-center.mjs",
@@ -49,7 +50,7 @@
     "build:ci": "next build",
     "test:e2e:smoke": "node tools/e2e-smoke.mjs",
     "test:e2e": "npm run test:e2e:smoke",
-    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:admin-reality && npm run verify:service-ops-core && npm run verify:quote-acceptance && npm run verify:payment-intent && npm run verify:payment-webhook && npm run verify:payment-checkout && npm run verify:invoice-pdf && npm run scan:v28-2-static && npm run audit:oa-erp && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
+    "validate:predeploy": "npm run sync:seo-assets && npm run audit:prod && npm run typecheck && npm run lint && npm run verify:anchors && npm run verify:clean-release-boundaries && npm run verify:clean-release-no-residue && npm run verify:v28-1-6-portals && npm run verify:v28-1-6-owner-audit && npm run verify:v28-2-workflow && npm run verify:admin-reality && npm run verify:service-ops-core && npm run verify:quote-acceptance && npm run verify:payment-intent && npm run verify:payment-webhook && npm run verify:payment-checkout && npm run verify:invoice-pdf && npm run verify:document-settings-pdf && npm run scan:v28-2-static && npm run audit:oa-erp && npm run verify:ad-center && npm run validate:package && npm run audit:v28 && npm run validate:platform",
     "check:staging": "node tools/staging-supabase-check.mjs",
     "validate:platform": "node tools/deploy-readiness-check.mjs"
   },
