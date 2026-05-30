@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-import { CustomerPortalRequestForm } from '@/components/CustomerPortalRequestForm';
+import { CustomerPortalRequestAndFeedbackPanel } from '@/components/CustomerPortalRequestAndFeedbackPanel';
 import { CustomerPortalShell } from '@/components/CustomerPortalShell';
 
 export default function Page() {
   return (
     <CustomerPortalShell>
-      <CustomerPortalRequestForm />
+      <CustomerPortalRequestAndFeedbackPanel />
     </CustomerPortalShell>
   );
 }
