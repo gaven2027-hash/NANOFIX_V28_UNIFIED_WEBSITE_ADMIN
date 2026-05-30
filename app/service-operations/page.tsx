@@ -17,6 +17,7 @@ import { ServiceOperationsCustomerDocumentFeedbackPanel } from '@/components/Ser
 import { ServiceOperationsCustomerDocumentControlPanel } from '@/components/ServiceOperationsCustomerDocumentControlPanel';
 import { ServiceOperationsCustomerPortalIntakePanel } from '@/components/ServiceOperationsCustomerPortalIntakePanel';
 import { ServiceOperationsWarrantyClaimReviewPanel } from '@/components/ServiceOperationsWarrantyClaimReviewPanel';
+import { ServiceOperationsWarrantyClaimRoutingPanel } from '@/components/ServiceOperationsWarrantyClaimRoutingPanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
 import { ServiceOperationsCustomerVisibility } from '@/components/ServiceOperationsCustomerVisibility';
@@ -34,6 +35,7 @@ export default function Page() {
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsCustomerPortalIntakePanel />
         <ServiceOperationsWarrantyClaimReviewPanel />
+        <ServiceOperationsWarrantyClaimRoutingPanel />
         <ServiceOperationsCustomerDocumentControlPanel />
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsFinancialVisibility />
