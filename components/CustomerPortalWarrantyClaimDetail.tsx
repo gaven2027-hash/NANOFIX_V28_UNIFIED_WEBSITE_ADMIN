@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
+import { CustomerPortalWarrantyClaimAttachmentsPanel } from '@/components/CustomerPortalWarrantyClaimAttachmentsPanel';
 
 type Row = Record<string, unknown>;
 type Payload = {
@@ -195,7 +196,7 @@ function MessageThreadPanel({ serviceRequestId }: { serviceRequestId: string }) 
           <div className="text-xs font-black uppercase tracking-[0.14em] text-activeBlue">Add Message / 添加留言</div>
           <p className="mt-1 text-xs font-bold leading-5 text-slate-500">You can add notes or photos description for this warranty claim. This does not edit any quotation, invoice, warranty or payment record. / 您可以补充说明保修申请情况；这不会修改任何报价、发票、保修单或付款记录。</p>
         </div>
-        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={5} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 focus:ring-blue-100" placeholder="Add your message here / 在这里填写留言" />
+        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={5} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 ring-blue-100" placeholder="Add your message here / 在这里填写留言" />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs font-bold text-slate-500">{draft.length}/2000</span>
           <button type="submit" disabled={state.submitting || !draft.trim()} className="rounded-2xl bg-activeBlue px-4 py-3 text-xs font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.submitting ? 'Submitting… / 提交中…' : 'Submit Message / 提交留言'}</button>
@@ -265,6 +266,7 @@ export function CustomerPortalWarrantyClaimDetail({ serviceRequestId }: { servic
 
       <TimelinePanel items={timeline} />
       <MessageThreadPanel serviceRequestId={serviceRequestId} />
+      <CustomerPortalWarrantyClaimAttachmentsPanel serviceRequestId={serviceRequestId} />
 
       {claim ? (
         <Section id="claim-summary" title="Claim Summary" zh="申请概要">
