@@ -21,6 +21,10 @@ if (!failures.length) {
     must(css, marker, 'Customer Portal CSS theme');
   }
 
+  for (const marker of ['customer-portal-action-primary', 'customer-portal-action-secondary', 'button[type="submit"]', 'a[href*="submit-request"]', 'a[href*="warranty-claims"]', 'a[target="_blank"]', 'a[href*="financial"]', 'a[href*="warranties"]', 'bg-amber-50', 'bg-red-50']) {
+    must(css, marker, 'Customer Portal action hierarchy');
+  }
+
   for (const marker of ['nanofix-customer-portal min-h-screen', 'customer-portal-header', 'customer-portal-logo', 'customer-portal-priority-strip', 'customer-portal-shell-card', 'hover:bg-orange-500/20']) {
     must(shell, marker, 'Customer Portal shell theme');
   }
