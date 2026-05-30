@@ -12,6 +12,7 @@ import { ServiceOperationsInvoicePdfPanel } from '@/components/ServiceOperations
 import { ServiceOperationsQuotationPdfPanel } from '@/components/ServiceOperationsQuotationPdfPanel';
 import { ServiceOperationsDocumentSettingsPanel } from '@/components/ServiceOperationsDocumentSettingsPanel';
 import { ServiceOperationsQuoteResponsePanel } from '@/components/ServiceOperationsQuoteResponsePanel';
+import { ServiceOperationsCustomerDocumentFeedbackPanel } from '@/components/ServiceOperationsCustomerDocumentFeedbackPanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
 import { ServiceOperationsCustomerVisibility } from '@/components/ServiceOperationsCustomerVisibility';
@@ -33,6 +34,7 @@ export default function Page() {
         <ServiceOperationsCheckoutSessionPanel />
         <ServiceOperationsDocumentSettingsPanel />
         <ServiceOperationsQuoteResponsePanel />
+        <ServiceOperationsCustomerDocumentFeedbackPanel />
         <ServiceOperationsQuotationPdfPanel />
         <ServiceOperationsInvoicePdfPanel />
         <ServiceOperationsInspectionWorkspace />
