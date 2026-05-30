@@ -166,6 +166,66 @@ body {
     border: 1px solid rgba(255,95,0,0.30);
     color: #7c2d12;
   }
+
+  .nanofix-customer-portal .customer-portal-action-primary,
+  .nanofix-customer-portal button[type="submit"],
+  .nanofix-customer-portal a[href*="submit-request"],
+  .nanofix-customer-portal a[href*="warranty-claims"] {
+    background-color: #ff5f00;
+    background-image:
+      radial-gradient(circle at 18% 10%, rgba(255,255,255,0.70), transparent 27%),
+      linear-gradient(135deg, #ffb000 0%, #ff6a00 42%, #ff3d00 100%);
+    color: #fffaf0;
+    border-color: rgba(255,176,0,0.50);
+    box-shadow: 0 16px 30px rgba(255,95,0,0.30), inset 0 1px 0 rgba(255,255,255,0.38);
+  }
+
+  .nanofix-customer-portal .customer-portal-action-secondary,
+  .nanofix-customer-portal a[target="_blank"],
+  .nanofix-customer-portal a[href*="financial"],
+  .nanofix-customer-portal a[href*="warranties"] {
+    background: rgba(255,255,255,0.94);
+    color: #c2410c;
+    border-color: rgba(251,146,60,0.32);
+    box-shadow: 0 10px 22px rgba(124,45,18,0.10);
+  }
+
+  .nanofix-customer-portal .customer-portal-action-primary:hover,
+  .nanofix-customer-portal button[type="submit"]:hover,
+  .nanofix-customer-portal a[href*="submit-request"]:hover,
+  .nanofix-customer-portal a[href*="warranty-claims"]:hover {
+    transform: translateY(-1px);
+    filter: saturate(1.08) brightness(1.02);
+  }
+
+  .nanofix-customer-portal .customer-portal-action-secondary:hover,
+  .nanofix-customer-portal a[target="_blank"]:hover,
+  .nanofix-customer-portal a[href*="financial"]:hover,
+  .nanofix-customer-portal a[href*="warranties"]:hover {
+    background: #fff7ed;
+    color: #9a3412;
+    transform: translateY(-1px);
+  }
+
+  .nanofix-customer-portal button:disabled,
+  .nanofix-customer-portal a[aria-disabled="true"] {
+    filter: grayscale(0.25);
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .nanofix-customer-portal .bg-amber-50,
+  .nanofix-customer-portal .bg-red-50 {
+    background: linear-gradient(90deg, rgba(255,247,237,0.96), rgba(255,237,213,0.96));
+    border-color: rgba(251,146,60,0.32);
+  }
+
+  .nanofix-customer-portal .text-red-950,
+  .nanofix-customer-portal .text-amber-950,
+  .nanofix-customer-portal .text-amber-700 {
+    color: #7c2d12;
+  }
 }
 
 /* V28 mobile parity hardening for Next routes. */
