@@ -13,6 +13,7 @@ import { ServiceOperationsQuotationPdfPanel } from '@/components/ServiceOperatio
 import { ServiceOperationsDocumentSettingsPanel } from '@/components/ServiceOperationsDocumentSettingsPanel';
 import { ServiceOperationsQuoteResponsePanel } from '@/components/ServiceOperationsQuoteResponsePanel';
 import { ServiceOperationsCustomerDocumentFeedbackPanel } from '@/components/ServiceOperationsCustomerDocumentFeedbackPanel';
+import { ServiceOperationsCustomerDocumentControlPanel } from '@/components/ServiceOperationsCustomerDocumentControlPanel';
 import { ServiceOperationsCustomerPortalIntakePanel } from '@/components/ServiceOperationsCustomerPortalIntakePanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
@@ -30,6 +31,7 @@ export default function Page() {
         <ServiceOperationsLiveCore />
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsCustomerPortalIntakePanel />
+        <ServiceOperationsCustomerDocumentControlPanel />
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsFinancialVisibility />
         <ServiceOperationsPaymentIntentPanel />
