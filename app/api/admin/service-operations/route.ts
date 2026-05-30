@@ -23,8 +23,8 @@ type QuerySpec = {
 };
 
 const READ_QUERIES: QuerySpec[] = [
-  { key: 'leads', machine: 'lead', table: 'leads', idColumn: 'lead_id', statusColumn: 'status', select: 'lead_id,name,phone,email,source_platform,priority,status,binding_status,created_at,updated_at', limit: 12 },
-  { key: 'service_requests', machine: 'service_request', table: 'service_requests', idColumn: 'service_request_id', statusColumn: 'status', select: 'service_request_id,contact_name,phone,whatsapp,email,address_text,issue_type,leak_location,status,binding_status,created_at,updated_at', limit: 12 },
+  { key: 'leads', machine: 'lead', table: 'leads', idColumn: 'lead_id', statusColumn: 'status', select: 'lead_id,name,phone,email,source_platform,request_origin,customer_portal_request_type,related_warranty_id,priority,status,binding_status,created_at,updated_at', limit: 12 },
+  { key: 'service_requests', machine: 'service_request', table: 'service_requests', idColumn: 'service_request_id', statusColumn: 'status', select: 'service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,issue_type,leak_location,status,binding_status,request_origin,customer_portal_request_type,related_warranty_id,portal_attachment_urls,portal_customer_notes,created_at,updated_at', limit: 12 },
   { key: 'jobs', machine: 'job', table: 'jobs', idColumn: 'job_id', statusColumn: 'status', select: 'job_id,service_request_id,customer_id,engineer_id,status,scheduled_at,notes,created_at,updated_at', limit: 12 },
   { key: 'quotations', machine: 'quotation', table: 'quotations', idColumn: 'quotation_id', statusColumn: 'approval_status', select: 'quotation_id,job_id,current_version,total,approval_status,created_at', limit: 12 },
   { key: 'invoices', machine: 'invoice', table: 'invoices', idColumn: 'invoice_id', statusColumn: 'status', select: 'invoice_id,invoice_no,job_id,total,status,created_at', limit: 12 },
@@ -34,8 +34,8 @@ const READ_QUERIES: QuerySpec[] = [
 ];
 
 const writableFields: Record<Machine, string[]> = {
-  lead: ['name', 'phone', 'email', 'address', 'address_text', 'issue_type', 'message', 'source_platform', 'priority', 'status', 'binding_status'],
-  service_request: ['contact_name', 'phone', 'whatsapp', 'email', 'address_text', 'postal_code', 'leak_location', 'issue_description', 'property_type', 'property_address', 'preferred_time_text', 'status', 'binding_status', 'consent', 'admin_approval_required'],
+  lead: ['name', 'phone', 'email', 'address', 'address_text', 'issue_type', 'message', 'source_platform', 'request_origin', 'customer_portal_request_type', 'related_warranty_id', 'priority', 'status', 'binding_status'],
+  service_request: ['contact_name', 'phone', 'whatsapp', 'email', 'address_text', 'postal_code', 'leak_location', 'issue_description', 'property_type', 'property_address', 'preferred_time_text', 'status', 'binding_status', 'request_origin', 'customer_portal_request_type', 'related_warranty_id', 'portal_attachment_urls', 'portal_customer_notes', 'consent', 'admin_approval_required'],
   inspection: ['status'],
   quotation: ['job_id', 'current_version', 'total', 'approval_status'],
   job: ['service_request_id', 'customer_id', 'engineer_id', 'status', 'scheduled_at', 'notes'],
@@ -85,12 +85,13 @@ function sanitizeField(field: string, value: unknown) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }
   if (['consent', 'admin_approval_required'].includes(field)) return cleanBoolean(value);
+  if (field === 'portal_attachment_urls') return Array.isArray(value) ? value.map((item) => cleanText(item, 700)).filter(Boolean).slice(0, 12) : [];
   if (field.endsWith('_id') || field === 'job_id' || field === 'invoice_id' || field === 'customer_id' || field === 'engineer_id' || field === 'service_request_id') {
     const text = cleanText(value, 120);
     return isUuid(text) ? text : null;
   }
   if (['scheduled_at', 'reconciled_at', 'starts_at', 'ends_at'].includes(field)) return cleanDateText(value);
-  return cleanText(value, field.includes('message') || field.includes('description') || field === 'notes' ? 1000 : 240);
+  return cleanText(value, field.includes('message') || field.includes('description') || field === 'notes' || field === 'portal_customer_notes' ? 1000 : 240);
 }
 
 function sanitizePatch(machine: Machine, payload: Record<string, unknown>) {
@@ -112,8 +113,8 @@ function creationPayload(machine: Machine, body: ApiPayload) {
   const amount = cleanNumber(body.amount) ?? cleanNumber(body.total) ?? 0;
   const base = sanitizePatch(machine, body);
 
-  if (machine === 'lead') return { source_platform: 'admin', priority: 'P2', status: 'new', binding_status: 'pending', name: title, phone, email, message: notes, ...base };
-  if (machine === 'service_request') return { contact_name: title, phone, email, issue_description: notes, issue_type: cleanText(body.issue_type, 120) ?? 'General leakage inspection', status: 'pending_review', binding_status: 'pending', consent: true, admin_approval_required: true, ...base };
+  if (machine === 'lead') return { source_platform: 'admin', request_origin: 'admin', priority: 'P2', status: 'new', binding_status: 'pending', name: title, phone, email, message: notes, ...base };
+  if (machine === 'service_request') return { contact_name: title, phone, email, issue_description: notes, issue_type: cleanText(body.issue_type, 120) ?? 'General leakage inspection', status: 'pending_review', binding_status: 'pending', request_origin: 'admin', consent: true, admin_approval_required: true, ...base };
   if (machine === 'job') return { status: 'assigned', notes, ...base };
   if (machine === 'quotation') return { current_version: 1, total: amount, approval_status: 'draft', ...base };
   if (machine === 'invoice') return { invoice_no: cleanText(body.invoice_no, 120) ?? `NF-DRAFT-${Date.now()}`, total: amount, status: 'draft', ...base };
@@ -171,12 +172,7 @@ export async function GET(request: NextRequest) {
     ip: getClientIp(request)
   }).catch(() => undefined);
 
-  return NextResponse.json({
-    ok: errors.length === 0,
-    degraded: errors.length > 0,
-    errors,
-    ...payload
-  }, { status: errors.length ? 207 : 200 });
+  return NextResponse.json({ ok: errors.length === 0, degraded: errors.length > 0, errors, ...payload }, { status: errors.length ? 207 : 200 });
 }
 
 export async function POST(request: NextRequest) {
