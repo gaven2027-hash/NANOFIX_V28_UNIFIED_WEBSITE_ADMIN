@@ -9,6 +9,17 @@ const ALLOWED_ROLES = ['customer', 'super_admin', 'operations_admin', 'support']
 const DEFAULT_BUCKET = 'service-uploads';
 
 type RouteContext = { params: Promise<{ serviceRequestId: string }> };
+type Row = Record<string, unknown>;
+type TimelineItem = {
+  event_key: string;
+  title: string;
+  zh: string;
+  status: string;
+  timestamp: string;
+  description: string;
+  object_type: string;
+  object_id: string;
+};
 
 function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
@@ -16,6 +27,154 @@ function isUuid(value: string | null | undefined) {
 
 function unique(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function text(value: unknown) {
+  return typeof value === 'string' ? value : '';
+}
+
+function addTimeline(items: TimelineItem[], item: Omit<TimelineItem, 'timestamp'> & { timestamp?: unknown }) {
+  const timestamp = text(item.timestamp);
+  if (!timestamp) return;
+  items.push({ ...item, timestamp });
+}
+
+function buildCustomerTimeline(input: {
+  serviceRequest: Row;
+  relatedWarranty: Row | null;
+  routedJobs: Row[];
+  quotations: Row[];
+  invoices: Row[];
+  payments: Row[];
+  warrantyPdfs: Row[];
+}) {
+  const timeline: TimelineItem[] = [];
+  const claimId = text(input.serviceRequest.service_request_id);
+
+  addTimeline(timeline, {
+    event_key: 'claim_submitted',
+    title: 'Warranty claim submitted',
+    zh: '已提交保修维修申请',
+    status: text(input.serviceRequest.status) || 'submitted',
+    timestamp: input.serviceRequest.created_at,
+    description: 'NANOFIX received your warranty claim through the Customer Portal.',
+    object_type: 'service_request',
+    object_id: claimId
+  });
+
+  if (input.relatedWarranty) {
+    addTimeline(timeline, {
+      event_key: 'linked_warranty_found',
+      title: 'Linked warranty record found',
+      zh: '已关联原保修单',
+      status: text(input.relatedWarranty.status) || 'linked',
+      timestamp: input.relatedWarranty.created_at,
+      description: 'This claim is linked to your original warranty record.',
+      object_type: 'warranty',
+      object_id: text(input.relatedWarranty.warranty_id)
+    });
+  }
+
+  addTimeline(timeline, {
+    event_key: 'admin_reviewed',
+    title: 'Warranty claim reviewed',
+    zh: '后台已审核保修申请',
+    status: text(input.serviceRequest.warranty_claim_decision) || 'reviewed',
+    timestamp: input.serviceRequest.warranty_claim_reviewed_at,
+    description: text(input.serviceRequest.warranty_claim_next_action) || 'NANOFIX has reviewed the warranty claim and recorded the next action.',
+    object_type: 'service_request',
+    object_id: claimId
+  });
+
+  addTimeline(timeline, {
+    event_key: 'claim_routed',
+    title: 'Next step arranged',
+    zh: '下一步流程已安排',
+    status: text(input.serviceRequest.warranty_claim_routing_status) || 'routed',
+    timestamp: input.serviceRequest.warranty_claim_routed_at,
+    description: 'The warranty claim has been routed into the original service operations flow.',
+    object_type: 'service_request',
+    object_id: claimId
+  });
+
+  for (const job of input.routedJobs) {
+    addTimeline(timeline, {
+      event_key: 'job_created',
+      title: 'Job record created',
+      zh: '已生成或关联工单',
+      status: text(job.status) || 'job_created',
+      timestamp: job.created_at,
+      description: 'A service job has been linked to this warranty claim.',
+      object_type: 'job',
+      object_id: text(job.job_id)
+    });
+    addTimeline(timeline, {
+      event_key: 'job_scheduled',
+      title: 'Site work scheduled',
+      zh: '已安排现场工单时间',
+      status: text(job.status) || 'scheduled',
+      timestamp: job.scheduled_at,
+      description: 'A site work schedule is linked to this claim.',
+      object_type: 'job',
+      object_id: text(job.job_id)
+    });
+  }
+
+  for (const quotation of input.quotations) {
+    addTimeline(timeline, {
+      event_key: 'quotation_visible',
+      title: 'Quotation visible',
+      zh: '报价已可查看',
+      status: text(quotation.approval_status) || 'visible',
+      timestamp: quotation.created_at,
+      description: 'A customer-visible quotation is linked to this warranty claim.',
+      object_type: 'quotation',
+      object_id: text(quotation.quotation_id)
+    });
+  }
+
+  for (const invoice of input.invoices) {
+    addTimeline(timeline, {
+      event_key: 'invoice_visible',
+      title: 'Invoice visible',
+      zh: '发票已可查看',
+      status: text(invoice.status) || 'visible',
+      timestamp: invoice.created_at,
+      description: 'A customer-visible invoice is linked to this warranty claim.',
+      object_type: 'invoice',
+      object_id: text(invoice.invoice_id)
+    });
+  }
+
+  for (const pdf of input.warrantyPdfs) {
+    addTimeline(timeline, {
+      event_key: 'warranty_pdf_visible',
+      title: 'Warranty PDF visible',
+      zh: '保修PDF已可查看',
+      status: text(pdf.generation_status) || 'visible',
+      timestamp: pdf.generated_at || pdf.created_at,
+      description: 'A customer-visible warranty PDF is linked to this claim.',
+      object_type: 'warranty_pdf',
+      object_id: text(pdf.warranty_pdf_id)
+    });
+  }
+
+  for (const payment of input.payments) {
+    addTimeline(timeline, {
+      event_key: 'payment_record_visible',
+      title: 'Payment record visible',
+      zh: '付款记录已可查看',
+      status: text(payment.status) || 'visible',
+      timestamp: payment.reconciled_at || payment.created_at,
+      description: 'A payment record is linked to this claim.',
+      object_type: 'payment',
+      object_id: text(payment.payment_id)
+    });
+  }
+
+  return timeline
+    .filter((item) => item.timestamp)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
 async function customerIdsForProfile(profileId: string) {
@@ -91,7 +250,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const jobIds = unique([serviceRequest.warranty_claim_routed_job_id as string | undefined, relatedWarranty?.job_id as string | undefined]);
   const quotationIds = unique([serviceRequest.warranty_claim_routed_quotation_id as string | undefined, relatedWarranty?.source_quotation_id as string | undefined]);
 
-  let routedJob = null;
+  let routedJob: Row[] = [];
   if (jobIds.length) {
     const { data, error } = await supabase
       .from('jobs')
@@ -104,7 +263,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     routedJob = data ?? [];
   }
 
-  let quotations: unknown[] = [];
+  let quotations: Row[] = [];
   if (quotationIds.length || jobIds.length) {
     let query = supabase
       .from('quotations')
@@ -119,8 +278,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
     quotations = await withSignedPdf(data ?? []);
   }
 
-  const allQuotationIds = unique((quotations as Array<{ quotation_id?: string }>).map((row) => row.quotation_id));
-  let quotationVersions: unknown[] = [];
+  const allQuotationIds = unique(quotations.map((row) => row.quotation_id as string | undefined));
+  let quotationVersions: Row[] = [];
   if (allQuotationIds.length) {
     const { data, error } = await supabase
       .from('quotation_versions')
@@ -132,7 +291,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     quotationVersions = data ?? [];
   }
 
-  let invoices: unknown[] = [];
+  let invoices: Row[] = [];
   if (jobIds.length) {
     const { data, error } = await supabase
       .from('invoices')
@@ -145,8 +304,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
     invoices = await withSignedPdf(data ?? []);
   }
 
-  const invoiceIds = unique((invoices as Array<{ invoice_id?: string }>).map((row) => row.invoice_id));
-  let payments: unknown[] = [];
+  const invoiceIds = unique(invoices.map((row) => row.invoice_id as string | undefined));
+  let payments: Row[] = [];
   if (invoiceIds.length) {
     const { data, error } = await supabase
       .from('payments')
@@ -159,7 +318,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     payments = data ?? [];
   }
 
-  let warrantyPdfs: unknown[] = [];
+  let warrantyPdfs: Row[] = [];
   if (relatedWarranty?.warranty_id) {
     const { data, error } = await supabase
       .from('warranty_pdf_documents')
@@ -173,6 +332,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
     warrantyPdfs = await withSignedWarrantyPdf(data ?? []);
   }
 
+  const customer_timeline = buildCustomerTimeline({
+    serviceRequest,
+    relatedWarranty,
+    routedJobs: routedJob,
+    quotations,
+    invoices,
+    payments,
+    warrantyPdfs
+  });
+
   await writeAuditLog({
     actorId: auth.actor.profileId,
     role: auth.role,
@@ -181,6 +350,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     objectId: serviceRequestId,
     after: {
       customers: customers.length,
+      timeline: customer_timeline.length,
       quotations: quotations.length,
       invoices: invoices.length,
       warranty_pdfs: warrantyPdfs.length
@@ -193,11 +363,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     customers,
     service_request: serviceRequest,
     related_warranty: relatedWarranty,
-    routed_jobs: routedJob ?? [],
+    routed_jobs: routedJob,
     quotations,
     quotation_versions: quotationVersions,
     invoices,
     payments,
-    warranty_pdfs: warrantyPdfs
+    warranty_pdfs: warrantyPdfs,
+    customer_timeline
   });
 }
