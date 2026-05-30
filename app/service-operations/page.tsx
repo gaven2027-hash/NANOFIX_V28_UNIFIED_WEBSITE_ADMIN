@@ -20,6 +20,7 @@ import { ServiceOperationsWarrantyClaimReviewPanel } from '@/components/ServiceO
 import { ServiceOperationsWarrantyClaimRoutingPanel } from '@/components/ServiceOperationsWarrantyClaimRoutingPanel';
 import { ServiceOperationsWarrantyClaimMessageReplyPanel } from '@/components/ServiceOperationsWarrantyClaimMessageReplyPanel';
 import { ServiceOperationsWarrantyClaimAttachmentReviewPanel } from '@/components/ServiceOperationsWarrantyClaimAttachmentReviewPanel';
+import { ServiceOperationsWarrantyClaimClosurePanel } from '@/components/ServiceOperationsWarrantyClaimClosurePanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
 import { ServiceOperationsCustomerVisibility } from '@/components/ServiceOperationsCustomerVisibility';
@@ -40,6 +41,7 @@ export default function Page() {
         <ServiceOperationsWarrantyClaimRoutingPanel />
         <ServiceOperationsWarrantyClaimMessageReplyPanel />
         <ServiceOperationsWarrantyClaimAttachmentReviewPanel />
+        <ServiceOperationsWarrantyClaimClosurePanel />
         <ServiceOperationsCustomerDocumentControlPanel />
         <ServiceOperationsFinancialEditors />
         <ServiceOperationsFinancialVisibility />
