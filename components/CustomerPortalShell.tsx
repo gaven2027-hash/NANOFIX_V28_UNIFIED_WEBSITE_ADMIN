@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ReactNode } from 'react';
+import styles from './CustomerPortalMobileHardening.module.css';
 
 const navItems = [
   { href: '/customer-portal', label: 'Dashboard', zh: '首页' },
@@ -13,7 +14,7 @@ const navItems = [
 
 export function CustomerPortalShell({ children }: { children: ReactNode }) {
   return (
-    <main className="nanofix-customer-portal min-h-screen">
+    <main className={`nanofix-customer-portal min-h-screen ${styles.mobileHardening}`}>
       <header className="customer-portal-header sticky top-0 z-40 border-b backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <Link href="/customer-portal" className="flex items-center gap-3">
