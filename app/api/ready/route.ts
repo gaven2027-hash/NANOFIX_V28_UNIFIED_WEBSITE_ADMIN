@@ -27,7 +27,8 @@ const requiredTables = [
   "payment_intents",
   "payment_webhook_events",
   "payment_checkout_sessions",
-  "invoice_pdf_documents"
+  "invoice_pdf_documents",
+  "document_company_settings"
 ];
 
 type TableCheck = {
@@ -58,25 +59,11 @@ async function checkTable(url: string, serviceRoleKey: string, table: string): P
       },
       cache: "no-store"
     });
-
-    if (response.ok) {
-      return { table, ok: true, status: response.status, error: null };
-    }
-
+    if (response.ok) return { table, ok: true, status: response.status, error: null };
     const text = await response.text().catch(() => "");
-    return {
-      table,
-      ok: false,
-      status: response.status,
-      error: text ? text.slice(0, 500) : response.statusText || "Supabase REST check failed"
-    };
+    return { table, ok: false, status: response.status, error: text ? text.slice(0, 500) : response.statusText || "Supabase REST check failed" };
   } catch (error) {
-    return {
-      table,
-      ok: false,
-      status: null,
-      error: error instanceof Error ? error.message : "Unknown Supabase table check error"
-    };
+    return { table, ok: false, status: null, error: error instanceof Error ? error.message : "Unknown Supabase table check error" };
   }
 }
 
@@ -86,10 +73,8 @@ export async function GET() {
   const tableChecks: TableCheck[] = supabaseConfig.configured
     ? await Promise.all(requiredTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
     : requiredTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
-
   const dbReady = supabaseConfig.configured && tableChecks.every((check) => check.ok);
   const ok = envReady && dbReady;
-
   return NextResponse.json(
     {
       ok,
