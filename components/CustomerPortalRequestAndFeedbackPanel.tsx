@@ -4,43 +4,25 @@ import { FormEvent, useEffect, useState } from 'react';
 
 type Row = Record<string, unknown>;
 type State = { loading: boolean; error: string | null; message: string | null; requests: Row[]; feedback: Row[]; result: Row | null };
-type RequestValues = { request_type: string; related_warranty_id: string; related_job_id: string; title: string; issue_location: string; issue_description: string; preferred_schedule: string; contact_name: string; contact_phone: string; contact_email: string; attachment_urls: string };
+type RequestValues = { request_type: string; related_warranty_id: string; contact_name: string; phone: string; email: string; address_text: string; postal_code: string; issue_type: string; leak_location: string; issue_description: string; preferred_schedule: string; customer_notes: string; attachment_urls: string };
 type FeedbackValues = { document_type: string; document_id: string; feedback_type: string; message: string };
 
 const inputClass = 'rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-activeBlue focus:ring-2 focus:ring-blue-100';
 
-const defaultRequest: RequestValues = {
-  request_type: 'new_repair',
-  related_warranty_id: '',
-  related_job_id: '',
-  title: '',
-  issue_location: '',
-  issue_description: '',
-  preferred_schedule: '',
-  contact_name: '',
-  contact_phone: '',
-  contact_email: '',
-  attachment_urls: ''
-};
-
-const defaultFeedback: FeedbackValues = {
-  document_type: 'quotation',
-  document_id: '',
-  feedback_type: 'comment',
-  message: ''
-};
+const defaultRequest: RequestValues = { request_type: 'new_repair', related_warranty_id: '', contact_name: '', phone: '', email: '', address_text: '', postal_code: '', issue_type: '', leak_location: '', issue_description: '', preferred_schedule: '', customer_notes: '', attachment_urls: '' };
+const defaultFeedback: FeedbackValues = { document_type: 'quotation', document_id: '', feedback_type: 'comment', message: '' };
 
 function splitUrls(value: string) {
   return value.split('\n').map((line) => line.trim()).filter(Boolean).slice(0, 12);
 }
 
 async function loadRequests() {
-  const response = await fetch('/api/customer-portal/requests?limit=20', { credentials: 'same-origin', cache: 'no-store' });
+  const response = await fetch('/api/customer-portal/service-requests?limit=20', { credentials: 'same-origin', cache: 'no-store' });
   const text = await response.text();
-  let payload: { ok?: boolean; error?: string; requests?: Row[] } | null = null;
-  try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; requests?: Row[] } : null; } catch { payload = null; }
-  if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Requests API returned ${response.status}`);
-  return Array.isArray(payload?.requests) ? payload.requests : [];
+  let payload: { ok?: boolean; error?: string; service_requests?: Row[] } | null = null;
+  try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; service_requests?: Row[] } : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false) throw new Error(payload?.error ?? `Service requests API returned ${response.status}`);
+  return Array.isArray(payload?.service_requests) ? payload.service_requests : [];
 }
 
 async function loadFeedback() {
@@ -53,7 +35,7 @@ async function loadFeedback() {
 }
 
 async function submitRequest(values: RequestValues) {
-  const response = await fetch('/api/customer-portal/requests', {
+  const response = await fetch('/api/customer-portal/service-requests', {
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
@@ -63,7 +45,7 @@ async function submitRequest(values: RequestValues) {
   const text = await response.text();
   let payload: Row | null = null;
   try { payload = text ? JSON.parse(text) as Row : null; } catch { payload = null; }
-  if (!response.ok || payload?.ok === false) throw new Error(typeof payload?.error === 'string' ? payload.error : `Submit request returned ${response.status}`);
+  if (!response.ok || payload?.ok === false) throw new Error(typeof payload?.error === 'string' ? payload.error : `Submit service request returned ${response.status}`);
   return payload ?? { ok: true };
 }
 
@@ -101,13 +83,8 @@ export function CustomerPortalRequestAndFeedbackPanel() {
   const [request, setRequest] = useState<RequestValues>(defaultRequest);
   const [feedback, setFeedback] = useState<FeedbackValues>(defaultFeedback);
 
-  function changeRequest(key: keyof RequestValues, value: string) {
-    setRequest((current) => ({ ...current, [key]: value }));
-  }
-
-  function changeFeedback(key: keyof FeedbackValues, value: string) {
-    setFeedback((current) => ({ ...current, [key]: value }));
-  }
+  function changeRequest(key: keyof RequestValues, value: string) { setRequest((current) => ({ ...current, [key]: value })); }
+  function changeFeedback(key: keyof FeedbackValues, value: string) { setFeedback((current) => ({ ...current, [key]: value })); }
 
   async function refresh() {
     setState((current) => ({ ...current, loading: true, error: null, message: null }));
@@ -126,7 +103,7 @@ export function CustomerPortalRequestAndFeedbackPanel() {
       const result = await submitRequest(request);
       const [requests, feedbackRows] = await Promise.all([loadRequests(), loadFeedback()]);
       setRequest(defaultRequest);
-      setState({ loading: false, error: null, message: 'Your request has entered NANOFIX Service Operations. / 您的报修已进入 NANOFIX 统一工单处理流程。', requests, feedback: feedbackRows, result });
+      setState({ loading: false, error: null, message: 'Your request has entered NANOFIX Unified Intake → Service Requests → Jobs workflow. / 您的报修已进入 NANOFIX 统一线索、报修、工单处理流程。', requests, feedback: feedbackRows, result });
     } catch (error) {
       setState((current) => ({ ...current, loading: false, error: error instanceof Error ? error.message : String(error) }));
     }
@@ -154,7 +131,8 @@ export function CustomerPortalRequestAndFeedbackPanel() {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Submit Request / 提交报修</div>
             <h1 className="mt-2 text-2xl font-black text-slate-950">New Repair / Warranty Repair</h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">New repair and warranty repair submissions all enter the unified Service Operations workflow. NANOFIX admin will review, schedule and generate quotations, invoices or warranty documents from official templates. / 新报修和保修期内维修都会进入统一工单处理入口；报价、发票、保修单由总后台按模板生成，客户不能修改。</p>
+            <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">New repair and warranty repair submissions all enter the existing NANOFIX Unified Intake → Leads → Service Requests → Jobs workflow. Admin can see whether it is a member customer new repair or warranty repair. / 新报修和保修期内维修都会进入原来的统一线索、报修、工单处理入口；后台只需看到它是会员客户新报修还是保修维修，方便审核安排。</p>
+            <p className="mt-2 max-w-4xl text-xs font-bold leading-5 text-slate-500">Quotations, invoices and warranty documents are generated from official admin templates and company settings. Customers cannot edit those documents; they can only leave feedback. / 报价、发票、保修单由总后台按模板和公司资料生成，客户不能修改，只能留言反馈。</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Refresh / 刷新</button>
         </div>
@@ -167,22 +145,24 @@ export function CustomerPortalRequestAndFeedbackPanel() {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Request Type / 类型<select className={inputClass} value={request.request_type} onChange={(event) => changeRequest('request_type', event.target.value)}><option value="new_repair">New Repair / 新报修</option><option value="warranty_repair">Warranty Repair / 保修期内维修</option></select></label>
           <TextField label="Related Warranty ID / 保修ID" value={request.related_warranty_id} onChange={(value) => changeRequest('related_warranty_id', value)} placeholder="Required for warranty repair" />
-          <TextField label="Related Job ID / 相关工单ID" value={request.related_job_id} onChange={(value) => changeRequest('related_job_id', value)} />
-          <TextField label="Title / 标题" value={request.title} onChange={(value) => changeRequest('title', value)} />
-          <TextField label="Issue Location / 问题位置" value={request.issue_location} onChange={(value) => changeRequest('issue_location', value)} />
-          <TextField label="Preferred Schedule / 期望预约时间" value={request.preferred_schedule} onChange={(value) => changeRequest('preferred_schedule', value)} />
           <TextField label="Contact Name / 联系人" value={request.contact_name} onChange={(value) => changeRequest('contact_name', value)} />
-          <TextField label="Contact Phone / 电话" value={request.contact_phone} onChange={(value) => changeRequest('contact_phone', value)} />
-          <TextField label="Contact Email / 邮箱" value={request.contact_email} onChange={(value) => changeRequest('contact_email', value)} />
+          <TextField label="Phone / 电话" value={request.phone} onChange={(value) => changeRequest('phone', value)} />
+          <TextField label="Email / 邮箱" value={request.email} onChange={(value) => changeRequest('email', value)} />
+          <TextField label="Address / 地址" value={request.address_text} onChange={(value) => changeRequest('address_text', value)} />
+          <TextField label="Postal Code / 邮编" value={request.postal_code} onChange={(value) => changeRequest('postal_code', value)} />
+          <TextField label="Leak Location / 漏水位置" value={request.leak_location} onChange={(value) => changeRequest('leak_location', value)} />
+          <TextField label="Issue Type / 问题类型" value={request.issue_type} onChange={(value) => changeRequest('issue_type', value)} />
+          <TextField label="Preferred Schedule / 期望预约时间" value={request.preferred_schedule} onChange={(value) => changeRequest('preferred_schedule', value)} />
         </div>
         <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Issue Description / 问题说明<textarea className={inputClass} rows={4} value={request.issue_description} onChange={(event) => changeRequest('issue_description', event.target.value)} /></label>
         <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Attachment URLs / 图片或视频链接<textarea className={inputClass} rows={3} value={request.attachment_urls} onChange={(event) => changeRequest('attachment_urls', event.target.value)} placeholder="One URL per line / 每行一个链接" /></label>
-        <button type="submit" disabled={state.loading} className="w-fit rounded-2xl bg-activeBlue px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Submit to Service Operations / 提交到统一工单</button>
+        <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Customer Notes / 客户备注<textarea className={inputClass} rows={3} value={request.customer_notes} onChange={(event) => changeRequest('customer_notes', event.target.value)} /></label>
+        <button type="submit" disabled={state.loading} className="w-fit rounded-2xl bg-activeBlue px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Submit to Unified Service Operations / 提交到统一工单</button>
       </form>
 
       <form onSubmit={(event) => void onSubmitFeedback(event)} className="grid gap-4 rounded-3xl bg-white p-6 shadow-soft ring-1 ring-slate-200">
         <h2 className="text-lg font-black text-slate-950">Document Feedback / 单据反馈留言</h2>
-        <p className="text-sm font-semibold text-slate-600">You may leave feedback on quotations, invoices, payments or warranties. You cannot edit the document content directly. / 您可以对报价、发票、付款或保修单留言反馈，但不能直接修改单据内容。</p>
+        <p className="text-sm font-semibold text-slate-600">You may leave feedback on quotations, invoices, payments or warranties. NANOFIX admin may revise and re-push documents if needed. / 您可以对报价、发票、付款或保修单留言反馈；总后台可根据实际情况修改后重新推送。</p>
         <div className="grid gap-4 md:grid-cols-3">
           <label className="grid gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Document Type / 单据类型<select className={inputClass} value={feedback.document_type} onChange={(event) => changeFeedback('document_type', event.target.value)}><option value="quotation">Quotation / 报价</option><option value="invoice">Invoice / 发票</option><option value="warranty">Warranty / 保修</option><option value="payment">Payment / 付款</option><option value="other">Other / 其他</option></select></label>
           <TextField label="Document ID / 单据ID" value={feedback.document_id} onChange={(value) => changeFeedback('document_id', value)} />
@@ -193,8 +173,8 @@ export function CustomerPortalRequestAndFeedbackPanel() {
       </form>
 
       <section className="grid gap-4 rounded-3xl bg-white p-6 shadow-soft ring-1 ring-slate-200">
-        <h2 className="text-lg font-black text-slate-950">My Submitted Requests / 我的提交记录</h2>
-        {!state.requests.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No submitted requests yet. / 暂无提交记录。</div> : state.requests.map((row) => <article key={String(row.portal_request_id)} className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-sm font-black text-slate-950">{formatValue(row.title)}</div><div className="mt-1 text-xs font-bold text-activeBlue">{formatValue(row.request_type)} · {formatValue(row.status)}</div><div className="mt-2 grid gap-1 text-xs font-semibold text-slate-600"><div>Service Request / 工单: {formatValue(row.created_service_request_id)}</div><div>Warranty / 保修: {formatValue(row.related_warranty_id)}</div><div>Created / 创建: {formatValue(row.created_at)}</div></div></article>)}
+        <h2 className="text-lg font-black text-slate-950">My Submitted Service Requests / 我的工单提交记录</h2>
+        {!state.requests.length ? <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">No submitted requests yet. / 暂无提交记录。</div> : state.requests.map((row) => <article key={String(row.service_request_id)} className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200"><div className="text-sm font-black text-slate-950">{formatValue(row.issue_type)}</div><div className="mt-1 text-xs font-bold text-activeBlue">{formatValue(row.customer_portal_request_type)} · {formatValue(row.status)} · {formatValue(row.priority)}</div><div className="mt-2 grid gap-1 text-xs font-semibold text-slate-600"><div>Service Request / 工单: {formatValue(row.service_request_id)}</div><div>Warranty / 保修: {formatValue(row.related_warranty_id)}</div><div>Created / 创建: {formatValue(row.created_at)}</div><div>Description / 说明: {formatValue(row.issue_description)}</div></div></article>)}
       </section>
 
       <section className="grid gap-4 rounded-3xl bg-white p-6 shadow-soft ring-1 ring-slate-200">
