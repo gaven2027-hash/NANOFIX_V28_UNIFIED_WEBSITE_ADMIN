@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 
 const navItems = [
   { href: '/customer-portal', label: 'Dashboard', zh: '首页' },
+  { href: '/customer-portal/submit-request', label: 'Submit Request', zh: '提交维修' },
   { href: '/customer-portal/records', label: 'Records', zh: '记录' },
   { href: '/customer-portal/uploads', label: 'Uploads', zh: '文件' },
   { href: '/customer-portal/financial', label: 'Finance', zh: '财务' },
