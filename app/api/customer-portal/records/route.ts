@@ -25,16 +25,17 @@ async function customerIdsForProfile(profileId: string) {
 
 async function loadCustomerRecords(customerIds: string[], limit: number) {
   const supabase = createAdminClient();
-  if (!customerIds.length) return { service_requests: [], jobs: [], invoices: [], payments: [], warranties: [] };
+  if (!customerIds.length) return { service_requests: [], warranty_claims: [], jobs: [], invoices: [], payments: [], warranties: [] };
 
   const { data: serviceRequests, error: requestError } = await supabase
     .from('service_requests')
-    .select('service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,postal_code,leak_location,issue_description,property_type,preferred_time_text,status,binding_status,created_at,updated_at')
+    .select('service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,postal_code,leak_location,issue_description,property_type,preferred_time_text,status,binding_status,request_origin,customer_portal_request_type,related_warranty_id,warranty_claim_decision,warranty_claim_next_action,warranty_claim_decision_notes,warranty_claim_reviewed_at,warranty_claim_routing_status,warranty_claim_routed_job_id,warranty_claim_routed_quotation_id,warranty_claim_routed_at,created_at,updated_at')
     .in('customer_id', customerIds)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (requestError) throw new Error(requestError.message);
 
+  const warrantyClaims = (serviceRequests ?? []).filter((row) => row.request_origin === 'customer_portal' && row.customer_portal_request_type === 'warranty_repair');
   const serviceRequestIds = unique((serviceRequests ?? []).map((row) => row.service_request_id as string));
 
   const directJobs = await supabase
@@ -64,7 +65,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
   if (jobIds.length) {
     const invoiceResult = await supabase
       .from('invoices')
-      .select('invoice_id,invoice_no,job_id,total,status,created_at')
+      .select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,pdf_storage_path,payment_url,public_ref,created_at')
       .in('job_id', jobIds)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -77,7 +78,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
   if (invoiceIds.length) {
     const paymentResult = await supabase
       .from('payments')
-      .select('payment_id,invoice_id,amount,status,fee,reconciled_at,created_at')
+      .select('payment_id,invoice_id,amount,status,fee,reconciled_at,visible_to_customer,payment_url,created_at')
       .in('invoice_id', invoiceIds)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -89,7 +90,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
   if (jobIds.length) {
     const warrantyResult = await supabase
       .from('warranties')
-      .select('warranty_id,job_id,status,coverage,starts_at,ends_at,created_at')
+      .select('warranty_id,job_id,customer_id,status,coverage,starts_at,ends_at,warranty_years,pdf_storage_path,visible_to_customer,public_ref,created_at')
       .in('job_id', jobIds)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -97,7 +98,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
     warranties = warrantyResult.data ?? [];
   }
 
-  return { service_requests: serviceRequests ?? [], jobs, invoices, payments, warranties };
+  return { service_requests: serviceRequests ?? [], warranty_claims: warrantyClaims, jobs, invoices, payments, warranties };
 }
 
 export async function GET(request: NextRequest) {
@@ -121,6 +122,7 @@ export async function GET(request: NextRequest) {
     after: {
       customers: customers.length,
       service_requests: records.service_requests.length,
+      warranty_claims: records.warranty_claims.length,
       jobs: records.jobs.length,
       invoices: records.invoices.length,
       payments: records.payments.length,
