@@ -8,7 +8,13 @@ const exists = (file) => fs.existsSync(path.join(root, file));
 const assert = (ok, msg) => { if (!ok) failures.push(msg); };
 const must = (content, marker, label) => assert(content.includes(marker), `${label} missing ${marker}`);
 
-const baseFiles = ['app/globals.css', 'components/CustomerPortalShell.tsx', 'components/CustomerPortalPageFrame.tsx', 'package.json'];
+const baseFiles = [
+  'app/globals.css',
+  'components/CustomerPortalShell.tsx',
+  'components/CustomerPortalPageFrame.tsx',
+  'components/CustomerPortalMobileHardening.module.css',
+  'package.json'
+];
 const portalPages = [
   'app/customer-portal/page.tsx',
   'app/customer-portal/records/page.tsx',
@@ -25,12 +31,14 @@ if (!failures.length) {
   const css = read('app/globals.css');
   const shell = read('components/CustomerPortalShell.tsx');
   const frame = read('components/CustomerPortalPageFrame.tsx');
+  const mobile = read('components/CustomerPortalMobileHardening.module.css');
   const pkg = read('package.json');
 
   for (const marker of ['nanofix-customer-portal', '#120a06', '#ff5f00', '#ff3d00', '#ffb000', 'customer-portal-header', 'customer-portal-logo', 'customer-portal-shell-card']) must(css, marker, 'Customer Portal CSS theme');
   for (const marker of ['customer-portal-action-primary', 'customer-portal-action-secondary', 'button[type="submit"]', 'a[href*="submit-request"]', 'a[href*="warranty-claims"]', 'a[target="_blank"]', 'a[href*="financial"]', 'a[href*="warranties"]', 'bg-amber-50', 'bg-red-50']) must(css, marker, 'Customer Portal action hierarchy');
-  for (const marker of ['nanofix-customer-portal min-h-screen', 'customer-portal-header', 'customer-portal-logo', 'customer-portal-priority-strip', 'customer-portal-shell-card', 'hover:bg-orange-500/20']) must(shell, marker, 'Customer Portal shell theme');
+  for (const marker of ['nanofix-customer-portal min-h-screen', 'customer-portal-header', 'customer-portal-logo', 'customer-portal-priority-strip', 'customer-portal-shell-card', 'hover:bg-orange-500/20', 'CustomerPortalMobileHardening.module.css', 'styles.mobileHardening']) must(shell, marker, 'Customer Portal shell theme and mobile hardening');
   for (const marker of ['CustomerPortalPageFrame', 'customer-portal-page-frame', 'customer-portal-page-hero', 'customer-portal-page-content', 'primaryLabel', 'secondaryLabel']) must(frame, marker, 'Customer Portal page frame');
+  for (const marker of ['mobileHardening', '@media (max-width: 767px)', 'customer-portal-header nav', 'overflow-x: auto', 'customer-portal-page-hero h1', 'min-height: 44px', 'table', 'min-width: 680px', '-webkit-overflow-scrolling: touch', 'word-break: break-word']) must(mobile, marker, 'Customer Portal mobile hardening');
 
   for (const page of portalPages) {
     const content = read(page);
