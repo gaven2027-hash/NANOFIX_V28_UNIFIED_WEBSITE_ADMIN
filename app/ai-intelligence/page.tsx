@@ -10,7 +10,11 @@ export default function Page() {
   return (
     <AdminShell>
       <PageHeader eyebrow="AI 智能中心" title="AI Intelligence Center" description="AI supports search, content, conversations and lead discovery. / AI 辅助搜索、内容、对话和获客线索发现。" />
-      <><><SocialPreview /><div className="mt-6"><StatusMachineTable /></div></><MenuAnchorSections route="/ai-intelligence" /></>
+      <div className="space-y-6">
+        <SocialPreview />
+        <StatusMachineTable />
+        <MenuAnchorSections route="/ai-intelligence" />
+      </div>
     </AdminShell>
   );
 }
