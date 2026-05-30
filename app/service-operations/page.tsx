@@ -9,6 +9,7 @@ import { ServiceOperationsFinancialVisibility } from '@/components/ServiceOperat
 import { ServiceOperationsPaymentIntentPanel } from '@/components/ServiceOperationsPaymentIntentPanel';
 import { ServiceOperationsCheckoutSessionPanel } from '@/components/ServiceOperationsCheckoutSessionPanel';
 import { ServiceOperationsInvoicePdfPanel } from '@/components/ServiceOperationsInvoicePdfPanel';
+import { ServiceOperationsQuotationPdfPanel } from '@/components/ServiceOperationsQuotationPdfPanel';
 import { ServiceOperationsDocumentSettingsPanel } from '@/components/ServiceOperationsDocumentSettingsPanel';
 import { ServiceOperationsInspectionWorkspace } from '@/components/ServiceOperationsInspectionWorkspace';
 import { ServiceOperationsStorageUploader } from '@/components/ServiceOperationsStorageUploader';
@@ -30,6 +31,7 @@ export default function Page() {
         <ServiceOperationsPaymentIntentPanel />
         <ServiceOperationsCheckoutSessionPanel />
         <ServiceOperationsDocumentSettingsPanel />
+        <ServiceOperationsQuotationPdfPanel />
         <ServiceOperationsInvoicePdfPanel />
         <ServiceOperationsInspectionWorkspace />
         <ServiceOperationsStorageUploader />
