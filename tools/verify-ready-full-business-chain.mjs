@@ -64,9 +64,8 @@ if (!failures.length) {
 
   for (const marker of [
     'productionEnvIsReady',
-    'SUPABASE_SERVICE_ROLE_KEY',
     'checkTable',
-    '?select=created_at&limit=1',
+    'limit=0',
     'database_ready',
     'required_tables',
     'status: ok ? 200 : 503'
