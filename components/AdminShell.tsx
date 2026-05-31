@@ -8,8 +8,18 @@ import { menu } from '@/data/adminNavigation';
 import { createBrowserClient } from '@/lib/supabase/browser';
 import { TopSearch } from './TopSearch';
 
-function basePath(href: string) {
-  return href.split('#')[0] || '/admin';
+function basePath(href: string) { return href.split('#')[0] || '/admin'; }
+function hrefHash(href: string) { return href.includes('#') ? href.split('#')[1] : ''; }
+
+function navigateSamePageHash(hash: string) {
+  if (!hash || typeof window === 'undefined') return;
+  const nextUrl = `${window.location.pathname}#${hash}`;
+  window.history.pushState(null, '', nextUrl);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  window.setTimeout(() => {
+    const target = document.getElementById(hash);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 30);
 }
 
 function clearAdminAccessCookie() {
@@ -24,10 +34,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const [openSection, setOpenSection] = useState<string | null>(null);
 
   useEffect(() => {
-    if (pathname === '/admin') {
-      setOpenSection(null);
-      return;
-    }
+    if (pathname === '/admin') { setOpenSection(null); return; }
     if (currentSection) setOpenSection(currentSection.href);
   }, [pathname, currentSection]);
 
@@ -38,63 +45,25 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         const active = pathname === routeHref || pathname.startsWith(`${routeHref}/`);
         const isOpen = openSection === item.href;
         return (
-          <section
-            key={item.href}
-            className={clsx(
-              'overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition',
-              active ? 'ring-1 ring-sky-300/45' : 'hover:bg-white/[0.055]'
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => setOpenSection((current) => (current === item.href ? null : item.href))}
-              className={clsx(
-                'grid w-full grid-cols-[34px_minmax(0,1fr)_auto_34px] items-center gap-2 p-3 text-left transition',
-                active ? 'bg-activeBlue text-white shadow-lg shadow-blue-950/20' : 'text-slate-200'
-              )}
-              aria-expanded={isOpen}
-              title={`${item.title} / ${item.zh}`}
-            >
+          <section key={item.href} className={clsx('overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition', active ? 'ring-1 ring-sky-300/45' : 'hover:bg-white/[0.055]')}>
+            <button type="button" onClick={() => setOpenSection((current) => (current === item.href ? null : item.href))} className={clsx('grid w-full grid-cols-[34px_minmax(0,1fr)_auto_34px] items-center gap-2 p-3 text-left transition', active ? 'bg-activeBlue text-white shadow-lg shadow-blue-950/20' : 'text-slate-200')} aria-expanded={isOpen} title={`${item.title} / ${item.zh}`}>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-[12px] font-black leading-none">{item.order}</span>
-              <span className="min-w-0">
-                <span className="block truncate text-[clamp(12px,0.75vw,14px)] font-extrabold leading-4 tracking-[-0.02em]">{item.title}</span>
-                <span className="mt-0.5 block truncate text-[12px] font-semibold leading-4 text-white/78">{item.zh}</span>
-              </span>
+              <span className="min-w-0"><span className="block truncate text-[clamp(12px,0.75vw,14px)] font-extrabold leading-4 tracking-[-0.02em]">{item.title}</span><span className="mt-0.5 block truncate text-[12px] font-semibold leading-4 text-white/78">{item.zh}</span></span>
               <span className={clsx('max-w-[44px] truncate rounded-full px-2 py-0.5 text-center text-[10px] font-black leading-4', active ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-200')}>{item.badge}</span>
-              <span
-                aria-hidden="true"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[12px] font-black text-white transition group-hover:bg-white/20"
-              >
-                {isOpen ? '▴' : '▾'}
-              </span>
+              <span aria-hidden="true" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[12px] font-black text-white transition group-hover:bg-white/20">{isOpen ? '▴' : '▾'}</span>
             </button>
             {isOpen && item.children.length > 0 ? (
               <div className="grid gap-1 px-3 pb-3 pt-2">
                 {item.children.map((child) => {
                   const childBase = basePath(child.href);
                   const samePage = pathname === childBase || pathname.startsWith(`${childBase}/`);
+                  const hash = hrefHash(child.href);
                   return (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      scroll={false}
-                      onClick={(event) => {
-                        if (samePage && child.href.includes('#')) {
-                          event.preventDefault();
-                          const hash = child.href.split('#')[1];
-                          window.history.replaceState(null, '', `#${hash}`);
-                          window.dispatchEvent(new HashChangeEvent('hashchange'));
-                        }
-                        if (samePage) onNavigate?.();
-                      }}
-                      className={clsx(
-                        'group rounded-xl py-2 pl-11 pr-3 text-[13px] font-bold leading-4 text-blue-100 transition hover:bg-white/10 hover:text-white',
-                        samePage ? 'bg-white/10 text-white' : ''
-                      )}
-                      title={`${child.title} / ${child.zh}`}
-                    >
-                      <span className="block truncate">{child.title}</span>
-                      <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
+                    <Link key={child.href} href={child.href} scroll={false} onClick={(event) => {
+                      if (samePage && hash) { event.preventDefault(); navigateSamePageHash(hash); }
+                      onNavigate?.();
+                    }} className={clsx('group rounded-xl py-2 pl-11 pr-3 text-[13px] font-bold leading-4 text-blue-100 transition hover:bg-white/10 hover:text-white', samePage ? 'bg-white/10 text-white' : '')} title={`${child.title} / ${child.zh}`}>
+                      <span className="block truncate">{child.title}</span><span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400 group-hover:text-slate-200">{child.zh}</span>
                     </Link>
                   );
                 })}
@@ -107,93 +76,23 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function BrandBlock() {
-  return (
-    <Link href="/admin" className="flex h-20 items-center gap-3 border-b border-white/10 px-6 transition hover:bg-white/[0.035]">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25">
-        <img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
-      </div>
-      <div>
-        <div className="text-xl font-black tracking-wide">NANOFIX</div>
-        <div className="text-[13px] text-slate-300">V28 / 总后台</div>
-      </div>
-    </Link>
-  );
-}
+function BrandBlock() { return <Link href="/admin" className="flex h-20 items-center gap-3 border-b border-white/10 px-6 transition hover:bg-white/[0.035]"><div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25"><img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" /></div><div><div className="text-xl font-black tracking-wide">NANOFIX</div><div className="text-[13px] text-slate-300">V28 / 总后台</div></div></Link>; }
 
 function LogoutPanel({ onLoggedOut }: { onLoggedOut?: () => void }) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
-
-  async function signOut() {
-    setSigningOut(true);
-    try {
-      const supabase = createBrowserClient();
-      await supabase.auth.signOut();
-    } catch {
-      // Always clear the admin cookie even if the browser Supabase client is unavailable.
-    } finally {
-      clearAdminAccessCookie();
-      onLoggedOut?.();
-      router.replace('/login?role=admin');
-      router.refresh();
-      setSigningOut(false);
-    }
-  }
-
-  return (
-    <div className="border-t border-white/10 p-4">
-      <button
-        type="button"
-        onClick={signOut}
-        disabled={signingOut}
-        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-left text-sm font-black text-white transition hover:bg-red-500/25 disabled:cursor-wait disabled:opacity-70"
-      >
-        {signingOut ? 'Signing out... / 正在退出...' : 'Logout / 退出账号'}
-      </button>
-      <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-400">Clear session and return to secure login. / 清除登录状态并返回登录页。</p>
-    </div>
-  );
+  async function signOut() { setSigningOut(true); try { const supabase = createBrowserClient(); await supabase.auth.signOut(); } catch {} finally { clearAdminAccessCookie(); onLoggedOut?.(); router.replace('/login?role=admin'); router.refresh(); setSigningOut(false); } }
+  return <div className="border-t border-white/10 p-4"><button type="button" onClick={signOut} disabled={signingOut} className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-left text-sm font-black text-white transition hover:bg-red-500/25 disabled:cursor-wait disabled:opacity-70">{signingOut ? 'Signing out... / 正在退出...' : 'Logout / 退出账号'}</button><p className="mt-2 text-[11px] font-semibold leading-4 text-slate-400">Clear session and return to secure login. / 清除登录状态并返回登录页。</p></div>;
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   return (
     <div className="min-h-screen bg-adminBg text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-80 flex-col bg-sidebar text-white shadow-2xl lg:flex">
-        <BrandBlock />
-        <SidebarNav />
-        <div className="border-t border-white/10 p-4 text-xs text-slate-300">QR display is backend-only. Public website QR sections are disabled.</div>
-        <LogoutPanel />
-      </aside>
-
-      <div className="sticky top-0 z-30 flex items-center justify-between bg-sidebar px-4 py-3 text-white shadow-lg lg:hidden">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
-            <img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
-          </div>
-          <div>
-            <div className="text-base font-black">NANOFIX V28</div>
-            <div className="text-xs font-semibold text-slate-300">Admin Menu / 后台菜单</div>
-          </div>
-        </div>
-        <button type="button" onClick={() => setMobileMenuOpen((value) => !value)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-black">
-          {mobileMenuOpen ? 'Close' : 'Menu'}
-        </button>
-      </div>
-
-      {mobileMenuOpen ? (
-        <div className="fixed inset-x-0 top-[64px] z-40 max-h-[calc(100vh-64px)] overflow-y-auto bg-sidebar text-white shadow-2xl lg:hidden">
-          <SidebarNav onNavigate={() => setMobileMenuOpen(false)} />
-          <LogoutPanel onLoggedOut={() => setMobileMenuOpen(false)} />
-        </div>
-      ) : null}
-
-      <div className="lg:pl-80">
-        <TopSearch />
-        <main className="w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">{children}</main>
-      </div>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-80 flex-col bg-sidebar text-white shadow-2xl lg:flex"><BrandBlock /><SidebarNav /><div className="border-t border-white/10 p-4 text-xs text-slate-300">QR display is backend-only. Public website QR sections are disabled.</div><LogoutPanel /></aside>
+      <div className="sticky top-0 z-30 flex items-center justify-between bg-sidebar px-4 py-3 text-white shadow-lg lg:hidden"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1"><img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" /></div><div><div className="text-base font-black">NANOFIX V28</div><div className="text-xs font-semibold text-slate-300">Admin Menu / 后台菜单</div></div></div><button type="button" onClick={() => setMobileMenuOpen((value) => !value)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-black">{mobileMenuOpen ? 'Close' : 'Menu'}</button></div>
+      {mobileMenuOpen ? <div className="fixed inset-x-0 top-[64px] z-40 max-h-[calc(100vh-64px)] overflow-y-auto bg-sidebar text-white shadow-2xl lg:hidden"><SidebarNav onNavigate={() => setMobileMenuOpen(false)} /><LogoutPanel onLoggedOut={() => setMobileMenuOpen(false)} /></div> : null}
+      <div className="lg:pl-80"><TopSearch /><main className="w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">{children}</main></div>
     </div>
   );
 }
