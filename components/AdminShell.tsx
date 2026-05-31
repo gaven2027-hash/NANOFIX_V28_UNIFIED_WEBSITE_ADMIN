@@ -88,11 +88,30 @@ function LogoutPanel({ onLoggedOut }: { onLoggedOut?: () => void }) {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-adminBg text-slate-900">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-80 flex-col bg-sidebar text-white shadow-2xl lg:flex"><BrandBlock /><SidebarNav /><div className="border-t border-white/10 p-4 text-xs text-slate-300">QR display is backend-only. Public website QR sections are disabled.</div><LogoutPanel /></aside>
-      <div className="sticky top-0 z-30 flex items-center justify-between bg-sidebar px-4 py-3 text-white shadow-lg lg:hidden"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1"><img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" /></div><div><div className="text-base font-black">NANOFIX V28</div><div className="text-xs font-semibold text-slate-300">Admin Menu / 后台菜单</div></div></div><button type="button" onClick={() => setMobileMenuOpen((value) => !value)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-black">{mobileMenuOpen ? 'Close' : 'Menu'}</button></div>
+    <div className="nanofix-admin-shell min-h-screen bg-adminBg text-slate-900">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .nanofix-admin-shell .nanofix-admin-shell {
+          min-height: 0 !important;
+          background: transparent !important;
+        }
+        .nanofix-admin-shell .nanofix-admin-shell > .nanofix-admin-sidebar,
+        .nanofix-admin-shell .nanofix-admin-shell > .nanofix-admin-mobile-header,
+        .nanofix-admin-shell .nanofix-admin-shell .nanofix-admin-top-search {
+          display: none !important;
+        }
+        .nanofix-admin-shell .nanofix-admin-shell .nanofix-admin-content {
+          padding-left: 0 !important;
+        }
+        .nanofix-admin-shell .nanofix-admin-shell .nanofix-admin-main {
+          padding: 0 !important;
+          width: 100% !important;
+          max-width: none !important;
+        }
+      ` }} />
+      <aside className="nanofix-admin-sidebar fixed inset-y-0 left-0 z-30 hidden w-80 flex-col bg-sidebar text-white shadow-2xl lg:flex"><BrandBlock /><SidebarNav /><div className="border-t border-white/10 p-4 text-xs text-slate-300">QR display is backend-only. Public website QR sections are disabled.</div><LogoutPanel /></aside>
+      <div className="nanofix-admin-mobile-header sticky top-0 z-30 flex items-center justify-between bg-sidebar px-4 py-3 text-white shadow-lg lg:hidden"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1"><img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" /></div><div><div className="text-base font-black">NANOFIX V28</div><div className="text-xs font-semibold text-slate-300">Admin Menu / 后台菜单</div></div></div><button type="button" onClick={() => setMobileMenuOpen((value) => !value)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-black">{mobileMenuOpen ? 'Close' : 'Menu'}</button></div>
       {mobileMenuOpen ? <div className="fixed inset-x-0 top-[64px] z-40 max-h-[calc(100vh-64px)] overflow-y-auto bg-sidebar text-white shadow-2xl lg:hidden"><SidebarNav onNavigate={() => setMobileMenuOpen(false)} /><LogoutPanel onLoggedOut={() => setMobileMenuOpen(false)} /></div> : null}
-      <div className="lg:pl-80"><TopSearch /><main className="w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">{children}</main></div>
+      <div className="nanofix-admin-content lg:pl-80"><div className="nanofix-admin-top-search"><TopSearch /></div><main className="nanofix-admin-main w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">{children}</main></div>
     </div>
   );
 }
