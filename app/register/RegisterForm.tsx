@@ -23,10 +23,20 @@ function getRegisterContext(explicitRole: string | null, forcedContext?: Registe
   return internalKeywords.some((keyword) => role.includes(keyword)) ? 'admin' : 'customer';
 }
 
+function slugIdentifier(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '').slice(0, 80) || 'internal.user';
+}
+
+function syntheticInternalEmail(username: string, phone: string) {
+  const raw = username || phone;
+  return `internal.${slugIdentifier(raw)}@nanofix.local`;
+}
+
 function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext }) {
   const searchParams = useSearchParams();
   const context = getRegisterContext(searchParams.get('role'), forcedContext);
   const isAdmin = context === 'admin';
+  const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -36,19 +46,30 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
   const [message, setMessage] = useState('');
   const loginHref = useMemo(() => `/login?role=${context}`, [context]);
 
+  const cleanUsername = username.trim();
+  const cleanName = name.trim();
+  const cleanPhone = phone.trim();
+  const cleanEmail = email.trim().toLowerCase();
+  const internalIdentifier = cleanEmail || cleanPhone || cleanUsername;
+  const signupEmail = isAdmin ? (cleanEmail || syntheticInternalEmail(cleanUsername, cleanPhone)) : cleanEmail;
+
   async function submitRegistrationRequest(authUserId?: string) {
     await fetch('/api/public/registration-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         auth_user_id: authUserId || null,
-        email,
-        full_name: name,
-        phone,
+        email: signupEmail,
+        contact_email: cleanEmail || null,
+        username: cleanUsername || null,
+        full_name: cleanName || cleanUsername || cleanPhone || cleanEmail,
+        phone: cleanPhone,
         requested_role: isAdmin ? 'internal_admin_app' : 'customer_portal',
         requested_role_group: isAdmin ? roleGroup : 'customer',
         source: 'portal_register',
-        registration_source: isAdmin ? 'internal_admin_app_register' : 'customer_portal_register'
+        registration_source: isAdmin ? 'internal_admin_app_register' : 'customer_portal_register',
+        identifier_type: cleanEmail ? 'email' : cleanPhone ? 'phone' : cleanUsername ? 'username' : null,
+        identifier_value: isAdmin ? internalIdentifier : cleanPhone
       })
     });
   }
@@ -64,18 +85,40 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
       return;
     }
 
+    if (isAdmin && !internalIdentifier) {
+      setLoading(false);
+      setMessage('Internal registration requires at least one identifier: username, phone or email. / 内部管理注册至少填写用户名、电话或邮箱其中一项。');
+      return;
+    }
+
+    if (!isAdmin && !cleanPhone) {
+      setLoading(false);
+      setMessage('Customer registration requires a phone / WhatsApp number. / 客户会员注册必须填写电话号码或 WhatsApp。');
+      return;
+    }
+
+    if (!isAdmin && !cleanEmail) {
+      setLoading(false);
+      setMessage('Customer registration also requires an email for secure portal sign-in. / 客户门户登录仍需要邮箱用于安全登录。');
+      return;
+    }
+
     try {
       const supabase = createBrowserClient();
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: signupEmail,
         password,
         options: {
           data: {
-            full_name: name,
-            name,
-            phone,
-            mobile_phone: phone,
-            whatsapp_phone: phone,
+            username: cleanUsername || null,
+            full_name: cleanName || cleanUsername || cleanPhone || cleanEmail,
+            name: cleanName || cleanUsername || cleanPhone || cleanEmail,
+            phone: cleanPhone,
+            mobile_phone: cleanPhone,
+            whatsapp_phone: cleanPhone,
+            contact_email: cleanEmail || null,
+            login_identifier: isAdmin ? internalIdentifier : cleanEmail,
+            identifier_type: cleanEmail ? 'email' : cleanPhone ? 'phone' : cleanUsername ? 'username' : null,
             requested_role: isAdmin ? 'internal_admin_app' : 'customer_portal',
             requested_role_group: isAdmin ? roleGroup : 'customer',
             registration_source: isAdmin ? 'internal_admin_app_register' : 'customer_portal_register',
@@ -92,8 +135,8 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
       await submitRegistrationRequest(data.user?.id);
       setMessage(
         isAdmin
-          ? 'Application submitted. Super Admin will verify the applicant, assign the final role group, and all approval actions must be written to Audit Logs. / 申请已提交。总管理员会核对申请人、分配最终角色分组，所有审批动作必须写入审计日志。'
-          : 'Registration submitted. Please verify your email or OTP if required, then sign in to Customer Portal. / 注册已提交。如系统要求，请先验证邮箱或 OTP，然后登录客户门户。'
+          ? 'Application submitted. Username / phone / email identifier is accepted for review. Super Admin will verify and assign the final role group. / 申请已提交。用户名、电话或邮箱任一识别资料均可进入审核，总管理员会核对并分配最终角色。'
+          : 'Registration submitted. Phone is recorded as the required customer contact. Please verify your email or OTP if required, then sign in to Customer Portal. / 注册已提交，电话已作为客户必填联系方式记录。如系统要求，请先验证邮箱或 OTP，然后登录客户门户。'
       );
     } catch {
       setMessage('Registration service is not configured. / 注册服务暂未配置。');
@@ -116,12 +159,12 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
         </p>
         <p className="mt-4 text-sm font-bold leading-6 text-slate-700">
           {isAdmin
-            ? 'One internal registration entry for Super Admin, Admin, Engineer / Inspection, Operations and Finance. No separate Engineer Portal/Register/Login.'
-            : 'Create your customer account to submit repair requests and track your own service records.'}
+            ? 'Internal staff may register with any one of username, phone or email. No separate Engineer Portal/Register/Login.'
+            : 'Customer registration requires phone / WhatsApp, then customers use the independent portal only.'}
           <br />
           {isAdmin
-            ? '总管理员、管理员、工程师/检修、运营、财务共用一个内部注册入口，不再有独立工程师注册或登录。'
-            : '客户使用独立门户提交报修并查看自己的服务资料。'}
+            ? '内部人员注册：用户名、电话、邮箱三项中任意填写一项即可提交；不再有独立工程师注册或登录。'
+            : '客户会员注册电话号码为必填项，客户只进入独立客户门户。'}
         </p>
       </div>
       <form className="mt-6 space-y-4" onSubmit={onSubmit}>
@@ -140,9 +183,10 @@ function RegisterFormInner({ forcedContext }: { forcedContext?: RegisterContext 
             <span className="mt-1 block text-[11px] font-semibold text-slate-500">Super Admin may correct this during review. / 总管理员审核时可以修改此分组。</span>
           </label>
         ) : null}
-        <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder="Full Name / 姓名" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
-        <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder="Phone / WhatsApp / 手机或 WhatsApp" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" required />
-        <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder="Email / 邮箱" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+        {isAdmin ? <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder="Username / 用户名（内部注册可选）" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /> : null}
+        <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder={isAdmin ? 'Full Name / 姓名（内部注册可选）' : 'Full Name / 姓名'} value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required={!isAdmin} />
+        <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder={isAdmin ? 'Phone / WhatsApp / 手机或 WhatsApp（内部注册可选）' : 'Phone / WhatsApp / 手机或 WhatsApp（客户必填）'} value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" required={!isAdmin} />
+        <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder={isAdmin ? 'Email / 邮箱（内部注册可选）' : 'Email / 邮箱'} type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required={!isAdmin} />
         <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm outline-none focus:border-activeBlue" placeholder="Password / 密码" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required />
         {message ? <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 ring-1 ring-amber-100">{message}</div> : null}
         <button className="w-full rounded-2xl bg-activeBlue px-4 py-3 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>
