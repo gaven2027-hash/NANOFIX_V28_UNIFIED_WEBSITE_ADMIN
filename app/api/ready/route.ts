@@ -3,7 +3,7 @@ import { envChecks, productionEnvIsReady } from "@/lib/nanofix/env";
 
 export const dynamic = "force-dynamic";
 
-const requiredTables = [
+const coreRequiredTables = [
   "profiles",
   "customers",
   "unified_intake",
@@ -28,19 +28,22 @@ const requiredTables = [
   "warranty_claims",
   "customer_portal_requests",
   "customer_document_feedback",
-  "automation_rules",
-  "notification_outbox",
-  "internal_inbox_messages",
   "unified_tasks",
   "task_events",
   "workflow_settings",
   "status_transition_logs",
   "audit_logs",
+  "document_company_settings"
+];
+
+const optionalModuleTables = [
+  "automation_rules",
+  "notification_outbox",
+  "internal_inbox_messages",
   "content_drafts",
   "ai_logs",
   "backup_jobs",
-  "app_modules",
-  "document_company_settings"
+  "app_modules"
 ];
 
 type TableCheck = {
@@ -82,11 +85,17 @@ async function checkTable(url: string, serviceRoleKey: string, table: string): P
 export async function GET() {
   const envReady = process.env.NODE_ENV === "production" ? productionEnvIsReady() : true;
   const supabaseConfig = getSupabaseConfig();
-  const tableChecks: TableCheck[] = supabaseConfig.configured
-    ? await Promise.all(requiredTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
-    : requiredTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
-  const dbReady = supabaseConfig.configured && tableChecks.every((check) => check.ok);
-  const ok = envReady && dbReady;
+  const coreTableChecks: TableCheck[] = supabaseConfig.configured
+    ? await Promise.all(coreRequiredTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
+    : coreRequiredTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
+  const optionalTableChecks: TableCheck[] = supabaseConfig.configured
+    ? await Promise.all(optionalModuleTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
+    : optionalModuleTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
+  const failedCoreTables = coreTableChecks.filter((check) => !check.ok);
+  const failedOptionalTables = optionalTableChecks.filter((check) => !check.ok);
+  const databaseReady = supabaseConfig.configured && failedCoreTables.length === 0;
+  const optionalDatabaseReady = supabaseConfig.configured && failedOptionalTables.length === 0;
+  const ok = envReady && databaseReady;
   return NextResponse.json(
     {
       ok,
@@ -94,15 +103,19 @@ export async function GET() {
       version: "28.2.0-automation-inbox-task-engine",
       environment: process.env.NODE_ENV || "development",
       env_ready: envReady,
-      database_ready: dbReady,
+      database_ready: databaseReady,
+      optional_database_ready: optionalDatabaseReady,
       supabase_configured: supabaseConfig.configured,
+      failed_core_tables: failedCoreTables.map((check) => check.table),
+      failed_optional_tables: failedOptionalTables.map((check) => check.table),
       checks: envChecks.map((check) => ({
         name: check.name,
         configured: check.configured,
         required_for_production: check.requiredForProduction,
         description: check.description
       })),
-      required_tables: tableChecks,
+      required_tables: coreTableChecks,
+      optional_tables: optionalTableChecks,
       timestamp: new Date().toISOString()
     },
     { status: ok ? 200 : 503 }
