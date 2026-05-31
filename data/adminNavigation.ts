@@ -45,7 +45,7 @@ export const menu: MenuItem[] = [
     href: '/service-operations',
     title: 'Service & Order Operations',
     zh: '服务与订单运营',
-    badge: 18,
+    badge: 25,
     children: [
       child('/service-operations#leads', 'Leads', '线索'),
       child('/service-operations#service-requests', 'Service Requests', '服务请求 / 报修单'),
@@ -62,6 +62,14 @@ export const menu: MenuItem[] = [
       child('/service-operations#receipts', 'Receipts', '收据'),
       child('/service-operations#warranty-records', 'Warranty Records', '保修记录'),
       child('/service-operations#warranty-generation-rules', 'Warranty Generation Rules', '保修生成规则'),
+      child('/service-operations#warranty-claim-review', 'Warranty Claim Review', '保修维修审核'),
+      child('/service-operations#warranty-claim-routing', 'Warranty Claim Routing', '保修维修路由'),
+      child('/service-operations#warranty-claim-messages', 'Warranty Claim Messages', '保修维修留言'),
+      child('/service-operations#warranty-claim-attachments', 'Warranty Claim Attachments', '保修维修附件'),
+      child('/service-operations#warranty-claim-closure', 'Warranty Claim Closure', '保修维修完成与关闭'),
+      child('/service-operations#warranty-claim-satisfaction-followup', 'Warranty Satisfaction Follow-up', '保修满意度跟进'),
+      child('/service-operations#warranty-satisfaction-notification-rules', 'Warranty Satisfaction Notification Rules', '保修满意度通知规则'),
+      child('/service-operations#warranty-satisfaction-audit-trail', 'Warranty Satisfaction Audit Trail', '保修满意度审计时间线'),
       child('/service-operations#rework', 'Rework', '返工管理'),
       child('/service-operations#status-flow-logs', 'Status Flow & Logs', '状态流转与日志'),
       child('/service-operations#super-admin-takeover-override', 'Super Admin Takeover & Override', '总管理员接管与强制流转')
