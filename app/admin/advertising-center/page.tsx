@@ -17,9 +17,55 @@ const quickLinks = [
   { href: '/admin/advertising-center#budgets-strategy', title: 'Budgets & Strategy / 预算策略', note: 'Submit budget changes, finance review and Super Admin final approval.' }
 ];
 
+const advertisingFullWidthCss = `
+  .advertising-center-full-width,
+  .advertising-center-full-width > *,
+  .advertising-center-full-width section,
+  .advertising-center-full-width article,
+  .advertising-center-full-width [class*="rounded-3xl"],
+  .advertising-center-full-width [class*="rounded-2xl"] {
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  .advertising-center-full-width {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .advertising-center-full-width .advertising-workspace-full,
+  .advertising-center-full-width .advertising-workspace-full > div,
+  .advertising-center-full-width .advertising-workspace-full > div > div,
+  .advertising-center-full-width .advertising-workspace-full > div > section {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  .advertising-center-full-width .advertising-workspace-full [class*="xl:grid-cols"],
+  .advertising-center-full-width .advertising-workspace-full [class*="xl:grid-cols-["],
+  .advertising-center-full-width .advertising-workspace-full [class*="grid-cols-[420px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .advertising-center-full-width .advertising-workspace-full table,
+  .advertising-center-full-width .advertising-workspace-full .min-w-\[1120px\] {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+  }
+
+  .advertising-center-full-width .advertising-workspace-full .overflow-x-auto {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+`;
+
 export default function Page() {
   return (
     <AdminShell>
+      <style dangerouslySetInnerHTML={{ __html: advertisingFullWidthCss }} />
       <div className="advertising-center-full-width w-full max-w-none space-y-5">
         <PageHeader
           eyebrow="广告投放与推广中心"
@@ -39,7 +85,7 @@ export default function Page() {
             </Link>
           ))}
         </section>
-        <div className="w-full max-w-none">
+        <div className="advertising-workspace-full w-full max-w-none">
           <AdvertisingCenterWorkspace />
         </div>
         <div className="w-full max-w-none">
