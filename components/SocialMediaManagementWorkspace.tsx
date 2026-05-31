@@ -51,6 +51,15 @@ const quickActions = [
   { title: 'Schedule publish approval', zh: '排期 / 发布审批', href: '/social-media#schedule-publish-approval' }
 ];
 
+const bindingRules = [
+  { platform: 'Facebook / Instagram', binding: 'Meta Business OAuth + Page / IG Business Account selection', tables: 'social_accounts, social_tokens, social_webhook_events', api: '/api/social/accounts/meta/connect', sync: 'Pages, comments, DMs, posts, reviews where API permits' },
+  { platform: 'Google Business Profile', binding: 'Google OAuth + Business Profile location selection', tables: 'social_accounts, google_business_locations, social_reviews', api: '/api/social/accounts/google-business/connect', sync: 'Reviews, questions, business posts and location profile data' },
+  { platform: 'WhatsApp', binding: 'Meta WhatsApp Business Cloud API phone number + webhook verification', tables: 'social_accounts, whatsapp_threads, internal_inbox_messages', api: '/api/social/accounts/whatsapp/connect', sync: 'Inbound messages, media consults, AI draft replies and handoff events' },
+  { platform: 'TikTok', binding: 'TikTok Business OAuth where available; otherwise manual publishing workflow', tables: 'social_accounts, social_content_drafts, campaign_posting_queue', api: '/api/social/accounts/tiktok/connect', sync: 'Drafts, posting queue, engagement import subject to API approval' },
+  { platform: 'YouTube Shorts', binding: 'Google OAuth + YouTube channel selection', tables: 'social_accounts, social_content_drafts, campaign_posting_queue', api: '/api/social/accounts/youtube/connect', sync: 'Shorts drafts, upload queue and performance import' },
+  { platform: 'Xiaohongshu', binding: 'Manual mode until an approved API connector is available', tables: 'social_accounts, manual_social_messages, social_content_drafts', api: '/api/social/accounts/xiaohongshu/manual', sync: 'Manual message entry, draft review and attribution tagging' }
+];
+
 function SocialTable({ id, title, subtitle, items }: { id: string; title: string; subtitle: string; items: SocialItem[] }) {
   return (
     <SectionCard title={title} subtitle={subtitle}>
@@ -86,12 +95,35 @@ function SocialTable({ id, title, subtitle, items }: { id: string; title: string
   );
 }
 
+function SocialAccountBindingPanel() {
+  return (
+    <SectionCard title="Social Account Binding Rules / 社媒账号绑定接入规则" subtitle="Each platform must be connected through Social Accounts first, then routed into inbox, AI draft, approval, publishing and analytics modules. / 每个平台必须先在社媒账号管理中绑定，再进入收件箱、AI 草稿、审核、发布和分析模块。">
+      <div id="social-account-binding-rules" className="scroll-mt-32 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="grid grid-cols-[170px_1.4fr_1.2fr_1fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
+          <span>Platform / 平台</span>
+          <span>Binding method / 绑定方式</span>
+          <span>Tables / 数据表</span>
+          <span>API / 接口</span>
+        </div>
+        {bindingRules.map((rule) => (
+          <div key={rule.platform} className="grid grid-cols-[170px_1.4fr_1.2fr_1fr] gap-3 border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-700">
+            <span className="font-black text-slate-950">{rule.platform}</span>
+            <span>{rule.binding}<br /><span className="text-slate-400">Sync / 同步: {rule.sync}</span></span>
+            <span>{rule.tables}</span>
+            <span className="text-activeBlue">{rule.api}</span>
+          </div>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
 export function SocialMediaManagementWorkspace() {
   return (
     <div className="space-y-6">
       <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         {quickActions.map((action) => (
-          <Link key={action.href} href={action.href} className="rounded-3xl bg-gradient-to-br from-sky-400 via-cyan-300 to-blue-500 p-4 text-white shadow-soft transition hover:-translate-y-0.5">
+          <Link key={action.href} href={action.href} className="rounded-3xl bg-activeBlue p-4 text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-blue-700">
             <div className="text-sm font-black">{action.title}</div>
             <div className="mt-1 text-xs font-bold text-white/80">{action.zh}</div>
           </Link>
@@ -113,6 +145,8 @@ export function SocialMediaManagementWorkspace() {
           ))}
         </div>
       </SectionCard>
+
+      <SocialAccountBindingPanel />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <SocialTable id="social-accounts" title="Social Accounts & Google Business / 社媒账号与 Google 商家资料" subtitle="Connection status, token review and manual-mode accounts. / 账号连接、Token 审查和手动模式账号。" items={accountItems} />
