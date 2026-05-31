@@ -158,30 +158,7 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
   }
 
   return (
-    <section className="mt-6 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="rounded-3xl bg-white p-4 shadow-soft ring-1 ring-slate-200">
-        <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Submodules / 二级栏目</div>
-        <div className="mt-3 grid gap-2">
-          {sections.map((section) => {
-            const itemReality = getAdminModuleReality(section.href) ?? fallbackReality(section);
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => {
-                  window.history.replaceState(null, '', `#${section.id}`);
-                  window.dispatchEvent(new HashChangeEvent('hashchange'));
-                }}
-                className={`rounded-2xl px-3 py-3 text-left text-sm font-black transition ${section.id === active.id ? 'bg-gradient-to-br from-sky-400 via-cyan-300 to-blue-500 text-white shadow-lg shadow-sky-200' : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-blue-50 hover:text-activeBlue'}`}
-              >
-                <span className="block text-xs opacity-80">{section.childOrder} · {itemReality.status.toUpperCase()} · {itemReality.risk}</span>
-                <span className="block">{section.title}</span>
-                <span className="block text-xs font-bold opacity-75">{section.zh}</span>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
+    <section className="mt-6 w-full">
       <div className="space-y-5">
         <div id={active.id} className="scroll-mt-40 overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ring-slate-200">
           <div className="bg-gradient-to-br from-sky-500 via-cyan-300 to-blue-600 p-6 text-white">
@@ -193,7 +170,7 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
               </div>
               <span className="rounded-2xl bg-white/20 px-3 py-2 text-xs font-black ring-1 ring-white/30">{mode.label}</span>
             </div>
-            <p className="mt-4 max-w-4xl text-sm font-semibold leading-6 text-white/90">{reality.evidence}</p>
+            <p className="mt-4 max-w-none text-sm font-semibold leading-6 text-white/90">{reality.evidence}</p>
           </div>
 
           <div className="p-6">
@@ -210,9 +187,9 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
               ))}
             </div>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.7fr)]">
+            <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.45fr)]">
               <div className="overflow-hidden rounded-2xl ring-1 ring-slate-200">
-                <div className="grid grid-cols-[1fr_120px_110px] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.1em] text-slate-500 md:grid-cols-[1.4fr_140px_120px_90px]">
+                <div className="grid grid-cols-[1fr_120px_110px] gap-3 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.1em] text-slate-500 md:grid-cols-[1.6fr_150px_130px_90px]">
                   <span>Reality item / 真实性条目</span>
                   <span>Owner / 负责人</span>
                   <span>Status / 状态</span>
@@ -223,7 +200,7 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
                     key={row.id}
                     type="button"
                     onClick={() => setSelectedRowId(row.id)}
-                    className={`grid w-full grid-cols-[1fr_120px_110px] gap-3 border-t border-slate-200 px-4 py-3 text-left text-sm transition md:grid-cols-[1.4fr_140px_120px_90px] ${selected.id === row.id ? 'bg-sky-50' : 'bg-white hover:bg-slate-50'}`}
+                    className={`grid w-full grid-cols-[1fr_120px_110px] gap-3 border-t border-slate-200 px-4 py-3 text-left text-sm transition md:grid-cols-[1.6fr_150px_130px_90px] ${selected.id === row.id ? 'bg-sky-50' : 'bg-white hover:bg-slate-50'}`}
                   >
                     <span>
                       <span className="block font-black text-slate-950">{row.subject}</span>
