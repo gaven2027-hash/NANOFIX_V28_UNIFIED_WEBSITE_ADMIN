@@ -77,6 +77,23 @@ body {
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 14px 28px rgba(7,95,153,0.18);
   }
 
+  .bg-adminBg .bg-activeBlue,
+  .bg-adminBg .hover\:bg-blue-700:hover,
+  .bg-adminBg .nanofix-sky-gloss,
+  .bg-adminBg .nanofix-admin-sky-dark,
+  .bg-adminBg [class*="bg-gradient-to"],
+  .bg-adminBg [class*="from-sky"],
+  .bg-adminBg [class*="via-cyan"],
+  .bg-adminBg [class*="to-blue"] {
+    background-color: #0b84c6 !important;
+    background-image: none !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 14px 28px rgba(7,95,153,0.16) !important;
+  }
+
+  .bg-adminBg .hover\:-translate-y-0\.5:hover {
+    transform: translateY(-1px);
+  }
+
   .nanofix-customer-portal {
     --nf-dark: #120a06;
     --nf-orange: #ff5f00;
