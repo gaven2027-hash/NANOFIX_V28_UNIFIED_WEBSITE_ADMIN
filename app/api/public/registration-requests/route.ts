@@ -14,27 +14,49 @@ function cleanEmail(value: unknown) { return cleanText(value, '', 320).toLowerCa
 function normalizeRequestedRole(value: unknown) { const raw = cleanText(value, 'customer').toLowerCase(); if (['admin','internal_admin_app','staff','internal'].includes(raw)) return 'admin'; if (['customer','customer_portal','member'].includes(raw)) return 'customer'; return allowedRequestedRoles.includes(raw) ? raw : 'customer'; }
 function normalizeRoleGroup(value: unknown, requestedRole: string) { if (requestedRole === 'customer') return 'customer'; const raw = cleanText(value, 'admin').toLowerCase(); const mapped = raw === 'total_management' ? 'super_admin' : raw === 'management' ? 'admin' : raw; return allowedRoleGroups.includes(mapped) && mapped !== 'customer' ? mapped : 'admin'; }
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
+function slugIdentifier(value: string) { return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '').slice(0, 80) || 'internal.user'; }
+function syntheticInternalEmail(username: string, phone: string) { return `internal.${slugIdentifier(username || phone)}@nanofix.local`; }
 
 export async function POST(request: Request) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return jsonError('Supabase server client is not configured.', 503);
   const body = (await request.json().catch(() => ({}))) as Payload;
-  const email = cleanEmail(body.email);
   const requestedRole = normalizeRequestedRole(body.requested_role || body.role);
   const requestedRoleGroup = normalizeRoleGroup(body.requested_role_group || body.role_group, requestedRole);
-  if (!email || !email.includes('@')) return jsonError('A valid email is required.');
+  const username = cleanText(body.username, '', 120);
+  const phone = cleanText(body.phone, '', 80);
+  const submittedEmail = cleanEmail(body.email || body.contact_email);
+  const email = requestedRole === 'admin' ? (submittedEmail || syntheticInternalEmail(username, phone)) : submittedEmail;
+  const identifierValue = cleanText(body.identifier_value, '', 320) || submittedEmail || phone || username;
+
+  if (requestedRole === 'admin' && !identifierValue) return jsonError('Internal registration requires at least one identifier: username, phone or email.');
+  if (requestedRole === 'customer' && !phone) return jsonError('Customer registration requires a phone / WhatsApp number.');
+  if (requestedRole === 'customer' && (!email || !email.includes('@'))) return jsonError('Customer registration requires a valid email for secure portal sign-in.');
+  if (!email || !email.includes('@')) return jsonError('A valid email or internal synthetic email is required.');
+
   const now = new Date().toISOString();
   const payload = {
     auth_user_id: validUuid(body.auth_user_id) ? String(body.auth_user_id) : null,
     profile_id: validUuid(body.profile_id) ? String(body.profile_id) : null,
     email,
-    full_name: cleanText(body.full_name || body.name, '', 160) || null,
-    phone: cleanText(body.phone, '', 80) || null,
+    full_name: cleanText(body.full_name || body.name, '', 160) || username || phone || submittedEmail || null,
+    phone: phone || null,
     requested_role: requestedRole,
     requested_role_group: requestedRoleGroup,
     source: cleanText(body.source, 'portal_register', 120) || 'portal_register',
     status: 'pending_review',
-    metadata_json: { user_agent: request.headers.get('user-agent') || null, submitted_at: now, role_label: requestedRole, requested_role_group: requestedRoleGroup, registration_source: body.registration_source || 'nanofix_portal_register' },
+    metadata_json: {
+      user_agent: request.headers.get('user-agent') || null,
+      submitted_at: now,
+      role_label: requestedRole,
+      requested_role_group: requestedRoleGroup,
+      registration_source: body.registration_source || 'nanofix_portal_register',
+      username: username || null,
+      contact_email: submittedEmail || null,
+      identifier_type: body.identifier_type || (submittedEmail ? 'email' : phone ? 'phone' : username ? 'username' : null),
+      identifier_value: identifierValue || null,
+      synthetic_email_used: requestedRole === 'admin' && !submittedEmail
+    },
     updated_at: now
   };
   const { data: existing } = await supabase.from('portal_registration_requests').select(columns).eq('email', email).eq('requested_role', requestedRole).in('status', ['pending_review', 'approved']).order('created_at', { ascending: false }).limit(1).maybeSingle();
