@@ -47,6 +47,87 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.nanofixsg.com";
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${siteUrl}/#organization`,
+        name: "NANOFIX",
+        url: siteUrl,
+        logo: `${siteUrl}/icon.png`,
+        image: `${siteUrl}/assets/images/home_sg_brand_hero.webp`,
+        telephone: "+65 80387877",
+        email: "info@nanofixsg.com",
+        sameAs: [
+          "https://www.facebook.com/profile.php?id=61583960398460",
+          "https://www.instagram.com/nanofixsg",
+          "https://www.tiktok.com/@nanofixsg",
+          "https://www.youtube.com/@nanofixsg"
+        ]
+      },
+      {
+        "@type": ["LocalBusiness", "HomeAndConstructionBusiness"],
+        "@id": `${siteUrl}/#localbusiness`,
+        name: "NANOFIX Singapore",
+        alternateName: "NANOFIX",
+        url: siteUrl,
+        logo: `${siteUrl}/icon.png`,
+        image: `${siteUrl}/assets/images/home_sg_brand_hero.webp`,
+        description:
+          "Singapore leak detection, no-hacking leak repair and waterproofing specialist for HDB, condominium, commercial and industrial properties.",
+        telephone: "+65 80387877",
+        email: "info@nanofixsg.com",
+        address: {
+          "@type": "PostalAddress",
+          addressCountry: "SG",
+          addressLocality: "Singapore"
+        },
+        areaServed: {
+          "@type": "Country",
+          name: "Singapore"
+        },
+        priceRange: "$$",
+        parentOrganization: {
+          "@id": `${siteUrl}/#organization`
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        url: siteUrl,
+        name: "NANOFIX",
+        inLanguage: "en-SG",
+        publisher: {
+          "@id": `${siteUrl}/#organization`
+        }
+      },
+      {
+        "@type": "Service",
+        "@id": `${siteUrl}/#leak-detection-service`,
+        name: "Leak Detection and No-Hacking Waterproofing Repair in Singapore",
+        serviceType: [
+          "Leak Detection",
+          "No-Hacking Leak Repair",
+          "PU Injection",
+          "Waterproofing Works",
+          "Ceiling Leak Repair",
+          "Toilet Leak Repair"
+        ],
+        provider: {
+          "@id": `${siteUrl}/#localbusiness`
+        },
+        areaServed: {
+          "@type": "Country",
+          name: "Singapore"
+        },
+        audience: {
+          "@type": "Audience",
+          audienceType: "Homeowners, facility managers, commercial property owners and industrial property managers in Singapore"
+        }
+      }
+    ]
+  };
 
   return (
     <html lang="en-SG">
@@ -60,6 +141,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
       </head>
       <body>{children}</body>
     </html>
