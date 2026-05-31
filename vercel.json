@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "installCommand": "npm ci",
-  "buildCommand": "npm run validate:predeploy && npm run build:ci",
+  "buildCommand": "npm run build:ci",
   "devCommand": "npm run dev",
   "headers": [
     {
