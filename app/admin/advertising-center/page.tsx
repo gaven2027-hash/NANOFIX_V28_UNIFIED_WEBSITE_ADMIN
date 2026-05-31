@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AdminShell } from '@/components/AdminShell';
 import { PageHeader } from '@/components/PageHeader';
 import { AdvertisingCenterWorkspace } from '@/components/AdvertisingCenterWorkspace';
+import { AdvertisingAccountConnectionCenter } from '@/components/AdvertisingAccountConnectionCenter';
 import { MenuAnchorSections } from '@/components/MenuAnchorSections';
 
 export const metadata = {
@@ -10,6 +11,7 @@ export const metadata = {
 };
 
 const quickLinks = [
+  { href: '/admin/advertising-center#advertising-account-connection-center', title: 'Connect Ads API / 接入广告 API', note: 'Paste Google, Meta, TikTok, LinkedIn, Microsoft or Xiaohongshu Ads API credentials.' },
   { href: '/admin/advertising-center#campaign-dashboard', title: 'Overview / 总览', note: 'Campaigns, ROI, accounts, AI suggestions and approval gates.' },
   { href: '/admin/advertising-center#csv-excel-import', title: 'CSV / Excel Import / 导入', note: 'Paste daily platform export to update internal ad performance and ROI.' },
   { href: '/admin/advertising-center#roi-insights-alerts', title: 'ROI Insights / ROI 分析', note: 'Platform comparison, daily trend and high-spend low-conversion alerts.' },
@@ -72,7 +74,7 @@ export default function Page() {
           title="Advertising & Promotion Center"
           description="Unified paid acquisition, campaign ROI, Google/social promotion, budgets, creatives, approvals and Super Admin takeover. / 统一管理付费获客、广告 ROI、Google/社媒推广、预算、素材、审批和总管理员接管。"
         />
-        <section className="grid w-full max-w-none gap-3 xl:grid-cols-5">
+        <section className="grid w-full max-w-none gap-3 xl:grid-cols-6">
           {quickLinks.map((item) => (
             <Link
               key={item.href}
@@ -85,6 +87,9 @@ export default function Page() {
             </Link>
           ))}
         </section>
+        <div className="w-full max-w-none">
+          <AdvertisingAccountConnectionCenter />
+        </div>
         <div className="advertising-workspace-full w-full max-w-none">
           <AdvertisingCenterWorkspace />
         </div>
