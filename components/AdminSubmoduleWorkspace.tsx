@@ -161,7 +161,7 @@ export function AdminSubmoduleWorkspace({ route }: { route: string }) {
     <section className="mt-6 w-full">
       <div className="space-y-5">
         <div id={active.id} className="scroll-mt-40 overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ring-slate-200">
-          <div className="bg-gradient-to-br from-sky-500 via-cyan-300 to-blue-600 p-6 text-white">
+          <div className="bg-[#0b84c6] p-6 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-white/80">{active.parentOrder}. {active.parentTitle}</div>
