@@ -62,7 +62,7 @@ function getSupabaseConfig() {
 
 async function checkTable(url: string, serviceRoleKey: string, table: string): Promise<TableCheck> {
   try {
-    const response = await fetch(`${url}/rest/v1/${table}?select=created_at&limit=1`, {
+    const response = await fetch(`${url}/rest/v1/${table}?select=*&limit=0`, {
       method: "GET",
       headers: {
         apikey: serviceRoleKey,
