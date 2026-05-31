@@ -10,6 +10,8 @@ import { ServiceOperationsAssignEngineerWorkspace } from '@/components/ServiceOp
 import { ServiceOperationsInspectionResultWorkspace } from '@/components/ServiceOperationsInspectionResultWorkspace';
 import { ServiceOperationsQuotationLiveWorkspace } from '@/components/ServiceOperationsQuotationLiveWorkspace';
 import { ServiceOperationsQuotationAcceptanceBridge } from '@/components/ServiceOperationsQuotationAcceptanceBridge';
+import { ServiceOperationsInvoiceLiveWorkspace } from '@/components/ServiceOperationsInvoiceLiveWorkspace';
+import { ServiceOperationsPaymentLiveWorkspace } from '@/components/ServiceOperationsPaymentLiveWorkspace';
 import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsDedicatedForms';
 import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
 import { ServiceOperationsFinancialVisibility } from '@/components/ServiceOperationsFinancialVisibility';
@@ -52,6 +54,8 @@ export default function Page() {
         <ServiceOperationsInspectionResultWorkspace />
         <ServiceOperationsQuotationLiveWorkspace />
         <ServiceOperationsQuotationAcceptanceBridge />
+        <ServiceOperationsInvoiceLiveWorkspace />
+        <ServiceOperationsPaymentLiveWorkspace />
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsCustomerPortalIntakePanel />
         <ServiceOperationsWarrantyClaimReviewPanel />
