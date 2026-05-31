@@ -20,13 +20,13 @@ const quickLinks = [
 export default function Page() {
   return (
     <AdminShell>
-      <PageHeader
-        eyebrow="广告投放与推广中心"
-        title="Advertising & Promotion Center"
-        description="Unified paid acquisition, campaign ROI, Google/social promotion, budgets, creatives, approvals and Super Admin takeover. / 统一管理付费获客、广告 ROI、Google/社媒推广、预算、素材、审批和总管理员接管。"
-      />
-      <div className="space-y-5">
-        <section className="grid gap-3 xl:grid-cols-5">
+      <div className="advertising-center-full-width w-full max-w-none space-y-5">
+        <PageHeader
+          eyebrow="广告投放与推广中心"
+          title="Advertising & Promotion Center"
+          description="Unified paid acquisition, campaign ROI, Google/social promotion, budgets, creatives, approvals and Super Admin takeover. / 统一管理付费获客、广告 ROI、Google/社媒推广、预算、素材、审批和总管理员接管。"
+        />
+        <section className="grid w-full max-w-none gap-3 xl:grid-cols-5">
           {quickLinks.map((item) => (
             <Link
               key={item.href}
@@ -39,8 +39,12 @@ export default function Page() {
             </Link>
           ))}
         </section>
-        <AdvertisingCenterWorkspace />
-        <MenuAnchorSections route="/admin/advertising-center" />
+        <div className="w-full max-w-none">
+          <AdvertisingCenterWorkspace />
+        </div>
+        <div className="w-full max-w-none">
+          <MenuAnchorSections route="/admin/advertising-center" />
+        </div>
       </div>
     </AdminShell>
   );
