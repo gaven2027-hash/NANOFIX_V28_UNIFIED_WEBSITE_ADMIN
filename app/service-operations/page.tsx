@@ -8,6 +8,7 @@ import { ServiceOperationsServiceRequestDetailWorkspace } from '@/components/Ser
 import { ServiceOperationsCreateJobWorkspace } from '@/components/ServiceOperationsCreateJobWorkspace';
 import { ServiceOperationsAssignEngineerWorkspace } from '@/components/ServiceOperationsAssignEngineerWorkspace';
 import { ServiceOperationsInspectionResultWorkspace } from '@/components/ServiceOperationsInspectionResultWorkspace';
+import { ServiceOperationsQuotationLiveWorkspace } from '@/components/ServiceOperationsQuotationLiveWorkspace';
 import { ServiceOperationsDedicatedForms } from '@/components/ServiceOperationsDedicatedForms';
 import { ServiceOperationsFinancialEditors } from '@/components/ServiceOperationsFinancialEditors';
 import { ServiceOperationsFinancialVisibility } from '@/components/ServiceOperationsFinancialVisibility';
@@ -48,6 +49,7 @@ export default function Page() {
         <ServiceOperationsCreateJobWorkspace />
         <ServiceOperationsAssignEngineerWorkspace />
         <ServiceOperationsInspectionResultWorkspace />
+        <ServiceOperationsQuotationLiveWorkspace />
         <ServiceOperationsDedicatedForms />
         <ServiceOperationsCustomerPortalIntakePanel />
         <ServiceOperationsWarrantyClaimReviewPanel />
