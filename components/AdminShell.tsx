@@ -104,48 +104,13 @@ function BrandBlock() {
   return (
     <Link href="/admin" className="flex h-20 items-center gap-3 border-b border-white/10 px-6 transition hover:bg-white/[0.035]">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25">
-        <img src="/nanofix-logo.png" alt="NANOFIX logo PNG" className="h-full w-full object-contain" />
+        <img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
       </div>
       <div>
         <div className="text-xl font-black tracking-wide">NANOFIX</div>
         <div className="text-[13px] text-slate-300">V28 / 总后台</div>
       </div>
     </Link>
-  );
-}
-
-function ModuleShortcutBar() {
-  const pathname = usePathname();
-  const current = useMemo(() => menu.find((item) => pathname === basePath(item.href) || pathname.startsWith(`${basePath(item.href)}/`)), [pathname]);
-  if (!current?.children.length) return null;
-  return (
-    <div className="border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto pb-1">
-        {current.children.map((child) => {
-          const hrefBase = basePath(child.href);
-          const samePage = pathname === hrefBase || pathname.startsWith(`${hrefBase}/`);
-          return (
-            <Link
-              key={child.href}
-              href={child.href}
-              scroll={false}
-              onClick={(event) => {
-                if (samePage && child.href.includes('#')) {
-                  event.preventDefault();
-                  const hash = child.href.split('#')[1];
-                  window.history.replaceState(null, '', `#${hash}`);
-                  window.dispatchEvent(new HashChangeEvent('hashchange'));
-                }
-              }}
-              className="shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-activeBlue hover:bg-blue-50 hover:text-activeBlue"
-            >
-              <span>{child.title}</span>
-              <span className="ml-1 text-slate-400">/ {child.zh}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -163,7 +128,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="sticky top-0 z-30 flex items-center justify-between bg-sidebar px-4 py-3 text-white shadow-lg lg:hidden">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
-            <img src="/nanofix-logo.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
+            <img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" />
           </div>
           <div>
             <div className="text-base font-black">NANOFIX V28</div>
@@ -183,8 +148,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:pl-80">
         <TopSearch />
-        <ModuleShortcutBar />
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
