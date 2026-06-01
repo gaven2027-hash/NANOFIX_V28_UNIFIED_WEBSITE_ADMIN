@@ -146,7 +146,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <script src="/nanofix-phone-country-splitter.js" defer />
+      </body>
     </html>
   );
 }
