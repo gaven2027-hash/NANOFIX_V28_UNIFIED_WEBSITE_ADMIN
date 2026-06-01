@@ -32,7 +32,7 @@
     select.name = originalName + '_country_code';
     select.setAttribute('aria-label', 'Country calling code / 国家区号');
     select.className = input.className;
-    select.style.cssText = (input.getAttribute('style') || '') + ';width:100%;min-width:0;height:100%;padding-left:10px;padding-right:8px;appearance:auto;';
+    select.style.cssText = (input.getAttribute('style') || '') + ';width:100%;min-width:0;height:100%;padding-left:10px;padding-right:8px;appearance:auto;font-size:12px;font-weight:800;';
     countries.forEach(function (country) {
       var option = document.createElement('option');
       option.value = country[2];
@@ -51,7 +51,7 @@
     var wrapper = document.createElement('div');
     wrapper.setAttribute('data-nanofix-phone-split', 'legacy');
     wrapper.className = 'nanofix-phone-split-wrapper';
-    wrapper.style.cssText = 'display:grid;grid-template-columns:30% 70%;gap:8px;width:100%;align-items:stretch;';
+    wrapper.style.cssText = 'display:grid;grid-template-columns:40% 60%;gap:8px;width:100%;align-items:stretch;';
 
     var select = buildSelect(input, originalName);
     var hiddenFull = document.createElement('input');
