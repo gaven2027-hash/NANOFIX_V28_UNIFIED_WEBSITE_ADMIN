@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createBrowserClient } from '@/lib/supabase/browser';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
@@ -34,7 +34,7 @@ export function UnclaimedCustomerProfilesPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  async function loadRows() {
+  const loadRows = useCallback(async () => {
     setLoading(true);
     setMessage('');
     try {
@@ -58,9 +58,9 @@ export function UnclaimedCustomerProfilesPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { loadRows(); }, []);
+  useEffect(() => { loadRows(); }, [loadRows]);
 
   return (
     <SectionCard
