@@ -100,6 +100,8 @@ export async function POST(request: NextRequest) {
     customerRow = data as JsonRecord;
   }
 
+  if (!customerRow?.customer_id) return json({ ok: false, error: 'Customer row missing customer_id.', stage: 'customer_result' }, 500);
+
   const customerId = String(customerRow.customer_id);
   const serviceCategory = text(order.service_category, 'Offline Repair');
   const issueType = text(order.issue_type, 'Offline repair record');
