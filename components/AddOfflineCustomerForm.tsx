@@ -2,8 +2,15 @@
 
 import { useState } from 'react';
 import { createBrowserClient } from '@/lib/supabase/browser';
-import { PhoneCountryCodeInput, composePhoneNumber } from './PhoneCountryCodeInput';
 import { SectionCard } from './SectionCard';
+
+const phoneInputClass = 'rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue';
+
+function composePhoneNumber(countryCode: string, localNumber: string) {
+  const local = localNumber.replace(/[^0-9]/g, '').trim();
+  const code = countryCode.trim() || '+65';
+  return local ? `${code} ${local}` : '';
+}
 
 type Result = {
   ok: boolean;
@@ -106,7 +113,10 @@ export function AddOfflineCustomerForm() {
             <h3 className="text-base font-black text-slate-950">1. Customer Info / 客户资料</h3>
             <div className="mt-4 grid gap-3">
               <input value={name} onChange={(event) => setName(event.target.value)} required className="rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue" placeholder="Customer Name / 客户姓名" />
-              <PhoneCountryCodeInput countryCode={phoneCountryCode} onCountryCodeChange={setPhoneCountryCode} value={phoneLocal} onChange={setPhoneLocal} required placeholder="Phone / WhatsApp / 手机或 WhatsApp" />
+              <div className="grid grid-cols-[110px_1fr] gap-2">
+                <input value={phoneCountryCode} onChange={(event) => setPhoneCountryCode(event.target.value)} required className={phoneInputClass} placeholder="+65" />
+                <input value={phoneLocal} onChange={(event) => setPhoneLocal(event.target.value)} required inputMode="tel" className={phoneInputClass} placeholder="Phone / WhatsApp / 手机或 WhatsApp" />
+              </div>
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" className="rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue" placeholder="Email / 邮箱（可选，用于以后认领账号）" />
               <input value={address} onChange={(event) => setAddress(event.target.value)} className="rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue" placeholder="Repair Address / 维修地址" />
             </div>
