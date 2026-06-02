@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     phone,
     whatsapp: phone,
     email: email || null,
-    address_text: address || null,
+    address_json: address ? { full_address: address } : null,
     status: 'active',
     binding_status: 'linked',
     portal_status: 'unclaimed',
