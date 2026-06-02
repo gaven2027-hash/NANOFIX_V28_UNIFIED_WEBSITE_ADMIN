@@ -110,29 +110,27 @@ export async function POST(request: NextRequest) {
   const amount = money(order.amount);
   const paymentStatus = text(order.payment_status, 'pending');
   const notes = text(order.notes);
+  const descriptionParts = [serviceCategory, notes, amount ? `Amount SGD ${amount}` : '', warrantyMonths ? `Warranty months ${warrantyMonths}` : '', paymentStatus ? `Payment ${paymentStatus}` : ''].filter(Boolean);
 
   const serviceRequestPayload = {
     customer_id: customerId,
     issue_type: issueType,
-    service_category: serviceCategory,
-    status: 'completed_offline_record',
-    binding_status: 'linked',
-    source: 'admin_offline_entry',
-    request_origin: 'admin',
-    preferred_date: serviceDate || null,
     address_text: address || null,
-    customer_name: name,
-    customer_phone: phone,
-    customer_email: email || null,
-    metadata_json: {
-      portal_status: 'unclaimed',
-      warranty_months: warrantyMonths,
-      payment_status: paymentStatus,
-      amount_sgd: amount,
-      internal_notes: notes,
-      created_by_flow: 'customer_center_add_offline_customer',
-      created_by_actor_id: auth.actor.profileId
-    },
+    binding_status: 'linked',
+    priority: 'P2',
+    source_platform: 'admin_offline_entry',
+    status: 'pending_review',
+    contact_name: name,
+    phone,
+    whatsapp: phone,
+    email: email || null,
+    issue_description: descriptionParts.join(' | ') || 'Offline customer repair record',
+    preferred_time_text: serviceDate || null,
+    consent: true,
+    admin_approval_required: false,
+    request_origin: 'admin',
+    portal_customer_notes: notes || null,
+    portal_attachment_urls: [],
     created_at: now,
     updated_at: now
   };
