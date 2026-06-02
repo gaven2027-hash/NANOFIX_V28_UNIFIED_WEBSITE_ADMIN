@@ -5,9 +5,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
-const REVIEW_ROLES = ['super_admin', 'operations_admin', 'support'] as const;
-const READ_ROLES = ['super_admin', 'operations_admin', 'support', 'finance'] as const;
-
 type ClaimStatus = 'pending' | 'verified' | 'approved' | 'rejected' | 'expired';
 
 function json(data: unknown, status = 200) {
@@ -26,7 +23,7 @@ function isUuid(value: string | null | undefined) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminApi(request, [...READ_ROLES]);
+  const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'support', 'finance']);
   if (!auth.ok) return auth.response;
 
   const status = cleanText(request.nextUrl.searchParams.get('status'), 40) as ClaimStatus | null;
@@ -58,7 +55,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminApi(request, [...REVIEW_ROLES]);
+  const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'support']);
   if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
