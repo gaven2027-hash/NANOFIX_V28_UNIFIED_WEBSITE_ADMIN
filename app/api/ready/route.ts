@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 const requiredTables = [
   "profiles",
   "customers",
+  "customer_account_claims",
+  "customer_record_links",
   "unified_intake",
   "leads",
   "service_requests",
