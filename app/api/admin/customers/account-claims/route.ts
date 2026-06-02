@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export const dynamic = 'force-dynamic';
 
 type ClaimStatus = 'pending' | 'verified' | 'approved' | 'rejected' | 'expired';
+type JsonRecord = Record<string, unknown>;
 
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
@@ -26,6 +27,10 @@ function jsonObject(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function stringOrNull(value: unknown) {
+  return typeof value === 'string' && value ? value : null;
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'support', 'finance']);
   if (!auth.ok) return auth.response;
@@ -36,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('customer_account_claims')
-    .select('customer_account_claim_id,customer_id,claim_method,claim_identifier,status,otp_verified,claimed_auth_user_id,reviewed_by,reviewed_at,rejection_reason,created_at,updated_at,metadata_json,customers(customer_id,name,phone,email,portal_status,created_source)')
+    .select('customer_account_claim_id,customer_id,claim_method,claim_identifier,status,otp_verified,claimed_auth_user_id,reviewed_by,reviewed_at,rejection_reason,created_at,updated_at,metadata_json,customers(customer_id,name,phone,email,portal_status,created_source,profile_id)')
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -67,10 +72,12 @@ export async function PATCH(request: NextRequest) {
   const claimId = cleanText(body.claim_id, 120);
   const note = cleanText(body.note, 1000);
   const claimedAuthUserId = cleanText(body.claimed_auth_user_id, 120);
+  const claimedProfileId = cleanText(body.claimed_profile_id ?? body.profile_id, 120);
 
   if (!isAction(action)) return jsonError('Action must be approve or reject.', 400);
   if (!isUuid(claimId)) return jsonError('Valid claim_id is required.', 400);
   if (action === 'approve' && claimedAuthUserId && !isUuid(claimedAuthUserId)) return jsonError('claimed_auth_user_id must be a valid UUID when provided.', 400);
+  if (action === 'approve' && claimedProfileId && !isUuid(claimedProfileId)) return jsonError('claimed_profile_id must be a valid UUID when provided.', 400);
   if (action === 'reject' && !note) return jsonError('Rejection note is required for audit.', 400);
 
   const supabase = createAdminClient();
@@ -86,19 +93,33 @@ export async function PATCH(request: NextRequest) {
 
   const { data: customerBefore } = await supabase
     .from('customers')
-    .select('customer_id,name,phone,email,portal_status,claimed_auth_user_id,metadata_json')
+    .select('customer_id,name,phone,email,portal_status,profile_id,claimed_auth_user_id,metadata_json')
     .eq('customer_id', claim.customer_id)
     .maybeSingle();
 
+  const customerBeforeRecord = (customerBefore ?? null) as JsonRecord | null;
   const now = new Date().toISOString();
+  const authUserIdForCustomer = action === 'approve' ? (claimedAuthUserId || stringOrNull(claim.claimed_auth_user_id)) : stringOrNull(claim.claimed_auth_user_id);
+  let profileIdForCustomer = action === 'approve' ? (claimedProfileId || stringOrNull(customerBeforeRecord?.profile_id)) : null;
+
+  if (action === 'approve' && !profileIdForCustomer && authUserIdForCustomer) {
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('profile_id,auth_user_id,email,role')
+      .eq('auth_user_id', authUserIdForCustomer)
+      .maybeSingle();
+    profileIdForCustomer = stringOrNull((profileRow as JsonRecord | null)?.profile_id);
+  }
+
   const claimPatch = {
     status: action === 'approve' ? 'approved' : 'rejected',
     reviewed_by: auth.actor.profileId,
     reviewed_at: now,
     rejection_reason: action === 'reject' ? note : null,
-    claimed_auth_user_id: action === 'approve' ? (claimedAuthUserId || claim.claimed_auth_user_id || null) : claim.claimed_auth_user_id || null,
+    claimed_auth_user_id: authUserIdForCustomer,
     metadata_json: {
       ...jsonObject(claim.metadata_json),
+      claimed_profile_id: profileIdForCustomer,
       reviewed_by_role: auth.role,
       reviewed_note: note || null,
       review_action: action,
@@ -121,20 +142,22 @@ export async function PATCH(request: NextRequest) {
     ? {
         portal_status: 'claimed',
         status: 'active',
-        claimed_auth_user_id: claimedAuthUserId || claim.claimed_auth_user_id || null,
+        profile_id: profileIdForCustomer,
+        claimed_auth_user_id: authUserIdForCustomer,
         metadata_json: {
-          ...jsonObject(customerBefore?.metadata_json),
+          ...jsonObject(customerBeforeRecord?.metadata_json),
           account_claim_approved_at: now,
           account_claim_approved_by: auth.actor.profileId,
           account_claim_id: claimId,
-          customer_portal_access: 'claimed_after_admin_review'
+          customer_portal_access: 'claimed_after_admin_review',
+          customer_profile_id: profileIdForCustomer
         },
         updated_at: now
       }
     : {
         portal_status: 'unclaimed',
         metadata_json: {
-          ...jsonObject(customerBefore?.metadata_json),
+          ...jsonObject(customerBeforeRecord?.metadata_json),
           account_claim_rejected_at: now,
           account_claim_rejected_by: auth.actor.profileId,
           account_claim_rejection_reason: note,
@@ -147,7 +170,7 @@ export async function PATCH(request: NextRequest) {
     .from('customers')
     .update(customerPatch)
     .eq('customer_id', claim.customer_id)
-    .select('customer_id,name,phone,email,portal_status,claimed_auth_user_id,updated_at')
+    .select('customer_id,name,phone,email,portal_status,profile_id,claimed_auth_user_id,updated_at')
     .single();
 
   if (updateCustomerError) return jsonError(updateCustomerError.message, 500);
@@ -160,7 +183,7 @@ export async function PATCH(request: NextRequest) {
     objectType: 'customer_account_claims',
     objectId: claimId,
     before: { claim, customer: customerBefore ?? null },
-    after: { claim: updatedClaim, customer: updatedCustomer, note: note || null },
+    after: { claim: updatedClaim, customer: updatedCustomer, note: note || null, profile_id: profileIdForCustomer },
     ip: getClientIp(request)
   }).catch(() => undefined);
 
