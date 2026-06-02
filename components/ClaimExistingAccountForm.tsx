@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { PhoneCountryCodeInput, composePhoneNumber } from './PhoneCountryCodeInput';
+
+const phoneInputClass = 'w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue';
+
+function composePhoneNumber(countryCode: string, localNumber: string) {
+  const local = localNumber.replace(/[^0-9]/g, '').trim();
+  const code = countryCode.trim() || '+65';
+  return local ? `${code} ${local}` : '';
+}
 
 type ClaimMethod = 'phone' | 'email';
 
@@ -68,7 +75,12 @@ export function ClaimExistingAccountForm() {
           <button type="button" onClick={() => setMethod('email')} className={`rounded-xl px-3 py-2 text-xs font-black ${method === 'email' ? 'bg-activeBlue text-white' : 'text-slate-600'}`}>Email / 邮箱</button>
         </div>
         <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue" placeholder="Full Name / 姓名（可选）" value={fullName} onChange={(event) => setFullName(event.target.value)} />
-        {method === 'phone' ? <PhoneCountryCodeInput countryCode={phoneCountryCode} onCountryCodeChange={setPhoneCountryCode} value={phoneLocal} onChange={setPhoneLocal} required placeholder="Phone / WhatsApp / 手机或 WhatsApp" /> : <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue" placeholder="Email / 邮箱" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />}
+        {method === 'phone' ? (
+          <div className="grid grid-cols-[110px_1fr] gap-2">
+            <input value={phoneCountryCode} onChange={(event) => setPhoneCountryCode(event.target.value)} required className={phoneInputClass} placeholder="+65" />
+            <input value={phoneLocal} onChange={(event) => setPhoneLocal(event.target.value)} required inputMode="tel" className={phoneInputClass} placeholder="Phone / WhatsApp / 手机或 WhatsApp" />
+          </div>
+        ) : <input className="w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue" placeholder="Email / 邮箱" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />}
         {result ? <div className={`rounded-2xl px-4 py-3 text-sm font-bold leading-6 ring-1 ${result.ok ? 'bg-emerald-50 text-emerald-900 ring-emerald-100' : 'bg-red-50 text-red-800 ring-red-100'}`}>{result.message || result.error}{result.claim_id ? <div className="mt-1 text-xs">claim_id: {result.claim_id}</div> : null}{result.portal_status ? <div className="text-xs">portal_status: {result.portal_status}</div> : null}</div> : null}
         <button className="w-full rounded-2xl bg-activeBlue px-4 py-3 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>{loading ? 'Checking... / 查询中...' : 'Find My Existing Records / 查找已有维修记录'}</button>
         <p className="text-center text-[11px] font-bold leading-5 text-slate-500">Already activated? / 已激活账号？ <Link href="/login?role=customer" className="text-activeBlue hover:underline">Sign in / 登录</Link></p>
