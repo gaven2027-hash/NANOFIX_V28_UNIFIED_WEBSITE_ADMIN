@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { createBrowserClient } from '@/lib/supabase/browser';
 import { SectionCard } from './SectionCard';
 
@@ -38,7 +38,7 @@ export function AddOfflineCustomerForm() {
 
   const phone = composePhoneNumber(phoneCountryCode, phoneLocal);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setResult(null);
