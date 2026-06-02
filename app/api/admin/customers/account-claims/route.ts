@@ -22,6 +22,10 @@ function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
 
+function jsonObject(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'support', 'finance']);
   if (!auth.ok) return auth.response;
@@ -94,7 +98,7 @@ export async function PATCH(request: NextRequest) {
     rejection_reason: action === 'reject' ? note : null,
     claimed_auth_user_id: action === 'approve' ? (claimedAuthUserId || claim.claimed_auth_user_id || null) : claim.claimed_auth_user_id || null,
     metadata_json: {
-      ...(typeof claim.metadata_json === 'object' && claim.metadata_json ? claim.metadata_json as Record<string, unknown> : {}),
+      ...jsonObject(claim.metadata_json),
       reviewed_by_role: auth.role,
       reviewed_note: note || null,
       review_action: action,
@@ -111,6 +115,7 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (updateClaimError) return jsonError(updateClaimError.message, 500);
+  if (!updatedClaim?.customer_account_claim_id) return jsonError('Claim update result is missing.', 500);
 
   const customerPatch = action === 'approve'
     ? {
@@ -118,7 +123,7 @@ export async function PATCH(request: NextRequest) {
         status: 'active',
         claimed_auth_user_id: claimedAuthUserId || claim.claimed_auth_user_id || null,
         metadata_json: {
-          ...(typeof customerBefore?.metadata_json === 'object' && customerBefore?.metadata_json ? customerBefore.metadata_json as Record<string, unknown> : {}),
+          ...jsonObject(customerBefore?.metadata_json),
           account_claim_approved_at: now,
           account_claim_approved_by: auth.actor.profileId,
           account_claim_id: claimId,
@@ -129,7 +134,7 @@ export async function PATCH(request: NextRequest) {
     : {
         portal_status: 'unclaimed',
         metadata_json: {
-          ...(typeof customerBefore?.metadata_json === 'object' && customerBefore?.metadata_json ? customerBefore.metadata_json as Record<string, unknown> : {}),
+          ...jsonObject(customerBefore?.metadata_json),
           account_claim_rejected_at: now,
           account_claim_rejected_by: auth.actor.profileId,
           account_claim_rejection_reason: note,
@@ -146,6 +151,7 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (updateCustomerError) return jsonError(updateCustomerError.message, 500);
+  if (!updatedCustomer?.customer_id) return jsonError('Customer update result is missing.', 500);
 
   await writeAuditLog({
     actorId: auth.actor.profileId,
