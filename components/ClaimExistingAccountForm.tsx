@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 
 const phoneInputClass = 'w-full rounded-2xl border border-slate-200 bg-adminBg px-4 py-3 text-sm font-bold outline-none focus:border-activeBlue';
 
@@ -30,7 +30,7 @@ export function ClaimExistingAccountForm() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setResult(null);
