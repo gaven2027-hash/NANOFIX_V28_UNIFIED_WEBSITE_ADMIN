@@ -9,7 +9,8 @@ const navItems = [
   { href: '/customer-portal/uploads', label: 'Uploads', zh: '文件' },
   { href: '/customer-portal/financial', label: 'Finance', zh: '财务' },
   { href: '/customer-portal/warranties', label: 'Warranties', zh: '保修' },
-  { href: '/customer-portal/financial#invoices', label: 'Invoices', zh: '发票' }
+  { href: '/customer-portal/financial#invoices', label: 'Invoices', zh: '发票' },
+  { href: '/customer-portal/claim-existing-account', label: 'Claim Existing Account', zh: '认领已有记录' }
 ];
 
 export function CustomerPortalShell({ children }: { children: ReactNode }) {
