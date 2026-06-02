@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createBrowserClient } from '@/lib/supabase/browser';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
@@ -39,6 +39,13 @@ function tone(status: string | null): BadgeTone {
   return 'amber';
 }
 
+async function sessionHeaders(): Promise<Record<string, string>> {
+  const supabase = createBrowserClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  return accessToken ? { authorization: `Bearer ${accessToken}` } : {};
+}
+
 export function CustomerAccountClaimsReviewPanel() {
   const [rows, setRows] = useState<ClaimRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,14 +53,7 @@ export function CustomerAccountClaimsReviewPanel() {
   const [reviewNote, setReviewNote] = useState('');
   const [busyClaimId, setBusyClaimId] = useState<string | null>(null);
 
-  async function sessionHeaders(): Promise<Record<string, string>> {
-    const supabase = createBrowserClient();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    return accessToken ? { authorization: `Bearer ${accessToken}` } : {};
-  }
-
-  async function loadRows() {
+  const loadRows = useCallback(async () => {
     setLoading(true);
     setMessage('');
     try {
@@ -73,7 +73,7 @@ export function CustomerAccountClaimsReviewPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   async function reviewClaim(claimId: string, action: 'approve' | 'reject') {
     setBusyClaimId(claimId);
@@ -99,7 +99,7 @@ export function CustomerAccountClaimsReviewPanel() {
     }
   }
 
-  useEffect(() => { loadRows(); }, []);
+  useEffect(() => { loadRows(); }, [loadRows]);
 
   return (
     <SectionCard
