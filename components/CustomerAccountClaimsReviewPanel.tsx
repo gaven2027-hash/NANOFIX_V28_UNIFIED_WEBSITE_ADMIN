@@ -5,6 +5,8 @@ import { createBrowserClient } from '@/lib/supabase/browser';
 import { Badge } from './Badge';
 import { SectionCard } from './SectionCard';
 
+type BadgeTone = 'blue' | 'green' | 'amber' | 'red';
+
 type ClaimRow = {
   customer_account_claim_id: string;
   customer_id: string;
@@ -30,7 +32,7 @@ type ApiResult = {
   error?: string;
 };
 
-function tone(status: string | null) {
+function tone(status: string | null): BadgeTone {
   if (status === 'approved') return 'green';
   if (status === 'verified') return 'blue';
   if (status === 'rejected' || status === 'expired') return 'red';
@@ -44,7 +46,7 @@ export function CustomerAccountClaimsReviewPanel() {
   const [reviewNote, setReviewNote] = useState('');
   const [busyClaimId, setBusyClaimId] = useState<string | null>(null);
 
-  async function sessionHeaders() {
+  async function sessionHeaders(): Promise<Record<string, string>> {
     const supabase = createBrowserClient();
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
@@ -82,7 +84,7 @@ export function CustomerAccountClaimsReviewPanel() {
         headers: { 'content-type': 'application/json', ...(await sessionHeaders()) },
         body: JSON.stringify({ action, claim_id: claimId, note: reviewNote })
       });
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!response.ok || !data.ok) {
         setMessage(data.error || 'Review action failed. / 审核操作失败。');
         return;
