@@ -190,8 +190,11 @@ export const menu: MenuItem[] = [
     href: '/customer-center',
     title: 'Customer Center',
     zh: '客户中心',
-    badge: 26,
+    badge: 29,
     children: [
+      child('/customer-center#add-offline-customer', 'Offline Customer', '后台代录客户'),
+      child('/customer-center#unclaimed-customer-profiles', 'Unclaimed Customer Profiles', '未认领客户档案'),
+      child('/customer-center#claim-existing-account-review', 'Claim Existing Account Review', '认领已有账号审核'),
       child('/customer-center#customer-list', 'Customer List', '客户列表'),
       child('/customer-center#customer-profiles', 'Customer Profiles', '客户档案'),
       child('/customer-center#customer-360-timeline', 'Customer 360 Timeline', '客户 360 时间线'),
