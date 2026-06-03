@@ -43,7 +43,9 @@ const optionalModuleTables = [
   "content_drafts",
   "ai_logs",
   "backup_jobs",
-  "app_modules"
+  "app_modules",
+  "customer_account_claims",
+  "customer_record_links"
 ];
 
 type TableCheck = {
