@@ -178,11 +178,11 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   try {
-    const { quotation, version } = await loadQuotation(quotationId);
+    const { quotation, version } = await loadQuotation(quotationId as string);
     const settings = await loadDocumentSettings();
     const pdf = buildQuotationPdf(quotation, version, settings);
     const quotationRef = safePath(String(quotation.public_ref || quotation.quotation_id));
-    const storagePath = `service-operations/quotations/${safePath(quotationId)}/${Date.now()}-${quotationRef}.pdf`;
+    const storagePath = `service-operations/quotations/${safePath(quotationId as string)}/${Date.now()}-${quotationRef}.pdf`;
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(storagePath, pdf, { contentType: 'application/pdf', upsert: false });
     if (uploadError) throw new Error(uploadError.message);
 
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         visible_to_customer: visibleToCustomer,
         generated_by: auth.actor.profileId,
         generation_notes: notes,
-        metadata_json: { quotation_ref: quotation.public_ref, total: version?.total ?? quotation.total, version: version?.version ?? quotation.current_version, company_setting_id: settings.setting_id ?? null, template: 'nanofix_quotation_polished_v1' }
+        metadata_json: { quotation_ref: quotation.public_ref, total: version?.total ?? quotation.total, version: version?.version ?? quotation.current_version, company_setting_id: (settings as { setting_id?: string | null }).setting_id ?? null, template: 'nanofix_quotation_polished_v1' }
       })
       .select('quotation_pdf_id,quotation_id,job_id,customer_id,quotation_version,storage_bucket,storage_path,file_name,file_size_bytes,generation_status,visible_to_customer,created_at')
       .single();
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
       }).throwOnError();
     }
 
-    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_quotation_pdf_generate', objectType: 'quotation', objectId: quotationId, after: { quotation_pdf: doc, quotation: updatedQuotation, task, company_settings: settings.setting_id ?? null }, ip: getClientIp(request) }).catch(() => undefined);
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_quotation_pdf_generate', objectType: 'quotation', objectId: quotationId, after: { quotation_pdf: doc, quotation: updatedQuotation, task, company_settings: (settings as { setting_id?: string | null }).setting_id ?? null }, ip: getClientIp(request) }).catch(() => undefined);
     return NextResponse.json({ ok: true, quotation_pdf: doc, quotation: updatedQuotation, task }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

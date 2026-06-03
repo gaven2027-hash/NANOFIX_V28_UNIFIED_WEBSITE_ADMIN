@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   try {
-    const [warranty, settings] = await Promise.all([loadWarranty(warrantyId), loadSettings()]);
+    const [warranty, settings] = await Promise.all([loadWarranty(warrantyId as string), loadSettings()]);
     const { data: versions, error: versionError } = await supabase
       .from('warranty_pdf_documents')
       .select('warranty_version')
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
     const publicRef = safePath(String(warranty.public_ref || `NF-WTY-${Date.now()}`));
     const pdf = buildWarrantyPdf({ ...warranty, public_ref: publicRef }, settings);
     const fileRef = `NANOFIX-WARRANTY-${publicRef}-V${nextVersion}`;
-    const storagePath = `service-operations/warranties/${safePath(warrantyId)}/${Date.now()}-${fileRef}.pdf`;
+    const storagePath = `service-operations/warranties/${safePath(warrantyId as string)}/${Date.now()}-${fileRef}.pdf`;
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(storagePath, pdf, { contentType: 'application/pdf', upsert: false });
     if (uploadError) throw new Error(uploadError.message);
 
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
         customer_visible_by: visibleToCustomer ? auth.actor.profileId : null,
         generated_by: auth.actor.profileId,
         generation_notes: notes,
-        metadata_json: { template: 'nanofix_warranty_certificate_v1', company_setting_id: settings.setting_id ?? null, warranty_years: warranty.warranty_years, source_quotation_id: warranty.source_quotation_id ?? null, source_acceptance_id: warranty.source_acceptance_id ?? null, source_invoice_id: warranty.source_invoice_id ?? null }
+        metadata_json: { template: 'nanofix_warranty_certificate_v1', company_setting_id: (settings as { setting_id?: string | null }).setting_id ?? null, warranty_years: warranty.warranty_years, source_quotation_id: warranty.source_quotation_id ?? null, source_acceptance_id: warranty.source_acceptance_id ?? null, source_invoice_id: warranty.source_invoice_id ?? null }
       })
       .select('warranty_pdf_id,warranty_id,job_id,customer_id,warranty_version,storage_bucket,storage_path,file_name,mime_type,file_size_bytes,public_ref,generation_status,visible_to_customer,customer_visible_at,generated_at,created_at')
       .single();

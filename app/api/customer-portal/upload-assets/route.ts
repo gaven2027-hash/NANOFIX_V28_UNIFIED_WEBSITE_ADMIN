@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       task_id: null,
       action: 'customer_upload_asset_uploaded',
       after_json: { asset, max_files_hint: MAX_FILES_HINT }
-    }).throwOnError().catch(() => undefined);
+    }).throwOnError().then(() => undefined, () => undefined);
 
     await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'customer_portal_upload_asset', objectType: 'customer_upload_asset', objectId: String(asset.upload_asset_id), after: { asset, image_auto_compressed: kind === 'image', video_size_limited: kind === 'video' }, ip: getClientIp(request) }).catch(() => undefined);
     return NextResponse.json({ ok: true, asset, storage_path: storagePath }, { status: 201 });

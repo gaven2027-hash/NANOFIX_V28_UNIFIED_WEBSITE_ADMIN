@@ -10,7 +10,7 @@ if (!fs.existsSync(reportPath)) {
 
 const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
 const modules = report.modules || [];
-const rows = modules.flatMap((module) => (module.issues || []).map((issue) => ({ module, issue })));
+const rows = modules.flatMap((moduleDef) => (moduleDef.issues || []).map((issue) => ({ module: moduleDef, issue })));
 
 function section(title) {
   console.log('\n' + title);
@@ -56,7 +56,7 @@ if (!p1.length) console.log('No P1 issues.');
 for (const { module, issue } of p1) console.log(`${module.key} | ${issue.code} | ${issue.detail}`);
 
 section('Missing Expected APIs');
-for (const module of modules) {
-  const missing = (module.matchedApis || []).filter((row) => !row.api).map((row) => row.required);
-  if (missing.length) console.log(`${module.key}: ${missing.join(', ')}`);
+for (const moduleDef of modules) {
+  const missing = (moduleDef.matchedApis || []).filter((row) => !row.api).map((row) => row.required);
+  if (missing.length) console.log(`${moduleDef.key}: ${missing.join(', ')}`);
 }

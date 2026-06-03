@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   if (action === 'generate_warranty_pdf' || action === 'regenerate_warranty_pdf') {
-    const warranty = await loadWarranty(warrantyId);
+    const warranty = await loadWarranty(warrantyId as string);
     if (!warranty) return jsonError('Warranty not found.', 404);
-    const version = await nextWarrantyVersion(warrantyId);
+    const version = await nextWarrantyVersion(warrantyId as string);
     const storageBucket = cleanText(body.storage_bucket, 160) || 'service-uploads';
     const defaultFileName = `NANOFIX-Warranty-${warrantyId}-v${version}.pdf`;
     const fileName = cleanText(body.file_name, 240) || defaultFileName;

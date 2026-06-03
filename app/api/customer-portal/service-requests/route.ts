@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
 
   let warranty: Record<string, unknown> | null = null;
   if (requestType === 'warranty_repair') {
-    warranty = await warrantyBelongsToCustomer(relatedWarrantyId, customer.customer_id as string);
+    warranty = await warrantyBelongsToCustomer(relatedWarrantyId as string, customer.customer_id as string);
     if (!warranty) return jsonError('Warranty not found or not linked to this customer.', 403);
   }
 

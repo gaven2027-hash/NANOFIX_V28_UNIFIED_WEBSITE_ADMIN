@@ -84,7 +84,7 @@ function requireManagerRole(role: string) {
   return MANAGER_ROLES.includes(role as typeof MANAGER_ROLES[number]);
 }
 
-async function queueCustomerNotification(supabase: ReturnType<typeof createAdminClient>, input: { subject: string; body: string; relatedObjectType: string; relatedObjectId: string; customerId?: string | null; channel?: string; payload?: Record<string, unknown> }) {
+async function queueCustomerNotification(supabase: ReturnType<typeof createAdminClient>, input: { subject: string; body: string; relatedObjectType: string; relatedObjectId: string | null; customerId?: string | null; channel?: string; payload?: Record<string, unknown> }) {
   const { data, error } = await supabase
     .from('notification_outbox')
     .insert({
@@ -104,7 +104,7 @@ async function queueCustomerNotification(supabase: ReturnType<typeof createAdmin
   return data;
 }
 
-async function createFollowUpTask(supabase: ReturnType<typeof createAdminClient>, input: { sourceTable: string; sourceId: string; title: string; description: string; priority?: string }) {
+async function createFollowUpTask(supabase: ReturnType<typeof createAdminClient>, input: { sourceTable: string; sourceId: string | null; title: string; description: string; priority?: string }) {
   const { data, error } = await supabase
     .from('unified_tasks')
     .insert({ source_module: 'service_operations', source_table: input.sourceTable, source_id: input.sourceId, title: input.title, description: input.description, priority: input.priority ?? 'P2', assignee_role: 'operations_admin', status: 'open', metadata_json: { source: 'service_operations_inspection_hooks' } })

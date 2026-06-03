@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   const jobId = cleanText(request.nextUrl.searchParams.get('job_id'), 120);
   if (!isUuid(jobId)) return jsonError('Valid job_id is required.', 400);
   try {
-    const [job, quotation, invoice] = await Promise.all([loadJob(jobId), loadLatestQuotation(jobId), loadLatestInvoice(jobId)]);
+    const [job, quotation, invoice] = await Promise.all([loadJob(jobId as string), loadLatestQuotation(jobId as string), loadLatestInvoice(jobId as string)]);
     const supabase = createAdminClient();
     const { data: warranties, error } = await supabase
       .from('warranties')
@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
   try {
-    const job = await loadJob(jobId);
-    const [quotation, invoice] = await Promise.all([loadLatestQuotation(jobId), loadLatestInvoice(jobId)]);
+    const job = await loadJob(jobId as string);
+    const [quotation, invoice] = await Promise.all([loadLatestQuotation(jobId as string), loadLatestInvoice(jobId as string)]);
     const customerId = cleanText(body.customer_id, 120) || (typeof job.customer_id === 'string' ? job.customer_id : '') || (typeof invoice?.customer_id === 'string' ? invoice.customer_id : '');
     if (!isUuid(customerId)) return jsonError('Job must be linked to a valid customer before generating warranty.', 400);
 
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       quotation_id: typeof quotation?.quotation_id === 'string' ? quotation.quotation_id : null,
       invoice_id: typeof invoice?.invoice_id === 'string' ? invoice.invoice_id : null,
       warranty_years: years,
-      warranty_no: warrantyNo(jobId),
+      warranty_no: warrantyNo(jobId as string),
       warranty_terms: terms,
       status: 'active',
       coverage,

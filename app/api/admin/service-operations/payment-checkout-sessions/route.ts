@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
   if (action !== 'create_checkout_session') return jsonError('Unsupported checkout session action.', 400);
   if (!isUuid(paymentIntentId)) return jsonError('Valid payment_intent_id is required.', 400);
 
-  const paymentIntent = await loadPaymentIntent(paymentIntentId);
+  const paymentIntent = await loadPaymentIntent(paymentIntentId as string);
   if (!paymentIntent) return jsonError('Payment intent not found.', 404);
   if (paymentIntent.status === 'paid') return jsonError('Payment intent is already paid.', 409);
 

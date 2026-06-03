@@ -3,8 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export type AdminRole =
   | 'super_admin'
-  | 'operations_admin'
-  | 'finance'
+  | 'operations_admin' | 'marketing_admin' | 'finance'
   | 'content_admin'
   | 'support'
   | 'engineer'

@@ -168,11 +168,11 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   try {
-    const { invoice, items } = await loadInvoice(invoiceId);
+    const { invoice, items } = await loadInvoice(invoiceId as string);
     const settings = await loadDocumentSettings();
     const pdf = buildInvoicePdf(invoice, items, settings);
     const invoiceNo = safePath(String(invoice.invoice_no || invoice.invoice_id));
-    const storagePath = `service-operations/invoices/${safePath(invoiceId)}/${Date.now()}-${invoiceNo}.pdf`;
+    const storagePath = `service-operations/invoices/${safePath(invoiceId as string)}/${Date.now()}-${invoiceNo}.pdf`;
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(storagePath, pdf, { contentType: 'application/pdf', upsert: false });
     if (uploadError) throw new Error(uploadError.message);
 
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
         visible_to_customer: visibleToCustomer,
         generated_by: auth.actor.profileId,
         generation_notes: notes,
-        metadata_json: { invoice_no: invoice.invoice_no, total: invoice.total, item_count: items.length, company_setting_id: settings.setting_id ?? null, template: 'nanofix_polished_v1' }
+        metadata_json: { invoice_no: invoice.invoice_no, total: invoice.total, item_count: items.length, company_setting_id: (settings as { setting_id?: string | null }).setting_id ?? null, template: 'nanofix_polished_v1' }
       })
       .select('invoice_pdf_id,invoice_id,job_id,customer_id,storage_bucket,storage_path,file_name,file_size_bytes,generation_status,visible_to_customer,created_at')
       .single();
@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
       }).throwOnError();
     }
 
-    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_invoice_pdf_generate', objectType: 'invoice', objectId: invoiceId, after: { invoice_pdf: doc, invoice: updatedInvoice, task, company_settings: settings.setting_id ?? null }, ip: getClientIp(request) }).catch(() => undefined);
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'service_operations_invoice_pdf_generate', objectType: 'invoice', objectId: invoiceId, after: { invoice_pdf: doc, invoice: updatedInvoice, task, company_settings: (settings as { setting_id?: string | null }).setting_id ?? null }, ip: getClientIp(request) }).catch(() => undefined);
     return NextResponse.json({ ok: true, invoice_pdf: doc, invoice: updatedInvoice, task }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

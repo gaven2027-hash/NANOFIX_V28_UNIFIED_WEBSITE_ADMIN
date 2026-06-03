@@ -219,8 +219,8 @@ export async function POST(request: NextRequest) {
   if ((response === 'declined' || response === 'revision_requested') && !customerMessage) return jsonError('Customer message is required when declining or requesting revision.', 400);
 
   const supabase = createAdminClient();
-  const { quotation, customerId } = await loadVisibleOwnedQuotation(auth.actor.profileId, quotationId);
-  const quotePdf = await latestVisibleQuotationPdf(quotationId);
+  const { quotation, customerId } = await loadVisibleOwnedQuotation(auth.actor.profileId, quotationId as string);
+  const quotePdf = await latestVisibleQuotationPdf(quotationId as string);
   const warrantyYears = Number(quotation.confirmed_warranty_years ?? 0) || 0;
   const warrantyTerms = quotation.warranty_terms || 'NANOFIX warranty coverage is based on the confirmed quotation scope and completed repair works.';
 
@@ -288,8 +288,8 @@ export async function POST(request: NextRequest) {
   await supabase.from('quotations').update({ approval_status: nextStatus }).eq('quotation_id', quotationId).throwOnError();
 
   const [workflow, confirmation] = await Promise.all([
-    createTaskAndInbox({ quotationId, responseId: customerResponse.response_id, response, total: Number(quotation.total ?? 0), warrantyYears, customerMessage, paymentIntentId: typeof paymentIntent?.payment_intent_id === 'string' ? paymentIntent.payment_intent_id : null }),
-    queueCustomerConfirmation({ customerId, quotationId, responseId: customerResponse.response_id, response })
+    createTaskAndInbox({ quotationId: quotationId as string, responseId: customerResponse.response_id, response, total: Number(quotation.total ?? 0), warrantyYears, customerMessage, paymentIntentId: typeof paymentIntent?.payment_intent_id === 'string' ? paymentIntent.payment_intent_id : null }),
+    queueCustomerConfirmation({ customerId, quotationId: quotationId as string, responseId: customerResponse.response_id, response })
   ]);
 
   await writeAuditLog({
