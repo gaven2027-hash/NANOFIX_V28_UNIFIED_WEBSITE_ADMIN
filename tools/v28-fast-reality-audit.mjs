@@ -19,6 +19,17 @@ const menu = [
   { index: 8, key: 'system-settings', title: 'System Settings', route: '/system-settings', page: 'app/system-settings/page.tsx' }
 ];
 
+const publicReadAllowlist = [
+  /^app\/api\/health\/route\.ts$/,
+  /^app\/api\/health\/\[module\]\/route\.ts$/,
+  /^app\/api\/ready\/route\.ts$/,
+  /^app\/api\/system\/health\/route\.ts$/,
+  /^app\/api\/system\/modules\/route\.ts$/,
+  /^app\/api\/cms\/blocks\/route\.ts$/
+];
+
+const webhookRoute = /^app\/api\/webhooks\//;
+
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (skipDirs.has(entry.name)) continue;
@@ -89,8 +100,19 @@ function issueScan(files) {
   return findings;
 }
 
+function isPublicReadAllowed(file, methods, hasWrite) {
+  if (hasWrite) return false;
+  if (methods.some((method) => method !== 'GET' && method !== 'HEAD')) return false;
+  return publicReadAllowlist.some((pattern) => pattern.test(file));
+}
+
+function hasWebhookSignatureCheck(text) {
+  return /stripe-signature|webhook-signature|x-hub-signature|x-signature|verifyWebhook|verifySignature|WEBHOOK_SECRET|webhookSecret|crypto\.createHmac|timingSafeEqual/i.test(text);
+}
+
 function apiCoverage(files) {
   return files.filter((file) => rel(file).startsWith('app/api/') && rel(file).endsWith('/route.ts')).map((file) => {
+    const fileRel = rel(file);
     const text = read(file);
     const methods = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].filter((method) => new RegExp(`export\\s+async\\s+function\\s+${method}\\b`).test(text));
     const writeMethods = methods.filter((method) => method !== 'GET');
@@ -100,13 +122,20 @@ function apiCoverage(files) {
     const hasWrite = /\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/.test(text) || writeMethods.length > 0;
     const selectStar = /\.select\(\s*['"]\*['"]\s*\)/.test(text);
     const rawRoleHeader = /x-admin-role|x-nanofix-role|x-user-role/i.test(text);
+    const publicReadAllowed = isPublicReadAllowed(fileRel, methods, hasWrite);
+    const isWebhook = webhookRoute.test(fileRel);
+    const webhookSignature = isWebhook ? hasWebhookSignatureCheck(text) : false;
     const risks = [];
-    if (!hasAuth) risks.push('P0:no_auth_gate');
+    const notes = [];
+    if (publicReadAllowed) notes.push('public_read_allowlisted');
+    if (isWebhook) notes.push(webhookSignature ? 'webhook_signature_detected' : 'webhook_signature_not_detected');
+    if (!hasAuth && !publicReadAllowed && !isWebhook) risks.push('P0:no_auth_gate');
+    if (isWebhook && !webhookSignature) risks.push('P0:webhook_without_signature_check');
     if (hasWrite && !hasAudit) risks.push('P0:write_without_audit_log');
     if (selectStar) risks.push('P1:select_star');
     if (rawRoleHeader) risks.push('P0:raw_role_header');
     if (hasSupabase && methods.length === 0) risks.push('P2:no_exported_http_method');
-    return { file: rel(file), methods, hasAuth, hasAudit, hasSupabase, hasWrite, selectStar, rawRoleHeader, risks };
+    return { file: fileRel, methods, hasAuth, hasAudit, hasSupabase, hasWrite, selectStar, rawRoleHeader, publicReadAllowed, isWebhook, webhookSignature, notes, risks };
   }).sort((a, b) => b.risks.length - a.risks.length || a.file.localeCompare(b.file));
 }
 
@@ -143,6 +172,7 @@ function markdown(report) {
   lines.push('');
   lines.push(`- Files scanned: ${report.summary.files_scanned}`);
   lines.push(`- API routes scanned: ${report.summary.api_routes_scanned}`);
+  lines.push(`- Public read allowlisted APIs: ${report.summary.public_read_allowlisted_api_routes}`);
   lines.push(`- P0 findings: ${report.summary.findings_by_severity.P0 || 0}`);
   lines.push(`- P1 findings: ${report.summary.findings_by_severity.P1 || 0}`);
   lines.push(`- P2 findings: ${report.summary.findings_by_severity.P2 || 0}`);
@@ -172,9 +202,17 @@ function markdown(report) {
     lines.push(`- \`${item.file}\`: ${item.risks.join(', ')}`);
   }
   lines.push('');
+  lines.push('## Public Read Allowlist');
+  lines.push('');
+  const allowlisted = report.api_coverage.filter((item) => item.publicReadAllowed);
+  if (!allowlisted.length) lines.push('No public read allowlisted APIs detected.');
+  for (const item of allowlisted) {
+    lines.push(`- \`${item.file}\``);
+  }
+  lines.push('');
   lines.push('## Next Action');
   lines.push('');
-  lines.push('Start with P0 API risks, then P0 static findings, then HIGH/MEDIUM admin modules.');
+  lines.push('Start with P0 API risks that are not public read allowlisted, then P0 static findings, then HIGH/MEDIUM admin modules.');
   return `${lines.join('\n')}\n`;
 }
 
@@ -188,6 +226,7 @@ const report = {
   summary: {
     files_scanned: files.length,
     api_routes_scanned: api.length,
+    public_read_allowlisted_api_routes: api.filter((item) => item.publicReadAllowed).length,
     findings_by_severity: bySeverity(staticFindings),
     api_routes_with_risks: api.filter((item) => item.risks.length).length,
     high_risk_admin_modules: map.filter((item) => item.risk === 'HIGH').map((item) => item.key)
@@ -202,5 +241,6 @@ fs.writeFileSync(path.join(reportsDir, 'v28-fast-reality-audit.md'), markdown(re
 console.log('V28 fast reality audit completed.');
 console.log(`Report JSON: reports/v28-fast-reality-audit.json`);
 console.log(`Report MD:   reports/v28-fast-reality-audit.md`);
+console.log(`Public read allowlisted APIs: ${report.summary.public_read_allowlisted_api_routes}`);
 console.log(`P0 findings: ${report.summary.findings_by_severity.P0 || 0}`);
 console.log(`API routes with risks: ${report.summary.api_routes_with_risks}`);
