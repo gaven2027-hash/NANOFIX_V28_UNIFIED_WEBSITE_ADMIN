@@ -7,6 +7,7 @@ import { CustomerCenterActionWorkspace } from '@/components/CustomerCenterAction
 import { AddOfflineCustomerForm } from '@/components/AddOfflineCustomerForm';
 import { UnclaimedCustomerProfilesPanel } from '@/components/UnclaimedCustomerProfilesPanel';
 import { CustomerAccountClaimsReviewPanel } from '@/components/CustomerAccountClaimsReviewPanel';
+import { CustomerBindingReviewPanel } from '@/components/CustomerBindingReviewPanel';
 import { AdminCustomerDocumentsPanel } from '@/components/AdminCustomerDocumentsPanel';
 import { MenuAnchorSections } from '@/components/MenuAnchorSections';
 
@@ -18,6 +19,7 @@ export default function Page() {
         <AddOfflineCustomerForm />
         <UnclaimedCustomerProfilesPanel />
         <CustomerAccountClaimsReviewPanel />
+        <CustomerBindingReviewPanel />
         <Customer360 />
         <CustomerCenterActionWorkspace />
         <AdminCustomerDocumentsPanel />
