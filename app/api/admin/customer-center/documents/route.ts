@@ -11,6 +11,12 @@ type ApiPayload = Record<string, unknown>;
 
 type CustomerRow = { customer_id: string; profile_id?: string | null; name?: string | null; phone?: string | null; email?: string | null };
 
+const DOCUMENT_SELECTS = {
+  quotation: 'quotation_id,job_id,current_version,total,approval_status,warranty_years,warranty_terms,visible_to_customer,customer_visible_at,customer_visible_by,pdf_storage_path,public_ref,created_at,updated_at',
+  invoice: 'invoice_id,invoice_no,job_id,customer_id,quotation_id,total,status,visible_to_customer,customer_visible_at,customer_visible_by,pdf_storage_path,payment_url,public_ref,created_at,updated_at',
+  warranty: 'warranty_id,warranty_no,job_id,customer_id,quotation_id,invoice_id,status,coverage,warranty_years,warranty_terms,starts_at,ends_at,generated_from,visible_to_customer,customer_visible_at,customer_visible_by,pdf_storage_path,created_at,updated_at'
+} as const;
+
 function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
@@ -146,11 +152,12 @@ export async function PATCH(request: NextRequest) {
   if (!isUuid(id)) return jsonError('Valid id is required.', 400);
   const table = type === 'quotation' ? 'quotations' : type === 'invoice' ? 'invoices' : 'warranties';
   const idColumn = type === 'quotation' ? 'quotation_id' : type === 'invoice' ? 'invoice_id' : 'warranty_id';
+  const select = type === 'quotation' ? DOCUMENT_SELECTS.quotation : type === 'invoice' ? DOCUMENT_SELECTS.invoice : DOCUMENT_SELECTS.warranty;
   const patch = cleanPatch(type as string, body, auth.actor.profileId);
   if (!Object.keys(patch).length) return jsonError('No supported fields to update.', 400);
   const supabase = createAdminClient();
-  const { data: before } = await supabase.from(table).select('*').eq(idColumn, id).maybeSingle();
-  const { data, error } = await supabase.from(table).update(patch).eq(idColumn, id).select('*').single();
+  const { data: before } = await supabase.from(table).select(select).eq(idColumn, id).maybeSingle();
+  const { data, error } = await supabase.from(table).update(patch).eq(idColumn, id).select(select).single();
   if (error) return jsonError(error.message, 400);
   await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'admin_customer_document_update', objectType: type as string, objectId: id, before: before as Record<string, unknown> | null, after: data as Record<string, unknown>, ip: getClientIp(request) }).catch(() => undefined);
   return NextResponse.json({ ok: true, type, id, record: data });
