@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseAdminClient } from '@/lib/supabase-server';
+import { auditLog, createSupabaseAdminClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,23 @@ function normalizeRoleGroup(value: unknown, requestedRole: string) { if (request
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
 function slugIdentifier(value: string) { return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '').slice(0, 80) || 'internal.user'; }
 function syntheticInternalEmail(username: string, phone: string) { return `internal.${slugIdentifier(username || phone)}@nanofix.local`; }
+function sourceIp(request: Request) { return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || null; }
+
+function auditMetadata(payload: Payload, record: Record<string, unknown>, existing: boolean, ip: string | null) {
+  return {
+    registration_request_id: record.registration_request_id ?? null,
+    requested_role: record.requested_role ?? null,
+    requested_role_group: record.requested_role_group ?? null,
+    status: record.status ?? null,
+    source: record.source ?? null,
+    existing,
+    has_phone: Boolean(record.phone),
+    has_email: Boolean(record.email),
+    synthetic_email_used: Boolean((record.metadata_json as Record<string, unknown> | null)?.synthetic_email_used),
+    ip,
+    user_agent_present: Boolean(payload.user_agent)
+  };
+}
 
 export async function POST(request: Request) {
   const supabase = createSupabaseAdminClient();
@@ -35,6 +52,7 @@ export async function POST(request: Request) {
   if (!email || !email.includes('@')) return jsonError('A valid email or internal synthetic email is required.');
 
   const now = new Date().toISOString();
+  const userAgent = request.headers.get('user-agent') || null;
   const payload = {
     auth_user_id: validUuid(body.auth_user_id) ? String(body.auth_user_id) : null,
     profile_id: validUuid(body.profile_id) ? String(body.profile_id) : null,
@@ -46,7 +64,7 @@ export async function POST(request: Request) {
     source: cleanText(body.source, 'portal_register', 120) || 'portal_register',
     status: 'pending_review',
     metadata_json: {
-      user_agent: request.headers.get('user-agent') || null,
+      user_agent: userAgent,
       submitted_at: now,
       role_label: requestedRole,
       requested_role_group: requestedRoleGroup,
@@ -63,9 +81,23 @@ export async function POST(request: Request) {
   if (existing) {
     const { data, error } = await supabase.from('portal_registration_requests').update({ ...payload, updated_at: now }).eq('registration_request_id', existing.registration_request_id).select(columns).single();
     if (error) return jsonError(error.message, 500);
+    await auditLog({
+      actor_role: 'public_registration',
+      action: 'portal_registration_request_updated',
+      target_table: 'portal_registration_requests',
+      target_id: data.registration_request_id,
+      metadata: auditMetadata({ ...body, user_agent: userAgent }, data, true, sourceIp(request))
+    }).catch(() => undefined);
     return NextResponse.json({ ok: true, row: data, existing: true });
   }
   const { data, error } = await supabase.from('portal_registration_requests').insert(payload).select(columns).single();
   if (error) return jsonError(error.message, 500);
+  await auditLog({
+    actor_role: 'public_registration',
+    action: 'portal_registration_request_created',
+    target_table: 'portal_registration_requests',
+    target_id: data.registration_request_id,
+    metadata: auditMetadata({ ...body, user_agent: userAgent }, data, false, sourceIp(request))
+  }).catch(() => undefined);
   return NextResponse.json({ ok: true, row: data, existing: false });
 }
