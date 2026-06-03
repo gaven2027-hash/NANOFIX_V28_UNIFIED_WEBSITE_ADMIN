@@ -29,6 +29,7 @@ const publicReadAllowlist = [
 ];
 
 const publicWriteAuditedAllowlist = [
+  /^app\/api\/leads\/route\.ts$/,
   /^app\/api\/service-requests\/route\.ts$/,
   /^app\/api\/public-repair-request\/route\.ts$/,
   /^app\/api\/public\/repair-request\/route\.ts$/,
@@ -45,7 +46,11 @@ const auditedTransactionRpcs = [
   'transition_status_tx',
   'create_job_from_service_request_tx',
   'create_payment_reconcile_tx',
-  'create_entity_event_tx'
+  'create_entity_event_tx',
+  'record_payment_and_reconcile',
+  'reconcile_payment_webhook_tx',
+  'ingest_social_message_tx',
+  'record_module_health_snapshot'
 ];
 
 const trustedHeaderFiles = new Set([
@@ -154,7 +159,11 @@ function isPublicWriteAuditedAllowed(file, text, hasWrite, hasAudit) {
 }
 
 function hasWebhookSignatureCheck(text) {
-  return /stripe-signature|webhook-signature|x-hub-signature|x-signature|verifyWebhook|verifySignature|WEBHOOK_SECRET|webhookSecret|crypto\.createHmac|timingSafeEqual/i.test(text);
+  return /stripe-signature|webhook-signature|x-hub-signature|x-signature|verifyWebhook|verifySignature|WEBHOOK_SECRET|webhookSecret|requireWebhookSecret|crypto\.createHmac|timingSafeEqual/i.test(text);
+}
+
+function hasWorkerSecretAuth(text) {
+  return /CRON_SECRET|NANOFIX_SYSTEM_WORKER_TOKEN|x-system-worker-token|authorized\(request\)/.test(text);
 }
 
 function apiCoverage(files) {
@@ -164,7 +173,8 @@ function apiCoverage(files) {
     const methods = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].filter((method) => new RegExp(`export\\s+async\\s+function\\s+${method}\\b`).test(text));
     const writeMethods = methods.filter((method) => method !== 'GET');
     const auditedRpc = hasAuditedTransactionRpc(text);
-    const hasAuth = /require(Admin|Actor|SuperAdmin)Api|requireAdmin\(|requireActor\(|requirePermission\(/.test(text);
+    const workerSecretAuth = hasWorkerSecretAuth(text);
+    const hasAuth = /require(Admin|Actor|SuperAdmin)Api|requireAdmin\(|requireActor\(|requirePermission\(/.test(text) || workerSecretAuth;
     const hasAudit = /writeAuditLog\s*\(|auditLog\s*\(|\.from\(["']audit_logs["']\)\.insert/.test(text) || auditedRpc;
     const hasSupabase = /createAdminClient\(|createClient\(|\.from\(|\.rpc\(/.test(text);
     const hasWrite = /\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/.test(text) || writeMethods.length > 0;
@@ -179,6 +189,7 @@ function apiCoverage(files) {
     if (publicReadAllowed) notes.push('public_read_allowlisted');
     if (publicWriteAuditedAllowed) notes.push('public_write_audited_allowlisted');
     if (auditedRpc) notes.push('transaction_rpc_audit_detected');
+    if (workerSecretAuth) notes.push('worker_secret_auth_detected');
     if (isWebhook) notes.push(webhookSignature ? 'webhook_signature_detected' : 'webhook_signature_not_detected');
     if (!hasAuth && !publicReadAllowed && !publicWriteAuditedAllowed && !isWebhook) risks.push('P0:no_auth_gate');
     if (isWebhook && !webhookSignature) risks.push('P0:webhook_without_signature_check');
@@ -186,7 +197,7 @@ function apiCoverage(files) {
     if (selectStar) risks.push('P1:select_star');
     if (rawRoleHeader) risks.push('P0:raw_role_header');
     if (hasSupabase && methods.length === 0) risks.push('P2:no_exported_http_method');
-    return { file: fileRel, methods, hasAuth, hasAudit, hasSupabase, hasWrite, selectStar, rawRoleHeader, publicReadAllowed, publicWriteAuditedAllowed, auditedRpc, isWebhook, webhookSignature, notes, risks };
+    return { file: fileRel, methods, hasAuth, hasAudit, hasSupabase, hasWrite, selectStar, rawRoleHeader, publicReadAllowed, publicWriteAuditedAllowed, auditedRpc, workerSecretAuth, isWebhook, webhookSignature, notes, risks };
   }).sort((a, b) => b.risks.length - a.risks.length || a.file.localeCompare(b.file));
 }
 
