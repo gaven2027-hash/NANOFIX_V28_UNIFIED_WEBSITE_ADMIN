@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { insertIfConfigured } from "@/lib/supabase-server";
+import { auditLog, insertIfConfigured } from "@/lib/supabase-server";
 import { ok, validationError } from "@/lib/nanofix/api";
 import { requireAdmin } from "@/lib/nanofix/auth";
 
@@ -41,6 +41,20 @@ export async function POST(request: Request) {
 
   if (inserted.skipped) return ok({ ok: false, error: "Supabase is not configured for AI draft writes" }, { status: 503 });
   if (inserted.error) return ok({ ok: false, error: "AI draft storage failed" }, { status: 500 });
+
+  await auditLog({
+    actor_role: context?.role ?? 'admin',
+    action: 'ai_draft.created',
+    target_table: 'ai_drafts',
+    target_id: typeof inserted.data?.draft_id === 'string' ? inserted.data.draft_id : null,
+    metadata: {
+      module: parsed.data.module,
+      task: parsed.data.task,
+      risk_level: parsed.data.risk_level,
+      requires_review: requiresReview,
+      record_id: parsed.data.record_id ?? null
+    }
+  }).catch(() => undefined);
 
   return ok({
     draft_id: inserted.data?.draft_id ?? null,
