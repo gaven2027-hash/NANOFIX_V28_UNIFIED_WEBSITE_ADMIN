@@ -80,7 +80,7 @@ function pageSignals(file, text) {
 function issueScan(files) {
   const checks = [
     { severity: 'P0', code: 'local_storage_business_state', regex: /\blocalStorage\b/g, why: 'Browser storage may create data divergence.' },
-    { severity: 'P0', code: 'fake_success', regex: /fake success|fallback success|return\s+NextResponse\.json\(\s*\{\s*ok:\s*true/gim, why: 'Possible success without real persistence.' },
+    { severity: 'P0', code: 'fake_success', regex: /fake success|fallback success|simulated success|pretend success/gi, why: 'Explicit fake/fallback success marker.' },
     { severity: 'P0', code: 'header_role_trust', regex: /x-admin-role|x-nanofix-role|x-user-role/gim, why: 'Client controlled role headers are risky.' },
     { severity: 'P1', code: 'hash_link', regex: /href=['"]#['"]/g, why: 'Empty hash link may be a fake button.' },
     { severity: 'P1', code: 'todo_marker', regex: /TODO|FIXME|TBD/g, why: 'Unfinished implementation marker.' },
