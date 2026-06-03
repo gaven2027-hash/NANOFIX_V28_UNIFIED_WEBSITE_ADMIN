@@ -193,7 +193,8 @@ async function safeList(supabase: ReturnType<typeof createAdminClient>, spec: Da
 
     if (error) return { spec, rows: [] as Row[], filteredRows: [] as Row[], error: error.message };
 
-    const rows = (Array.isArray(data) ? data.filter(isRow) : []).map((row) => ({
+    const rawRows: Row[] = Array.isArray(data) ? (data as unknown[]).filter(isRow) : [];
+    const rows = rawRows.map((row) => ({
       ...row,
       _dashboard_href: rowHref(spec, row)
     }));

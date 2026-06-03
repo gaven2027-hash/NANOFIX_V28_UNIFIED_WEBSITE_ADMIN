@@ -198,8 +198,8 @@ export async function POST(request: NextRequest) {
     role: auth.role,
     action: 'service_operations_live_core_record_create',
     objectType: machine,
-    objectId: typeof data?.[spec.idColumn] === 'string' ? data[spec.idColumn] : undefined,
-    after: data as Record<string, unknown>,
+    objectId: typeof (data as unknown as Record<string, unknown> | null)?.[spec.idColumn] === 'string' ? String((data as unknown as Record<string, unknown>)[spec.idColumn]) : undefined,
+    after: data as unknown as Record<string, unknown>,
     ip: getClientIp(request)
   }).catch(() => undefined);
 
@@ -237,7 +237,7 @@ export async function PATCH(request: NextRequest) {
       objectType: machine,
       objectId,
       before: before as Record<string, unknown> | null,
-      after: data as Record<string, unknown>,
+      after: data as unknown as Record<string, unknown>,
       ip: getClientIp(request)
     }).catch(() => undefined);
 

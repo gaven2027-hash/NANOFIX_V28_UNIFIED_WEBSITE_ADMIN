@@ -8,7 +8,11 @@ export const dynamic = 'force-dynamic';
 type Tone = 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan';
 type Row = Record<string, unknown>;
 type WebsiteSectionKey = 'pages' | 'blocks' | 'public_forms' | 'organic_leads' | 'paid_leads' | 'uploads' | 'publish_audit';
-type QueryBuilder = ReturnType<ReturnType<typeof createAdminClient>['from']>;
+type QueryBuilder = {
+  in: (column: string, values: readonly unknown[]) => QueryBuilder;
+  not: (column: string, operator: string, value: unknown) => QueryBuilder;
+  order: (column: string, options?: { ascending?: boolean }) => { limit: (count: number) => Promise<{ data: unknown; error: { message: string } | null }> };
+};
 
 type WebsiteSpec = {
   key: WebsiteSectionKey;
@@ -142,11 +146,12 @@ function filterRows(rows: Row[], search: string) {
 
 async function safeList(supabase: ReturnType<typeof createAdminClient>, spec: WebsiteSpec, search: string) {
   try {
-    let query = supabase.from(spec.table).select(spec.select);
+    let query = supabase.from(spec.table).select(spec.select) as unknown as QueryBuilder;
     if (spec.filter) query = spec.filter(query);
     const { data, error } = await query.order(spec.orderColumn ?? 'created_at', { ascending: false }).limit(60);
     if (error) return { spec, rows: [] as Row[], filteredRows: [] as Row[], error: error.message };
-    const rows = (Array.isArray(data) ? data.filter(isRow) : []).map((row) => ({ ...row, _website_href: rowHref(spec, row) }));
+    const rawRows: Row[] = Array.isArray(data) ? (data as unknown[]).filter(isRow) : [];
+    const rows = rawRows.map((row) => ({ ...row, _website_href: rowHref(spec, row) }));
     return { spec, rows, filteredRows: filterRows(rows, search), error: null };
   } catch (error) {
     return { spec, rows: [] as Row[], filteredRows: [] as Row[], error: error instanceof Error ? error.message : 'Website query failed' };

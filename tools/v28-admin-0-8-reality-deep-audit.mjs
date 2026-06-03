@@ -224,19 +224,19 @@ function pageAndComponentSignals(files) {
   };
 }
 
-function relatedApiRoutes(module, apiRoutes, apiCalls) {
+function relatedApiRoutes(moduleDef, apiRoutes, apiCalls) {
   const byCall = apiRoutes.filter((api) => apiCalls.some((call) => routeMatchesCall(api.route, call)));
-  const byKeyword = apiRoutes.filter((api) => module.keywords.some((kw) => api.file.toLowerCase().includes(kw.toLowerCase())));
+  const byKeyword = apiRoutes.filter((api) => moduleDef.keywords.some((kw) => api.file.toLowerCase().includes(kw.toLowerCase())));
   return unique([...byCall, ...byKeyword].map((api) => api.file)).map((file) => apiRoutes.find((api) => api.file === file)).filter(Boolean);
 }
 
-function moduleIssues(module, pageExists, signals, apis) {
+function moduleIssues(moduleDef, pageExists, signals, apis) {
   const issues = [];
   const hasWriteApi = apis.some((api) => api.hasWrite);
   const hasReadApi = apis.some((api) => api.hasRead || api.methods.includes('GET'));
   const hasMutationUi = signals.forms > 0 || signals.onSubmit > 0 || signals.onClick > 0 || signals.buttons > 0;
 
-  if (!pageExists) issues.push({ severity: 'P0', code: 'missing_module_page', detail: `${module.page} is missing.` });
+  if (!pageExists) issues.push({ severity: 'P0', code: 'missing_module_page', detail: `${moduleDef.page} is missing.` });
   if (pageExists && !apis.length) issues.push({ severity: 'P0', code: 'no_related_api_routes', detail: 'Module has no detected related API route or API call.' });
   if (pageExists && hasMutationUi && !hasWriteApi) issues.push({ severity: 'P1', code: 'ui_actions_without_write_api', detail: 'Buttons/forms detected but no related write API found.' });
   if (pageExists && !hasReadApi) issues.push({ severity: 'P1', code: 'no_read_data_api', detail: 'No related read API detected for real data loading.' });
@@ -342,23 +342,23 @@ const allFiles = walk(root);
 const apiRoutes = allFiles.filter((file) => rel(file).startsWith('app/api/') && /\/route\.(ts|js)$/.test(rel(file))).map(apiSignals);
 const results = [];
 
-for (const module of modules) {
-  const pageFile = path.join(root, module.page);
+for (const moduleDef of modules) {
+  const pageFile = path.join(root, moduleDef.page);
   const pageExists = fs.existsSync(pageFile);
   const pageText = pageExists ? read(pageFile) : '';
   const importNames = extractComponentImports(pageText);
-  const componentFiles = findComponentFiles(allFiles, importNames, module.keywords);
+  const componentFiles = findComponentFiles(allFiles, importNames, moduleDef.keywords);
   const scannedFiles = pageExists ? [pageFile, ...componentFiles] : [...componentFiles];
   const signals = pageAndComponentSignals(scannedFiles);
-  const relatedApis = relatedApiRoutes(module, apiRoutes, signals.apiCalls);
-  const issues = moduleIssues(module, pageExists, signals, relatedApis);
+  const relatedApis = relatedApiRoutes(moduleDef, apiRoutes, signals.apiCalls);
+  const issues = moduleIssues(moduleDef, pageExists, signals, relatedApis);
   const score = scoreModule(issues, signals, relatedApis, pageExists);
   results.push({
-    index: module.index,
-    key: module.key,
-    title: module.title,
-    route: module.route,
-    page: module.page,
+    index: moduleDef.index,
+    key: moduleDef.key,
+    title: moduleDef.title,
+    route: moduleDef.route,
+    page: moduleDef.page,
     page_exists: pageExists,
     component_files: componentFiles.map(rel),
     signals,

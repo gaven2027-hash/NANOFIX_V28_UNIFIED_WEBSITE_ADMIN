@@ -7,6 +7,22 @@ import { writeAuditLog } from '@/lib/audit';
 
 const READ_ROLES = ['super_admin', 'operations_admin', 'finance', 'support'] as const;
 const WRITE_ROLES = ['super_admin', 'operations_admin', 'finance'] as const;
+
+type CustomerDocumentQuery = {
+  select: (columns: string) => {
+    eq: (column: string, value: string) => {
+      maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+    };
+  };
+  update: (patch: Record<string, unknown>) => {
+    eq: (column: string, value: string) => {
+      select: (columns: string) => {
+        single: () => Promise<{ data: unknown; error: { message: string } | null }>;
+      };
+    };
+  };
+};
+
 type ApiPayload = Record<string, unknown>;
 
 type CustomerRow = { customer_id: string; profile_id?: string | null; name?: string | null; phone?: string | null; email?: string | null };
@@ -156,8 +172,8 @@ export async function PATCH(request: NextRequest) {
   const patch = cleanPatch(type as string, body, auth.actor.profileId);
   if (!Object.keys(patch).length) return jsonError('No supported fields to update.', 400);
   const supabase = createAdminClient();
-  const { data: before } = await supabase.from(table).select(select).eq(idColumn, id).maybeSingle();
-  const { data, error } = await supabase.from(table).update(patch).eq(idColumn, id).select(select).single();
+  const { data: before } = await (supabase.from(table) as unknown as CustomerDocumentQuery).select(select).eq(idColumn, id as string).maybeSingle();
+  const { data, error } = await (supabase.from(table) as unknown as CustomerDocumentQuery).update(patch).eq(idColumn, id as string).select(select).single();
   if (error) return jsonError(error.message, 400);
   await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'admin_customer_document_update', objectType: type as string, objectId: id, before: before as Record<string, unknown> | null, after: data as Record<string, unknown>, ip: getClientIp(request) }).catch(() => undefined);
   return NextResponse.json({ ok: true, type, id, record: data });

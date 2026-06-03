@@ -98,12 +98,13 @@ export async function PATCH(request: NextRequest) {
   const updateResults: Record<string, unknown> = {};
 
   for (const table of tablesToUpdate) {
-    const { count, error } = await supabase
+    const { data: updatedRows, error } = await supabase
       .from(table)
       .update({ customer_id: primaryCustomerId, updated_at: now })
       .in('customer_id', duplicateCustomerIds)
-      .select('*', { count: 'exact', head: true });
-    updateResults[table] = error ? { ok: false, error: error.message } : { ok: true, count: count ?? 0 };
+      .select('customer_id');
+    const count = Array.isArray(updatedRows) ? updatedRows.length : 0;
+    updateResults[table] = error ? { ok: false, error: error.message } : { ok: true, count };
   }
 
   for (const duplicateId of duplicateCustomerIds) {
