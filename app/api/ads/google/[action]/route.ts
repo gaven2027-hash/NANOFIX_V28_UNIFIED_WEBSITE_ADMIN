@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminApi } from '@/lib/apiSecurity';
+import { auditLog } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,11 +106,30 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'marketing_admin']);
+  if (!auth.ok) return auth.response;
+
   const { action } = await context.params;
   if (!allowedActions.includes(action as typeof allowedActions[number])) return json({ ok: false, error: 'Unsupported action.', supported_actions: allowedActions }, 404);
   let body: Record<string, unknown> = {};
   try { body = await request.json(); } catch { return json({ ok: false, error: 'Invalid JSON body.' }, 400); }
   const eventResult = await writeConnectionEvent(action, body, request);
+
+  await auditLog({
+    actor_id: auth.actor.profileId,
+    actor_role: auth.role,
+    action: 'ads.google.account_action',
+    target_table: 'social_connection_events',
+    metadata: {
+      platform: 'google-ads',
+      action,
+      account_name_present: Boolean(body.account_name || body.accountName),
+      external_account_id_present: Boolean(body.customer_id || body.customerId || body.account_id),
+      event_saved: eventResult.ok,
+      event_skipped: Boolean(eventResult.skipped)
+    }
+  }).catch(() => undefined);
+
   return json({
     ok: eventResult.ok,
     route_ready: true,
