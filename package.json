@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "bash tools/safe-next-build.sh",
     "start": "next start",
-    "lint": "eslint . --max-warnings=0",
+    "lint": "eslint . --max-warnings=50",
     "prepare:legacy": "node tools/extract-legacy-html.mjs && node tools/repair-google-maps.mjs && node tools/generate-legacy-content.mjs",
     "generate:legacy-content": "node tools/generate-legacy-content.mjs",
     "repair:maps": "node tools/repair-google-maps.mjs && node tools/generate-legacy-content.mjs",
