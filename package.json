@@ -59,6 +59,7 @@
     "verify:quotation-pdf": "node tools/verify-quotation-pdf-flow.mjs",
     "scan:v28-2-static": "node tools/static-v28-2-issue-scan.mjs",
     "audit:oa-erp": "node tools/oa-erp-readiness-audit.mjs",
+    "audit:fast-reality": "node tools/v28-fast-reality-audit.mjs",
     "verify:ad-center": "node tools/verify-ad-center.mjs",
     "build:css": "tailwindcss -i ./app/globals.css -o ./public/static/nanofix-tailwind.css --minify",
     "build:preview": "npm run build:css && node tools/build-preview-package.mjs",
