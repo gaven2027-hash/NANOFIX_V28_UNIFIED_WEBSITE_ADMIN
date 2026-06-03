@@ -1,6 +1,6 @@
 import { ok, fail, readJsonOrForm, validationError } from "@/lib/nanofix/api";
 import { requirePermission } from "@/lib/nanofix/rbac";
-import { createSupabaseAdminClient } from "@/lib/supabase-server";
+import { auditLog, createSupabaseAdminClient } from "@/lib/supabase-server";
 import { emitEntityEvent, EntityEventSchema } from "@/lib/nanofix/system-events";
 
 export const dynamic = "force-dynamic";
@@ -37,5 +37,20 @@ export async function POST(request: Request) {
   const result = await emitEntityEvent(parsed.data);
   if (result.skipped) return fail("Supabase is not configured for entity event writes", 503);
   if (result.error) return fail("Entity event write failed", 500);
+
+  await auditLog({
+    actor_role: permission.role,
+    action: 'entity_event.created',
+    target_table: 'entity_events',
+    target_id: result.data?.event_id ?? null,
+    metadata: {
+      topic: parsed.data.topic,
+      entity_type: parsed.data.entity_type,
+      entity_id: parsed.data.entity_id || null,
+      module_key: parsed.data.module_key,
+      outbox_queued: true
+    }
+  }).catch(() => undefined);
+
   return ok({ storage: "supabase", event_id: result.data?.event_id ?? null });
 }
