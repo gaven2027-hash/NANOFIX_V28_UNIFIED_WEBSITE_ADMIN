@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminApi } from '@/lib/apiSecurity';
+import { auditLog } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,6 +191,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'marketing_admin']);
+  if (!auth.ok) return auth.response;
+
   const { platform, action } = await context.params;
   const config = adConfigs[platform];
   if (!config) return json({ ok: false, error: 'Unsupported advertising platform.', supported_platforms: Object.keys(adConfigs) }, 404);
@@ -200,6 +205,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const event = await writeAdConnectionEvent(platform, action, body, request, config);
   const bridgeChecks = await Promise.all(config.tables.map(async (table) => ({ table, ...(await checkTable(table)) })));
   const requiredBridgeReady = bridgeChecks.filter((check) => ['ad_accounts', 'ad_campaigns', 'ad_leads', 'manual_ad_leads', 'attribution_events'].includes(check.table)).every((check) => check.ok || check.table === 'manual_ad_leads');
+
+  await auditLog({
+    actor_id: auth.actor.profileId,
+    actor_role: auth.role,
+    action: 'ads.account_connector_action',
+    target_table: event.table,
+    metadata: {
+      platform,
+      action,
+      account_name_present: Boolean(body.account_name || body.accountName),
+      external_account_id_present: Boolean(body.account_id || body.accountId || body.customer_id || body.customerId),
+      event_saved: Boolean(event.result?.ok || event.fallback_result?.ok),
+      event_table: event.table,
+      bridge_ready: requiredBridgeReady
+    }
+  }).catch(() => undefined);
 
   return json({
     ok: Boolean(event.result?.ok || event.fallback_result?.ok),
