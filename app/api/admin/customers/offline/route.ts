@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
+import { cleanText, getClientIp, jsonError, requireAdminApi } from '@/lib/apiSecurity';
+import { writeAuditLog } from '@/lib/audit';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
 type JsonRecord = Record<string, unknown>;
 
 function text(value: unknown, fallback = '') {
-  return typeof value === 'string' ? value.trim() : fallback;
+  return cleanText(value, 500) ?? fallback;
 }
 
 function money(value: unknown) {
@@ -21,20 +23,12 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function actorFromRequest(request: NextRequest) {
-  const auth = request.headers.get('authorization') || '';
-  return {
-    hasBearer: auth.toLowerCase().startsWith('bearer '),
-    tokenPreview: auth.toLowerCase().startsWith('bearer ') ? `${auth.slice(7, 15)}…` : null
-  };
-}
-
 export async function POST(request: NextRequest) {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return json({ ok: false, error: 'Supabase service role is not configured.' }, 503);
+  const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'support']);
+  if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => null) as { customer?: JsonRecord; order?: JsonRecord } | null;
-  if (!body) return json({ ok: false, error: 'Invalid JSON body.' }, 400);
+  if (!body) return jsonError('Invalid JSON body.', 400);
 
   const customer = body.customer || {};
   const order = body.order || {};
@@ -45,17 +39,17 @@ export async function POST(request: NextRequest) {
   const phoneCountryCode = text(customer.phone_country_code, '+65');
   const phoneLocalNumber = text(customer.phone_local_number);
 
-  if (!name || !phone) return json({ ok: false, error: 'Customer name and phone are required.' }, 400);
+  if (!name || !phone) return jsonError('Customer name and phone are required.', 400);
 
   const now = new Date().toISOString();
-  const actor = actorFromRequest(request);
+  const supabase = createAdminClient();
 
   const customerPayload = {
     name,
     phone,
     whatsapp: phone,
     email: email || null,
-    address_text: address || null,
+    address_json: address ? { full_address: address } : null,
     status: 'active',
     binding_status: 'linked',
     portal_status: 'unclaimed',
@@ -67,8 +61,10 @@ export async function POST(request: NextRequest) {
       phone_local_number: phoneLocalNumber,
       unclaimed_reason: 'customer_not_ready_to_register',
       created_by_flow: 'customer_center_add_offline_customer',
-      actor_token_present: actor.hasBearer,
-      actor_token_preview: actor.tokenPreview
+      created_by_actor_id: auth.actor.profileId,
+      created_by_actor_role: auth.role,
+      password_created_by_admin: false,
+      customer_must_claim_with_otp_or_admin_verified_request: true
     },
     created_at: now,
     updated_at: now
@@ -104,6 +100,8 @@ export async function POST(request: NextRequest) {
     customerRow = data as JsonRecord;
   }
 
+  if (!customerRow?.customer_id) return json({ ok: false, error: 'Customer row missing customer_id.', stage: 'customer_result' }, 500);
+
   const customerId = String(customerRow.customer_id);
   const serviceCategory = text(order.service_category, 'Offline Repair');
   const issueType = text(order.issue_type, 'Offline repair record');
@@ -112,27 +110,27 @@ export async function POST(request: NextRequest) {
   const amount = money(order.amount);
   const paymentStatus = text(order.payment_status, 'pending');
   const notes = text(order.notes);
+  const descriptionParts = [serviceCategory, notes, amount ? `Amount SGD ${amount}` : '', warrantyMonths ? `Warranty months ${warrantyMonths}` : '', paymentStatus ? `Payment ${paymentStatus}` : ''].filter(Boolean);
 
   const serviceRequestPayload = {
     customer_id: customerId,
     issue_type: issueType,
-    service_category: serviceCategory,
-    status: 'completed_offline_record',
-    binding_status: 'linked',
-    source: 'admin_offline_entry',
-    preferred_date: serviceDate || null,
     address_text: address || null,
-    customer_name: name,
-    customer_phone: phone,
-    customer_email: email || null,
-    metadata_json: {
-      portal_status: 'unclaimed',
-      warranty_months: warrantyMonths,
-      payment_status: paymentStatus,
-      amount_sgd: amount,
-      internal_notes: notes,
-      created_by_flow: 'customer_center_add_offline_customer'
-    },
+    binding_status: 'linked',
+    priority: 'P2',
+    source_platform: 'admin_offline_entry',
+    status: 'pending_review',
+    contact_name: name,
+    phone,
+    whatsapp: phone,
+    email: email || null,
+    issue_description: descriptionParts.join(' | ') || 'Offline customer repair record',
+    preferred_time_text: serviceDate || null,
+    consent: true,
+    admin_approval_required: false,
+    request_origin: 'admin',
+    portal_customer_notes: notes || null,
+    portal_attachment_urls: [],
     created_at: now,
     updated_at: now
   };
@@ -144,13 +142,15 @@ export async function POST(request: NextRequest) {
     .single();
   if (serviceError) return json({ ok: false, error: serviceError.message, stage: 'insert_service_request', customer_id: customerId }, 500);
 
-  await auditLog({
-    actor_role: 'super_admin_or_internal_admin',
+  await writeAuditLog({
+    actorId: auth.actor.profileId,
+    role: auth.role,
     action: existingByPhone?.customer_id ? 'offline_customer_updated' : 'offline_customer_created',
-    object_type: 'customers',
-    object_id: customerId,
-    metadata: { customer_id: customerId, service_request_id: serviceRequest.service_request_id, portal_status: 'unclaimed', created_source: 'admin_offline_entry' }
-  });
+    objectType: 'customers',
+    objectId: customerId,
+    after: { customer_id: customerId, service_request_id: serviceRequest.service_request_id, portal_status: 'unclaimed', created_source: 'admin_offline_entry' },
+    ip: getClientIp(request)
+  }).catch(() => undefined);
 
   return json({
     ok: true,
