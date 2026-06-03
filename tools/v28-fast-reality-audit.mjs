@@ -147,7 +147,7 @@ function apiCoverage(files) {
     const text = read(file);
     const methods = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].filter((method) => new RegExp(`export\\s+async\\s+function\\s+${method}\\b`).test(text));
     const writeMethods = methods.filter((method) => method !== 'GET');
-    const hasAuth = /require(Admin|Actor|SuperAdmin)Api|requireAdmin\(|requireActor\(/.test(text);
+    const hasAuth = /require(Admin|Actor|SuperAdmin)Api|requireAdmin\(|requireActor\(|requirePermission\(/.test(text);
     const hasAudit = /writeAuditLog\s*\(|auditLog\s*\(|\.from\(["']audit_logs["']\)\.insert/.test(text);
     const hasSupabase = /createAdminClient\(|createClient\(|\.from\(|\.rpc\(/.test(text);
     const hasWrite = /\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/.test(text) || writeMethods.length > 0;
