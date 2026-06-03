@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 type Tone = 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan';
 type Row = Record<string, unknown>;
 type WebsiteSectionKey = 'pages' | 'blocks' | 'public_forms' | 'organic_leads' | 'paid_leads' | 'uploads' | 'publish_audit';
+type QueryBuilder = ReturnType<ReturnType<typeof createAdminClient>['from']>;
 
 type WebsiteSpec = {
   key: WebsiteSectionKey;
@@ -19,14 +20,14 @@ type WebsiteSpec = {
   route: string;
   tone: Tone;
   orderColumn?: string;
-  filter?: (query: ReturnType<ReturnType<typeof createAdminClient>['from']>) => ReturnType<ReturnType<typeof createAdminClient>['from']>;
+  filter?: (query: QueryBuilder) => QueryBuilder;
 };
 
 const specs: WebsiteSpec[] = [
   {
     key: 'pages',
     label: 'CMS Pages',
-    zh: 'CMS 页面',
+    zh: 'CMS Pages',
     table: 'website_pages',
     select: 'page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at',
     idField: 'page_id',
@@ -37,7 +38,7 @@ const specs: WebsiteSpec[] = [
   {
     key: 'blocks',
     label: 'Content Blocks',
-    zh: '内容区块',
+    zh: 'Content Blocks',
     table: 'website_content_blocks',
     select: 'block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at',
     idField: 'block_id',
@@ -48,7 +49,7 @@ const specs: WebsiteSpec[] = [
   {
     key: 'public_forms',
     label: 'Public Repair Forms',
-    zh: '公开报修表单',
+    zh: 'Public Repair Forms',
     table: 'service_requests',
     select: 'service_request_id,customer_id,contact_name,phone,whatsapp,email,issue_type,address_text,status,binding_status,source_platform,created_at,updated_at',
     idField: 'service_request_id',
@@ -59,7 +60,7 @@ const specs: WebsiteSpec[] = [
   {
     key: 'organic_leads',
     label: 'Website Organic Leads',
-    zh: '网站自然线索',
+    zh: 'Website Organic Leads',
     table: 'leads',
     select: 'lead_id,name,phone,email,source_platform,request_origin,priority,status,binding_status,created_at,updated_at',
     idField: 'lead_id',
@@ -70,7 +71,7 @@ const specs: WebsiteSpec[] = [
   {
     key: 'paid_leads',
     label: 'Paid Landing Leads',
-    zh: '广告落地页线索',
+    zh: 'Paid Landing Leads',
     table: 'leads',
     select: 'lead_id,name,phone,email,source_platform,request_origin,priority,status,binding_status,created_at,updated_at',
     idField: 'lead_id',
@@ -81,7 +82,7 @@ const specs: WebsiteSpec[] = [
   {
     key: 'uploads',
     label: 'Public Upload Review',
-    zh: '公开上传审核',
+    zh: 'Public Upload Review',
     table: 'service_requests',
     select: 'service_request_id,contact_name,phone,email,issue_type,portal_attachment_urls,portal_customer_notes,status,created_at,updated_at',
     idField: 'service_request_id',
@@ -92,7 +93,7 @@ const specs: WebsiteSpec[] = [
   {
     key: 'publish_audit',
     label: 'Publish Audit Logs',
-    zh: '发布审计日志',
+    zh: 'Publish Audit Logs',
     table: 'audit_logs',
     select: 'audit_id,actor_id,role,action,object_type,object_id,created_at',
     idField: 'audit_id',
@@ -276,7 +277,7 @@ export async function PATCH(request: NextRequest) {
     : 'block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at';
 
   const { data: before } = await supabase.from(table).select(select).eq(idField, objectId).maybeSingle();
-  const patch = status === 'published'
+  const patch = spec.key === 'pages' && status === 'published'
     ? { status, published_at: now, updated_at: now }
     : { status, updated_at: now };
   const { data, error } = await supabase.from(table).update(patch).eq(idField, objectId).select(select).single();
