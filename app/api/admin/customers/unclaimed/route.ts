@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
-import { createSupabaseAdminClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getClientIp, requireAdminApi } from '@/lib/apiSecurity';
+import { writeAuditLog } from '@/lib/audit';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +12,11 @@ function json(data: unknown, status = 200) {
   });
 }
 
-export async function GET() {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) return json({ ok: true, skipped: true, rows: [], error: 'Supabase service role is not configured.' });
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminApi(request, ['super_admin', 'operations_admin', 'support']);
+  if (!auth.ok) return auth.response;
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('customers')
     .select('customer_id,name,phone,email,portal_status,created_source,created_at')
@@ -22,5 +25,15 @@ export async function GET() {
     .limit(100);
 
   if (error) return json({ ok: false, rows: [], error: error.message }, 500);
+
+  await writeAuditLog({
+    actorId: auth.actor.profileId,
+    role: auth.role,
+    action: 'admin_customers_unclaimed_read',
+    objectType: 'customers',
+    after: { row_count: data?.length ?? 0, portal_status: ['unclaimed', 'claim_pending'] },
+    ip: getClientIp(request)
+  }).catch(() => undefined);
+
   return json({ ok: true, rows: data || [] });
 }
