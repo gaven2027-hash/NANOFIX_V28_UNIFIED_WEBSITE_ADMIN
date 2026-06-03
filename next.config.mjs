@@ -65,11 +65,11 @@ const nextConfig = {
   },
   eslint: {
     // Lint is enforced by npm run lint inside validate:predeploy before Vercel build:ci.
-    ignoreDuringBuilds: true
+    ignoreDuringBuilds: false
   },
   typescript: {
     // Type safety is enforced by npm run typecheck inside validate:predeploy before Vercel build:ci.
-    ignoreBuildErrors: true
+    ignoreBuildErrors: false
   },
   async headers() {
     return [
