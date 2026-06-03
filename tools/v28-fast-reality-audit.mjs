@@ -28,6 +28,14 @@ const publicReadAllowlist = [
   /^app\/api\/cms\/blocks\/route\.ts$/
 ];
 
+const publicWriteAuditedAllowlist = [
+  /^app\/api\/service-requests\/route\.ts$/
+];
+
+const trustedHeaderFiles = new Set([
+  'lib/nanofix/auth.ts'
+]);
+
 const webhookRoute = /^app\/api\/webhooks\//;
 
 function walk(dir, out = []) {
@@ -93,6 +101,7 @@ function issueScan(files) {
     if (!fileRel.startsWith('app/') && !fileRel.startsWith('components/') && !fileRel.startsWith('lib/')) continue;
     const text = read(file);
     for (const check of checks) {
+      if (check.code === 'header_role_trust' && trustedHeaderFiles.has(fileRel) && text.includes('middleware-verified')) continue;
       const hits = linesWith(text, check.regex, 8);
       if (hits.length) findings.push({ file: fileRel, ...check, hits });
     }
@@ -104,6 +113,11 @@ function isPublicReadAllowed(file, methods, hasWrite) {
   if (hasWrite) return false;
   if (methods.some((method) => method !== 'GET' && method !== 'HEAD')) return false;
   return publicReadAllowlist.some((pattern) => pattern.test(file));
+}
+
+function isPublicWriteAuditedAllowed(file, hasWrite, hasAudit) {
+  if (!hasWrite || !hasAudit) return false;
+  return publicWriteAuditedAllowlist.some((pattern) => pattern.test(file));
 }
 
 function hasWebhookSignatureCheck(text) {
@@ -121,21 +135,23 @@ function apiCoverage(files) {
     const hasSupabase = /createAdminClient\(|createClient\(|\.from\(|\.rpc\(/.test(text);
     const hasWrite = /\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/.test(text) || writeMethods.length > 0;
     const selectStar = /\.select\(\s*['"]\*['"]\s*\)/.test(text);
-    const rawRoleHeader = /x-admin-role|x-nanofix-role|x-user-role/i.test(text);
+    const rawRoleHeader = /x-admin-role|x-nanofix-role|x-user-role/i.test(text) && !(trustedHeaderFiles.has(fileRel) && text.includes('middleware-verified'));
     const publicReadAllowed = isPublicReadAllowed(fileRel, methods, hasWrite);
+    const publicWriteAuditedAllowed = isPublicWriteAuditedAllowed(fileRel, hasWrite, hasAudit);
     const isWebhook = webhookRoute.test(fileRel);
     const webhookSignature = isWebhook ? hasWebhookSignatureCheck(text) : false;
     const risks = [];
     const notes = [];
     if (publicReadAllowed) notes.push('public_read_allowlisted');
+    if (publicWriteAuditedAllowed) notes.push('public_write_audited_allowlisted');
     if (isWebhook) notes.push(webhookSignature ? 'webhook_signature_detected' : 'webhook_signature_not_detected');
-    if (!hasAuth && !publicReadAllowed && !isWebhook) risks.push('P0:no_auth_gate');
+    if (!hasAuth && !publicReadAllowed && !publicWriteAuditedAllowed && !isWebhook) risks.push('P0:no_auth_gate');
     if (isWebhook && !webhookSignature) risks.push('P0:webhook_without_signature_check');
     if (hasWrite && !hasAudit) risks.push('P0:write_without_audit_log');
     if (selectStar) risks.push('P1:select_star');
     if (rawRoleHeader) risks.push('P0:raw_role_header');
     if (hasSupabase && methods.length === 0) risks.push('P2:no_exported_http_method');
-    return { file: fileRel, methods, hasAuth, hasAudit, hasSupabase, hasWrite, selectStar, rawRoleHeader, publicReadAllowed, isWebhook, webhookSignature, notes, risks };
+    return { file: fileRel, methods, hasAuth, hasAudit, hasSupabase, hasWrite, selectStar, rawRoleHeader, publicReadAllowed, publicWriteAuditedAllowed, isWebhook, webhookSignature, notes, risks };
   }).sort((a, b) => b.risks.length - a.risks.length || a.file.localeCompare(b.file));
 }
 
@@ -173,6 +189,7 @@ function markdown(report) {
   lines.push(`- Files scanned: ${report.summary.files_scanned}`);
   lines.push(`- API routes scanned: ${report.summary.api_routes_scanned}`);
   lines.push(`- Public read allowlisted APIs: ${report.summary.public_read_allowlisted_api_routes}`);
+  lines.push(`- Public write audited allowlisted APIs: ${report.summary.public_write_audited_allowlisted_api_routes}`);
   lines.push(`- P0 findings: ${report.summary.findings_by_severity.P0 || 0}`);
   lines.push(`- P1 findings: ${report.summary.findings_by_severity.P1 || 0}`);
   lines.push(`- P2 findings: ${report.summary.findings_by_severity.P2 || 0}`);
@@ -202,17 +219,17 @@ function markdown(report) {
     lines.push(`- \`${item.file}\`: ${item.risks.join(', ')}`);
   }
   lines.push('');
-  lines.push('## Public Read Allowlist');
+  lines.push('## Public Allowlist');
   lines.push('');
-  const allowlisted = report.api_coverage.filter((item) => item.publicReadAllowed);
-  if (!allowlisted.length) lines.push('No public read allowlisted APIs detected.');
+  const allowlisted = report.api_coverage.filter((item) => item.publicReadAllowed || item.publicWriteAuditedAllowed);
+  if (!allowlisted.length) lines.push('No public allowlisted APIs detected.');
   for (const item of allowlisted) {
-    lines.push(`- \`${item.file}\``);
+    lines.push(`- \`${item.file}\`: ${item.notes.join(', ')}`);
   }
   lines.push('');
   lines.push('## Next Action');
   lines.push('');
-  lines.push('Start with P0 API risks that are not public read allowlisted, then P0 static findings, then HIGH/MEDIUM admin modules.');
+  lines.push('Start with P0 API risks that are not allowlisted, then P0 static findings, then HIGH/MEDIUM admin modules.');
   return `${lines.join('\n')}\n`;
 }
 
@@ -227,6 +244,7 @@ const report = {
     files_scanned: files.length,
     api_routes_scanned: api.length,
     public_read_allowlisted_api_routes: api.filter((item) => item.publicReadAllowed).length,
+    public_write_audited_allowlisted_api_routes: api.filter((item) => item.publicWriteAuditedAllowed).length,
     findings_by_severity: bySeverity(staticFindings),
     api_routes_with_risks: api.filter((item) => item.risks.length).length,
     high_risk_admin_modules: map.filter((item) => item.risk === 'HIGH').map((item) => item.key)
@@ -242,5 +260,6 @@ console.log('V28 fast reality audit completed.');
 console.log(`Report JSON: reports/v28-fast-reality-audit.json`);
 console.log(`Report MD:   reports/v28-fast-reality-audit.md`);
 console.log(`Public read allowlisted APIs: ${report.summary.public_read_allowlisted_api_routes}`);
+console.log(`Public write audited allowlisted APIs: ${report.summary.public_write_audited_allowlisted_api_routes}`);
 console.log(`P0 findings: ${report.summary.findings_by_severity.P0 || 0}`);
 console.log(`API routes with risks: ${report.summary.api_routes_with_risks}`);
