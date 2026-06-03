@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
+import { writeAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,29 @@ function estimatePriority(issue: string, requestType: string) {
 }
 
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
+
+function clientIp(request: Request) {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || null;
+}
+
+function auditSafePayload(data: z.infer<typeof PublicServiceRequestSchema>, ids: Record<string, string | null | undefined>, priority: string, bindingStatus: string) {
+  return {
+    request_type: data.requestType,
+    source_platform: data.sourcePlatform,
+    source_type: data.sourceType,
+    source_medium: data.sourceMedium,
+    registration_mode: data.registrationMode,
+    binding_status: bindingStatus,
+    priority,
+    has_email: Boolean(data.email),
+    has_address: Boolean(data.address),
+    has_message: Boolean(data.message),
+    has_warranty_reference: Boolean(data.warrantyId || data.warrantyCode || data.originalJobReference),
+    intake_id: ids.intakeId ?? null,
+    lead_id: ids.leadId ?? null,
+    service_request_id: ids.serviceRequestId ?? null
+  };
+}
 
 export async function POST(request: Request) {
   const contentType = request.headers.get('content-type') || '';
@@ -134,6 +158,19 @@ export async function POST(request: Request) {
 
   const { data: requestRow, error: requestError } = await supabase.from('service_requests').insert({ ...serviceRequest, intake_id: intakeRow?.intake_id || null, lead_id: leadRow?.lead_id || null }).select('service_request_id').single();
   if (requestError) return NextResponse.json({ ok: false, error: 'Service request creation failed', details: requestError.message }, { status: 500 });
+
+  await writeAuditLog({
+    role: 'public',
+    action: 'public_service_request_alias_create',
+    objectType: 'service_request',
+    objectId: requestRow?.service_request_id,
+    after: auditSafePayload(data, {
+      intakeId: intakeRow?.intake_id,
+      leadId: leadRow?.lead_id,
+      serviceRequestId: requestRow?.service_request_id
+    }, priority, bindingStatus),
+    ip: clientIp(request)
+  }).catch(() => undefined);
 
   return NextResponse.json({
     ok: true,
