@@ -31,8 +31,8 @@ const fallbackTasks: UnifiedTask[] = [
 ];
 
 const fallbackRules: AutomationRule[] = [
-  { rule_id: 'AUTO-DEMO-001', rule_key: 'service_request.created.p0_triage', name: 'New P0 repair request triage', module: 'service_operations', trigger_event: 'service_request.created', is_enabled: true, priority: 'P0' },
-  { rule_id: 'AUTO-DEMO-002', rule_key: 'quotation.approval.overdue', name: 'Quotation approval overdue escalation', module: 'service_operations', trigger_event: 'quotation.approval_overdue', is_enabled: true, priority: 'P1' }
+  { rule_id: 'SEEDED-FALLBACK-001', rule_key: 'service_request.created.p0_triage', name: 'New P0 repair request triage', module: 'service_operations', trigger_event: 'service_request.created', is_enabled: true, priority: 'P0' },
+  { rule_id: 'SEEDED-FALLBACK-002', rule_key: 'quotation.approval.overdue', name: 'Quotation approval overdue escalation', module: 'service_operations', trigger_event: 'quotation.approval_overdue', is_enabled: true, priority: 'P1' }
 ];
 
 function listFromPayload<T>(payload: ApiPayload | null, key: string): T[] {

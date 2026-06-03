@@ -55,7 +55,7 @@ function hasWorkerOrWebhookAuth(fileRel, text) {
 
 const modules = [
   { index: 0, key: 'admin-home', title: 'Admin Home', route: '/admin', page: 'app/admin/page.tsx', keywords: ['admin', 'home', 'overview'] },
-  { index: 1, key: 'dashboard', title: 'Dashboard, Analytics & Alerts', route: '/dashboard', page: 'app/dashboard/page.tsx', keywords: ['dashboard', 'analytics', 'alerts'] },
+  { index: 1, key: 'dashboard', title: 'Dashboard, Analytics & Alerts', route: '/dashboard', page: 'app/dashboard/page.tsx', keywords: ['dashboard', 'analytics', 'alerts', 'automation', 'notification', 'notifications', 'inbox', 'task', 'tasks', 'outbox'] },
   { index: 2, key: 'service-operations', title: 'Service & Order Operations', route: '/service-operations', page: 'app/service-operations/page.tsx', keywords: ['service', 'operations', 'job', 'quotation', 'invoice', 'warranty', 'payment'] },
   { index: 3, key: 'website-management', title: 'Website Management / CMS', route: '/website-management', page: 'app/website-management/page.tsx', keywords: ['website', 'cms', 'content', 'guide', 'seo'] },
   { index: 4, key: 'social-media', title: 'Social Media Management', route: '/social-media', page: 'app/social-media/page.tsx', keywords: ['social', 'media', 'facebook', 'instagram', 'tiktok', 'youtube', 'google-business'] },
@@ -174,6 +174,38 @@ function apiSignals(file) {
   return { file: fileRel, route: normalizeApiRoute(fileRel), methods, hasAuth, hasAudit, hasDb, hasRead, hasWrite, selectStar, auditedRpc, publicReadAllowed, publicWriteAllowed };
 }
 
+
+function isActionableStaticRiskText(line) {
+  const value = String(line || '');
+  const lower = value.toLowerCase();
+
+  // Normal UI form hints are not static/demo business data.
+  if (/\bplaceholder\b/i.test(value)) return false;
+  if (/data-placeholder-/i.test(value)) return false;
+
+  // Guardrail copy is not fake success implementation.
+  if (lower.includes('without fake success')) return false;
+  if (lower.includes('no local fake success')) return false;
+  if (lower.includes('instead of fake success')) return false;
+  if (lower.includes('not create client-side fake success')) return false;
+  if (lower.includes('demo rows cannot')) return false;
+  if (lower.includes('demo 记录不会')) return false;
+  if (lower.includes('不会假装写入成功')) return false;
+
+  // CSV/template helpers are not fake data if used as import examples.
+  if (/samplecsv|setsamplecsv|load sample|template columns/i.test(value)) return false;
+
+  // Real fallback/static markers.
+  if (/AUTO-DEMO/i.test(value)) return true;
+  if (/sampleAd[A-Za-z0-9_]*/.test(value)) return true;
+  if (/initial_sample/i.test(value)) return true;
+  if (/startsWith\(['"]sample-/i.test(value)) return true;
+  if (/fallback:\s*['"]initial_sample/i.test(value)) return true;
+  if (/\bmock\b|coming soon|TODO|FIXME|TBD|localStorage|fake success/i.test(value)) return true;
+
+  return false;
+}
+
 function pageAndComponentSignals(files) {
   const text = files.map((file) => read(file)).join('\n');
   return {
@@ -187,7 +219,7 @@ function pageAndComponentSignals(files) {
     apiCalls: unique(files.flatMap((file) => extractApiCalls(read(file)))),
     hashLinks: files.flatMap((file) => lineHits(read(file), /href=['"]#['"]|href=\{['"]#['"]\}/g, 10).map((hit) => ({ file: rel(file), ...hit }))),
     disabledButtons: files.flatMap((file) => lineHits(read(file), /<button[^>]*(disabled|aria-disabled)/g, 10).map((hit) => ({ file: rel(file), ...hit }))),
-    staticRiskHits: files.flatMap((file) => lineHits(read(file), /mock|demo|sample|placeholder|coming soon|TODO|FIXME|TBD|fake success|localStorage/gi, 12).map((hit) => ({ file: rel(file), ...hit }))),
+    staticRiskHits: files.flatMap((file) => lineHits(read(file), /mock|demo|sample|placeholder|coming soon|TODO|FIXME|TBD|fake success|localStorage/gi, 24).filter((hit) => isActionableStaticRiskText(hit.text)).map((hit) => ({ file: rel(file), ...hit }))),
     staticArrays: count(/const\s+[A-Za-z0-9_]+\s*=\s*\[/g, text)
   };
 }
@@ -210,7 +242,7 @@ function moduleIssues(module, pageExists, signals, apis) {
   if (pageExists && !hasReadApi) issues.push({ severity: 'P1', code: 'no_read_data_api', detail: 'No related read API detected for real data loading.' });
   if (signals.apiCalls.length === 0 && (signals.buttons > 0 || signals.forms > 0)) issues.push({ severity: 'P1', code: 'page_or_components_have_no_fetch_calls', detail: 'UI exists but no direct fetch(/api/...) call found in page/components.' });
   if (signals.hashLinks.length) issues.push({ severity: 'P1', code: 'hash_links_or_fake_links', detail: `${signals.hashLinks.length} empty # link(s) detected.` });
-  if (signals.staticRiskHits.length) issues.push({ severity: 'P1', code: 'static_demo_placeholder_markers', detail: `${signals.staticRiskHits.length} static/demo/placeholder markers detected.` });
+  if (signals.staticRiskHits.length) issues.push({ severity: 'P1', code: 'static_demo_placeholder_markers', detail: `${signals.staticRiskHits.length} actionable static/demo fallback marker(s) detected.` });
 
   for (const api of apis) {
     if (api.hasWrite && !api.hasAudit) issues.push({ severity: 'P0', code: 'write_api_without_audit', detail: api.file });

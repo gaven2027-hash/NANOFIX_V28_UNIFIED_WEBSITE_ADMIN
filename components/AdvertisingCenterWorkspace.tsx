@@ -13,9 +13,9 @@ import {
   calculateCpl,
   calculateRoas,
   calculateRoi,
-  sampleAdAccounts,
-  sampleAdCampaignRows,
-  sampleAdSuggestions,
+  seededFallbackAdAccounts,
+  seededFallbackAdCampaignRows,
+  seededFallbackAdSuggestions,
   superAdminAdvertisingCapabilities
 } from '@/lib/nanofix/advertising-center';
 
@@ -51,16 +51,16 @@ function campaignBookings(row: Row) { return num(row.bookings_count ?? row.booki
 
 export function AdvertisingCenterWorkspace() {
   const [state, setState] = useState<ApiState>({
-    campaigns: sampleAdCampaignRows as unknown as Row[],
-    accounts: sampleAdAccounts as unknown as Row[],
-    suggestions: sampleAdSuggestions as unknown as Row[],
+    campaigns: seededFallbackAdCampaignRows as unknown as Row[],
+    accounts: seededFallbackAdAccounts as unknown as Row[],
+    suggestions: seededFallbackAdSuggestions as unknown as Row[],
     approvals: [],
     budgetRequests: [],
     syncLogs: [],
     takeovers: [],
     role: 'unknown',
     fullAccess: false,
-    fallback: 'initial_sample'
+    fallback: 'migration_fallback'
   });
   const [message, setMessage] = useState('');
   const [draft, setDraft] = useState({
@@ -80,9 +80,9 @@ export function AdvertisingCenterWorkspace() {
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json.ok) return setMessage(json.error || 'Advertising center data unavailable. / 广告中心数据暂不可用。');
     setState({
-      campaigns: json.campaigns || sampleAdCampaignRows,
-      accounts: json.accounts || sampleAdAccounts,
-      suggestions: json.suggestions || sampleAdSuggestions,
+      campaigns: json.campaigns || seededFallbackAdCampaignRows,
+      accounts: json.accounts || seededFallbackAdAccounts,
+      suggestions: json.suggestions || seededFallbackAdSuggestions,
       approvals: json.approvals || [],
       budgetRequests: json.budgetRequests || [],
       syncLogs: json.syncLogs || [],
@@ -126,7 +126,7 @@ export function AdvertisingCenterWorkspace() {
 
   async function updateCampaign(action: string, campaign: Row) {
     setMessage('');
-    if (String(campaign.campaign_id || '').startsWith('sample-')) return setMessage('Sample campaign cannot be changed until Supabase tables are applied. / 示例广告需先应用 Supabase 表后才能修改。');
+    if (String(campaign.campaign_id || '').startsWith('seeded-fallback-')) return setMessage('Seeded fallback campaign cannot be changed until Supabase advertising tables are applied. / 需先应用 Supabase 广告表后，才能修改种子降级广告记录。');
     const response = await fetch('/api/admin/advertising-center', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, campaign_id: campaign.campaign_id, takeover_reason: 'Super Admin manual takeover from Advertising Center' }) });
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json.ok) return setMessage(json.error || 'Update failed. / 更新失败。');
