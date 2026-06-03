@@ -5,7 +5,7 @@ export type AuditPayload = {
   role?: string;
   action: string;
   objectType: string;
-  objectId?: string;
+  objectId?: string | null;
   before?: Record<string, unknown> | null;
   after?: Record<string, unknown> | null;
   ip?: string | null;
