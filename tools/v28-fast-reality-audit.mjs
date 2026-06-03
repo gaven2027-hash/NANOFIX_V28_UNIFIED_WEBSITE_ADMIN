@@ -85,6 +85,18 @@ function pageSignals(file, text) {
   return { file: rel(file), buttons, forms, links, fetches, staticArrays, imports: importedComponents(text) };
 }
 
+function isNegativeFakeSuccessLine(line) {
+  const text = line.toLowerCase();
+  return (
+    text.includes('without fake success') ||
+    text.includes('no local fake success') ||
+    text.includes('instead of fake success') ||
+    text.includes('not create client-side fake success') ||
+    text.includes('不显示假成功') ||
+    text.includes('不能前端假成功')
+  );
+}
+
 function issueScan(files) {
   const checks = [
     { severity: 'P0', code: 'local_storage_business_state', regex: /\blocalStorage\b/g, why: 'Browser storage may create data divergence.' },
@@ -102,7 +114,7 @@ function issueScan(files) {
     const text = read(file);
     for (const check of checks) {
       if (check.code === 'header_role_trust' && trustedHeaderFiles.has(fileRel) && text.includes('middleware-verified')) continue;
-      const hits = linesWith(text, check.regex, 8);
+      const hits = linesWith(text, check.regex, 8).filter((hit) => check.code !== 'fake_success' || !isNegativeFakeSuccessLine(hit.text));
       if (hits.length) findings.push({ file: fileRel, ...check, hits });
     }
   }
