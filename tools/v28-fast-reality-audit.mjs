@@ -30,6 +30,7 @@ const publicReadAllowlist = [
 
 const publicWriteAuditedAllowlist = [
   /^app\/api\/service-requests\/route\.ts$/,
+  /^app\/api\/public-repair-request\/route\.ts$/,
   /^app\/api\/public\/repair-request\/route\.ts$/,
   /^app\/api\/public\/repair-requests\/route\.ts$/,
   /^app\/api\/public\/service-requests\/route\.ts$/
