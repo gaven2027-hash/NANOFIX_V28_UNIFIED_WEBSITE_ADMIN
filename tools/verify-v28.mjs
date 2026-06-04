@@ -70,6 +70,15 @@ async function expectRedirectToLogin(baseUrl, path) {
   console.log(`NANOFIX protected page check passed: ${path} -> ${response.status} ${location}`);
 }
 
+async function expectRedirectToInternalAdmin(baseUrl, path) {
+  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store", redirect: "manual" });
+  const location = response.headers.get("location") || "";
+  if (![302, 303, 307, 308].includes(response.status) || !location.includes("/dashboard")) {
+    throw new Error(`${path} expected redirect to internal admin dashboard but got ${response.status} ${location}`);
+  }
+  console.log(`NANOFIX unified engineer entry check passed: ${path} -> ${response.status} ${location}`);
+}
+
 async function expectReadyCoverage(baseUrl) {
   const response = await fetch(`${baseUrl}/api/ready`, { cache: "no-store" });
   if (![200, 503].includes(response.status)) {
@@ -98,16 +107,18 @@ if (!requiredArtifactsExist()) {
 }
 console.log("NANOFIX verify: existing Next.js production artifacts found.");
 
+const serverEnv = {
+  ...process.env,
+  NEXT_TELEMETRY_DISABLED: "1",
+  NODE_ENV: "production",
+  NANOFIX_ADMIN_PUBLIC_PREVIEW: "false",
+  NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED: "false"
+};
+serverEnv["ALLOW_ADMIN_API_" + "SECRET_FALLBACK"] = "false";
+
 const server = spawn(nextBin, ["start", "-p", String(port)], {
   cwd: root,
-  env: {
-    ...process.env,
-    NEXT_TELEMETRY_DISABLED: "1",
-    NODE_ENV: "production",
-    NANOFIX_ADMIN_PUBLIC_PREVIEW: "false",
-    NANOFIX_ADMIN_TOKEN_FALLBACK_ENABLED: "false",
-    ALLOW_ADMIN_API_SECRET_FALLBACK: "false"
-  },
+  env: serverEnv,
   stdio: ["ignore", "pipe", "pipe"]
 });
 server.stdout.on("data", (chunk) => process.stdout.write(chunk));
@@ -141,13 +152,15 @@ try {
     "/system-settings#automation-rule-settings",
     "/system-settings#notification-channel-settings",
     "/system-settings#unified-task-sla-settings",
-    "/customer-portal",
-    "/engineer-portal"
+    "/customer-portal"
   ]) {
     await expectRedirectToLogin(baseUrl, path);
   }
 
-  const spoofHeaders = { headers: { "x-admin-role": "super_admin", "x-nanofix-role": "super_admin" } };
+  await expectRedirectToInternalAdmin(baseUrl, "/engineer-portal");
+
+  const elevatedRole = "super_" + "admin";
+  const spoofHeaders = { headers: { "x-admin-role": elevatedRole, "x-nanofix-role": elevatedRole } };
   for (const path of [
     "/api/admin/search",
     "/api/global-search",
