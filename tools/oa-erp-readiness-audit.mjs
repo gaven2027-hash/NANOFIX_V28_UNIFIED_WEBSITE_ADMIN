@@ -38,7 +38,7 @@ const expectedRouteMarkers = {
   '/admin/advertising-center': ['AdminShell', 'AdvertisingCenterWorkspace', 'MenuAnchorSections'],
   '/ai-intelligence': ['AdminShell', 'SocialPreview', 'StatusMachineTable', 'MenuAnchorSections'],
   '/customer-center': ['AdminShell', 'Customer360', 'CustomerCenterActionWorkspace', 'AdminCustomerDocumentsPanel', 'MenuAnchorSections'],
-  '/system-settings': ['AdminShell', 'BackupCenter', 'RbacTable', 'WorkflowSettingsWorkspace', 'MenuAnchorSections']
+  '/system-settings': ['AdminShell', 'BackupCenter', 'RbacTable', 'WorkflowSettingsWorkspace', 'SystemSettingsDiagnosticsWorkspace']
 };
 
 const liveApiFiles = [
@@ -72,6 +72,13 @@ function routeFromHref(href) {
   return href.split('#')[0] || '/admin';
 }
 
+function pageSupportsSubmenuAnchors(route, text) {
+  if (route === '/system-settings') {
+    return text.includes('SystemSettingsDiagnosticsWorkspace');
+  }
+  return text.includes('MenuAnchorSections');
+}
+
 const menu = extractMenuItems();
 const totalSubmodules = menu.reduce((sum, item) => sum + item.children.length, 0);
 const missingPages = [];
@@ -90,8 +97,8 @@ for (const item of menu) {
   const text = read(page);
   const markers = expectedRouteMarkers[item.href] ?? ['AdminShell'];
   pageMarkerFindings.push({ route: item.href, page, ok: markers.every((marker) => text.includes(marker)), missing_markers: markers.filter((marker) => !text.includes(marker)) });
-  if (item.children.length > 0 && !text.includes('MenuAnchorSections')) {
-    missingAnchors.push({ route: item.href, page, reason: 'MenuAnchorSections missing for submodule anchors' });
+  if (item.children.length > 0 && !pageSupportsSubmenuAnchors(item.href, text)) {
+    missingAnchors.push({ route: item.href, page, reason: item.href === '/system-settings' ? 'SystemSettingsDiagnosticsWorkspace missing for diagnostic submodule anchors' : 'MenuAnchorSections missing for submodule anchors' });
   }
   for (const child of item.children) {
     if (seenHrefs.has(child.href)) duplicateHrefs.push(child.href);
@@ -116,7 +123,6 @@ const adminShell = read('components/AdminShell.tsx');
 const tailwind = read('tailwind.config.ts');
 const globalCss = read('app/globals.css');
 const genericWorkspace = read('components/AdminSubmoduleWorkspace.tsx');
-const navSource = read('data/adminNavigation.ts');
 
 const blueStyleFinding = {
   admin_shell_uses_adminBg: adminShell.includes('bg-adminBg'),
@@ -127,7 +133,7 @@ const blueStyleFinding = {
 };
 
 const genericWorkspaceFinding = {
-  operations_panel: genericWorkspace.includes('Submodule Operations / 二级模块操作台') && genericWorkspace.includes('Refresh Live Data / 刷新实时数据'),
+  operations_panel: genericWorkspace.includes('Module Diagnostics / 模块诊断') && genericWorkspace.includes('Refresh Live Data / 刷新实时数据'),
   server_write_api: genericWorkspace.includes('/api/admin/module-operations') && genericWorkspace.includes('record_audit_check') && genericWorkspace.includes('create_followup_task'),
   no_static_explainer: !genericWorkspace.includes('Source of truth / 真实性来源') && !genericWorkspace.includes('Reality log / 真实性页面日志'),
   api_probe_controls: genericWorkspace.includes('Open Linked API / 打开关联接口') && genericWorkspace.includes('tableProbes') && genericWorkspace.includes('api_probes')
@@ -180,6 +186,7 @@ const report = {
   ok: blockers.length === 0,
   generated_at: new Date().toISOString(),
   audit: 'oa-erp-readiness-audit',
+  standard: 'V28.4.2 admin real workspace audit: daily routes use real workspaces with MenuAnchorSections; system settings uses explicit diagnostics workspace',
   liveCoverage,
   blueStyleFinding,
   menu: menu.map((item) => ({ order: item.order, href: item.href, title: item.title, submodules: item.children.length })),
@@ -195,7 +202,7 @@ const report = {
     'Keep Customer Portal orange/gold theme scoped under .nanofix-customer-portal only; Internal Admin must remain bg-adminBg + bg-sidebar + activeBlue.',
     'Promote high-volume generic submodules to dedicated live workspaces one by one: Service Requests, Quotations, Jobs, Invoices, Payments, Warranty, Customer Reviews, Website Publish Approval.',
     'For each promoted submodule require: explicit Supabase table, GET list, POST create, PATCH update/status, Audit Log write, role permission, degraded UI and E2E smoke.',
-    'Keep AdminSubmoduleWorkspace focused on real module operations: live table probes, guarded API probes, audit writes and follow-up task creation; avoid static説明 blocks.',
+    'Keep AdminSubmoduleWorkspace focused on real module operations: live table probes, guarded API probes, audit writes and follow-up task creation under System Settings diagnostics.',
     'Add route-level smoke checks for every primary admin route and representative second-level anchors.',
     'Use /api/ready and module health checks as the first production go/no-go signal after migrations.'
   ]

@@ -21,6 +21,9 @@ const adminShell = read('components/AdminShell.tsx');
 const adminNavigation = read('data/adminNavigation.ts');
 const submoduleWorkspace = read('components/AdminSubmoduleWorkspace.tsx');
 const menuAnchorSections = read('components/MenuAnchorSections.tsx');
+const systemDiagnostics = read('components/SystemSettingsDiagnosticsWorkspace.tsx');
+const systemSettingsPage = read('app/system-settings/page.tsx');
+const adminRealWorkspaceVerifier = read('tools/verify-admin-real-workspace-ui.mjs');
 
 must(domains.includes('https://www.nanofixsg.com') && domains.includes('https://app.nanofixsg.com'), 'public/app domain constants exist');
 must(middleware.includes('"/adminb"') && middleware.includes('"/customer"') && middleware.includes('"/customerlb"'), 'short login aliases exist');
@@ -50,8 +53,12 @@ must(adminShell.includes('setOpenSection((current) => (current === item.href ? n
 must(adminShell.includes('aria-expanded') && adminShell.includes('navigateSamePageHash') && adminShell.includes('basePath(child.href)'), 'AdminShell separates first-level expand from routed submodule navigation');
 must(adminHome.includes("@/data/adminNavigation") && adminHome.includes('Open Module / 进入模块') && !adminHome.includes('centerGrid'), 'admin home is routed module launch page, not old preview grid');
 must(!adminHome.includes('href={`#center-${center.order}`}') && !adminHome.includes('id={`center-${center.order}`}'), 'old #center anchor-only admin navigation residue is removed from admin home');
-must(menuAnchorSections.includes('AdminSubmoduleWorkspace') && !menuAnchorSections.includes('Production data should replace'), 'MenuAnchorSections routes to interactive workspace, not text-only placeholder cards');
-must(submoduleWorkspace.includes('Submodule Operations / 二级模块操作台') && submoduleWorkspace.includes('Refresh Live Data / 刷新实时数据') && submoduleWorkspace.includes('Write Audit Check / 写入审计') && submoduleWorkspace.includes('Open Linked API / 打开关联接口'), 'right-side submenu area is interactive operations workspace');
+
+must(menuAnchorSections.includes('data-admin-anchor-fallback') && !menuAnchorSections.includes('AdminSubmoduleWorkspace') && !menuAnchorSections.includes('Production data should replace'), 'MenuAnchorSections provides safe hidden anchors for daily workspaces, not diagnostic cards or placeholders');
+must(submoduleWorkspace.includes('Module Diagnostics / 模块诊断') && submoduleWorkspace.includes('Refresh Live Data / 刷新实时数据') && submoduleWorkspace.includes('Write Audit Check / 写入审计') && submoduleWorkspace.includes('Open Linked API / 打开关联接口'), 'diagnostic submenu workspace remains available for system settings health checks');
+must(systemDiagnostics.includes('AdminSubmoduleWorkspace route="/system-settings"') && systemDiagnostics.includes('System Settings Only / 仅系统设置可见'), 'SystemSettingsDiagnosticsWorkspace explicitly contains the only diagnostics entry');
+must(systemSettingsPage.includes('SystemSettingsDiagnosticsWorkspace') && !systemSettingsPage.includes('MenuAnchorSections route="/system-settings"'), 'system settings uses explicit diagnostics workspace instead of generic menu anchors');
+must(adminRealWorkspaceVerifier.includes('forbiddenDailyText') && adminRealWorkspaceVerifier.includes('allowedDiagnosticsFiles') && adminRealWorkspaceVerifier.includes('data-admin-anchor-fallback'), 'admin real workspace UI verifier protects daily pages from diagnostics regression');
 
 for (const route of ['/admin/advertising-center', '/admin/advertising-center/import', '/admin/advertising-center/insights', '/admin/advertising-center/creatives', '/admin/advertising-center/budgets']) {
   must(e2eSmoke.includes(route), `E2E smoke protects ${route}`);
