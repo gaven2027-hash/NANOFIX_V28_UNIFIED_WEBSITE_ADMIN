@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, normalize, resolve } from 'node:path';
+import path, { join, dirname, resolve } from 'node:path';
 
 const root = process.cwd();
 const dailyRoutes = [
@@ -29,21 +29,25 @@ const forbiddenDailyText = [
   'Submodule Operations / 二级模块操作台'
 ];
 const allowedDiagnosticsFiles = new Set([
-  normalize('components/AdminSubmoduleWorkspace.tsx'),
-  normalize('components/SystemSettingsDiagnosticsWorkspace.tsx'),
-  normalize('app/system-settings/page.tsx'),
-  normalize('tools/verify-admin-real-workspace-ui.mjs')
+  'components/AdminSubmoduleWorkspace.tsx',
+  'components/SystemSettingsDiagnosticsWorkspace.tsx',
+  'app/system-settings/page.tsx',
+  'tools/verify-admin-real-workspace-ui.mjs'
 ]);
-const sourceRoots = ['app', 'components', 'data'];
-const extensions = ['.tsx', '.ts', '.jsx', '.js'];
+const sourceRoots = ['app', 'components', 'data', 'tools'];
+const extensions = ['.tsx', '.ts', '.jsx', '.js', '.mjs'];
+
+function projectPath(value) {
+  return path.normalize(value).replace(/\\/g, '/');
+}
 
 function toPagePath(route) {
   if (route === '/') return 'app/page.tsx';
-  return join('app', route.replace(/^\//, ''), 'page.tsx');
+  return projectPath(join('app', route.replace(/^\//, ''), 'page.tsx'));
 }
 
-function read(path) {
-  return readFileSync(join(root, path), 'utf8');
+function read(filePath) {
+  return readFileSync(join(root, filePath), 'utf8');
 }
 
 function anchorFromHref(href) {
@@ -69,11 +73,11 @@ function collectFiles(dir, files = []) {
   const abs = join(root, dir);
   if (!existsSync(abs)) return files;
   for (const entry of readdirSync(abs)) {
-    const child = join(dir, entry);
+    const child = projectPath(join(dir, entry));
     const full = join(root, child);
     const stat = statSync(full);
     if (stat.isDirectory()) collectFiles(child, files);
-    else if (extensions.some((ext) => child.endsWith(ext))) files.push(normalize(child));
+    else if (extensions.some((ext) => child.endsWith(ext))) files.push(child);
   }
   return files;
 }
@@ -82,25 +86,27 @@ const allSourceFiles = sourceRoots.flatMap((dir) => collectFiles(dir));
 const pathToContent = new Map(allSourceFiles.map((file) => [file, read(file)]));
 const aliasToPath = new Map();
 for (const file of allSourceFiles) {
-  aliasToPath.set('@/' + file.replace(/\.(tsx|ts|jsx|js)$/, ''), file);
+  aliasToPath.set('@/' + file.replace(/\.(tsx|ts|jsx|js|mjs)$/, ''), file);
 }
 
 function resolveImport(fromFile, specifier) {
-  let candidate;
   if (specifier.startsWith('@/')) {
-    candidate = aliasToPath.get(specifier);
-    if (candidate) return candidate;
-  } else if (specifier.startsWith('.')) {
+    return aliasToPath.get(specifier) || null;
+  }
+
+  if (specifier.startsWith('.')) {
     const fromDir = dirname(fromFile);
-    const base = normalize(resolve(root, fromDir, specifier).replace(root + '/', ''));
+    const absoluteBase = resolve(root, fromDir, specifier);
+    const base = projectPath(path.relative(root, absoluteBase));
     for (const ext of extensions) {
       if (pathToContent.has(base + ext)) return base + ext;
     }
     for (const ext of extensions) {
-      const indexCandidate = normalize(join(base, 'index' + ext));
+      const indexCandidate = projectPath(join(base, 'index' + ext));
       if (pathToContent.has(indexCandidate)) return indexCandidate;
     }
   }
+
   return null;
 }
 
@@ -118,7 +124,7 @@ function importsFor(file) {
 
 function collectDependencyGraph(entryFile) {
   const visited = new Set();
-  const queue = [normalize(entryFile)];
+  const queue = [projectPath(entryFile)];
   while (queue.length) {
     const file = queue.shift();
     if (!file || visited.has(file) || !pathToContent.has(file)) continue;
@@ -133,7 +139,7 @@ function assert(condition, message, failures) {
 }
 
 const failures = [];
-const menuFile = normalize('data/adminNavigation.ts');
+const menuFile = 'data/adminNavigation.ts';
 const menuEntries = parseMenu(read(menuFile));
 const menuByRoute = new Map(menuEntries.map((entry) => [entry.route, entry]));
 
@@ -151,7 +157,7 @@ for (const entry of menuEntries) {
 }
 
 for (const route of dailyRoutes) {
-  const pagePath = normalize(toPagePath(route));
+  const pagePath = toPagePath(route);
   assert(existsSync(join(root, pagePath)), `daily admin page missing: ${pagePath}`, failures);
   const files = collectDependencyGraph(pagePath);
   const combined = files.map((file) => `\n/* ${file} */\n${pathToContent.get(file) || ''}`).join('\n');
@@ -170,7 +176,7 @@ for (const route of dailyRoutes) {
   }
 }
 
-const systemFiles = collectDependencyGraph(normalize(toPagePath(diagnosticRoute)));
+const systemFiles = collectDependencyGraph(toPagePath(diagnosticRoute));
 const systemCombined = systemFiles.map((file) => pathToContent.get(file) || '').join('\n');
 assert(systemCombined.includes('SystemSettingsDiagnosticsWorkspace'), '/system-settings must render SystemSettingsDiagnosticsWorkspace', failures);
 assert(systemCombined.includes('AdminSubmoduleWorkspace route="/system-settings"'), '/system-settings diagnostics wrapper must be the only diagnostics entry', failures);
@@ -181,7 +187,7 @@ for (const file of allSourceFiles) {
   assert(allowedDiagnosticsFiles.has(file), `AdminSubmoduleWorkspace referenced outside system diagnostics boundary: ${file}`, failures);
 }
 
-const menuAnchorContent = read(normalize('components/MenuAnchorSections.tsx'));
+const menuAnchorContent = read('components/MenuAnchorSections.tsx');
 assert(!menuAnchorContent.includes('use client'), 'MenuAnchorSections should stay server-safe and not depend on runtime DOM probing', failures);
 assert(!menuAnchorContent.includes('AdminSubmoduleWorkspace'), 'MenuAnchorSections must not import or render AdminSubmoduleWorkspace', failures);
 assert(menuAnchorContent.includes('data-admin-anchor-fallback'), 'MenuAnchorSections must expose safe hidden anchor fallback markers', failures);
