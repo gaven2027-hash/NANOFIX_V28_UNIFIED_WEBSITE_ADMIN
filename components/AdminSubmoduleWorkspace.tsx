@@ -40,10 +40,6 @@ function useActiveHash(items: MenuChild[]) {
       const matched = items.find((item) => anchorFromHref(item.href) === hash);
       if (!matched) return;
       setActiveHref(matched.href);
-      window.setTimeout(() => {
-        if (document.getElementById(hash)) return;
-        document.getElementById(`${hash}-operations`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
     }
     syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
@@ -103,7 +99,7 @@ function OperationCard({ item, active, onFocus }: { item: MenuChild; active: boo
   const status = result?.module?.status ?? reality?.status ?? 'live';
 
   return (
-    <article id={`${anchor}-operations`} className={`scroll-mt-40 rounded-3xl bg-white p-5 shadow-soft ring-1 transition ${active ? 'ring-activeBlue' : 'ring-slate-200'}`}>
+    <article id={anchor} className={`scroll-mt-40 rounded-3xl bg-white p-5 shadow-soft ring-1 transition ${active ? 'ring-activeBlue' : 'ring-slate-200'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <button type="button" onClick={() => { onFocus(item.href); window.history.replaceState(null, '', `${basePath(item.href)}#${anchor}`); }} className="min-w-0 text-left">
           <div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">{anchor}</div>
@@ -142,8 +138,8 @@ export function AdminSubmoduleWorkspace({ route }: Props) {
   const [activeHref, setActiveHref] = useActiveHash(items);
   if (!items.length) return null;
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Submodule Operations / 二级模块操作台</div><h2 className="mt-1 text-xl font-black text-slate-950">Live menu control panel / 实时菜单控制面板</h2></div><span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-200">{items.length} modules</span></div>
+    <section id="module-diagnostics" className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[0.16em] text-activeBlue">Module Diagnostics / 模块诊断</div><h2 className="mt-1 text-xl font-black text-slate-950">System health control panel / 系统健康控制面板</h2></div><span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-200">{items.length} modules</span></div>
       <div className="mt-4 flex flex-wrap gap-2">{items.map((item) => { const active = activeHref === item.href; const anchor = anchorFromHref(item.href); return <a key={item.href} href={`${basePath(item.href)}#${anchor}`} onClick={() => setActiveHref(item.href)} className={`rounded-2xl px-3 py-2 text-xs font-black transition ${active ? 'bg-activeBlue text-white' : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-activeBlue'}`}>{item.title}</a>; })}</div>
       <div className="mt-5 grid gap-4">{items.map((item) => <OperationCard key={item.href} item={item} active={activeHref === item.href} onFocus={setActiveHref} />)}</div>
     </section>
