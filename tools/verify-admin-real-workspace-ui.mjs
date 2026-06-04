@@ -16,10 +16,6 @@ const dailyRoutes = [
 const diagnosticRoute = '/system-settings';
 const forbiddenDailyText = [
   'PARTIAL',
-  'Tables / 数据表',
-  'APIs / 接口',
-  'Audit / 审计',
-  'Task / 任务',
   'Refresh Live Data',
   'Write Audit Check',
   'Create Follow-up Task',
@@ -28,14 +24,19 @@ const forbiddenDailyText = [
   'Module Diagnostics / 模块诊断',
   'Submodule Operations / 二级模块操作台'
 ];
+const diagnosticCardClusterText = [
+  'Tables / 数据表',
+  'APIs / 接口',
+  'Audit / 审计',
+  'Task / 任务'
+];
 const allowedDiagnosticsFiles = new Set([
   'components/AdminSubmoduleWorkspace.tsx',
   'components/SystemSettingsDiagnosticsWorkspace.tsx',
-  'app/system-settings/page.tsx',
-  'tools/verify-admin-real-workspace-ui.mjs'
+  'app/system-settings/page.tsx'
 ]);
-const sourceRoots = ['app', 'components', 'data', 'tools'];
-const extensions = ['.tsx', '.ts', '.jsx', '.js', '.mjs'];
+const sourceRoots = ['app', 'components', 'data'];
+const extensions = ['.tsx', '.ts', '.jsx', '.js'];
 
 function projectPath(value) {
   return path.normalize(value).replace(/\\/g, '/');
@@ -86,7 +87,7 @@ const allSourceFiles = sourceRoots.flatMap((dir) => collectFiles(dir));
 const pathToContent = new Map(allSourceFiles.map((file) => [file, read(file)]));
 const aliasToPath = new Map();
 for (const file of allSourceFiles) {
-  aliasToPath.set('@/' + file.replace(/\.(tsx|ts|jsx|js|mjs)$/, ''), file);
+  aliasToPath.set('@/' + file.replace(/\.(tsx|ts|jsx|js)$/, ''), file);
 }
 
 function resolveImport(fromFile, specifier) {
@@ -138,6 +139,10 @@ function assert(condition, message, failures) {
   if (!condition) failures.push(message);
 }
 
+function hasDiagnosticCardCluster(content) {
+  return diagnosticCardClusterText.filter((phrase) => content.includes(phrase)).length >= 3;
+}
+
 const failures = [];
 const menuFile = 'data/adminNavigation.ts';
 const menuEntries = parseMenu(read(menuFile));
@@ -164,6 +169,7 @@ for (const route of dailyRoutes) {
 
   assert(combined.includes(`MenuAnchorSections route="${route}"`) || combined.includes(`MenuAnchorSections route={'${route}'}`), `${route} does not render MenuAnchorSections for submenu anchor fallback`, failures);
   assert(!combined.includes('AdminSubmoduleWorkspace'), `${route} imports or renders AdminSubmoduleWorkspace diagnostic UI`, failures);
+  assert(!hasDiagnosticCardCluster(combined), `${route} dependency graph contains the diagnostic Tables/APIs/Audit/Task card cluster`, failures);
 
   for (const phrase of forbiddenDailyText) {
     assert(!combined.includes(phrase), `${route} dependency graph contains diagnostic phrase: ${phrase}`, failures);
@@ -191,6 +197,10 @@ const menuAnchorContent = read('components/MenuAnchorSections.tsx');
 assert(!menuAnchorContent.includes('use client'), 'MenuAnchorSections should stay server-safe and not depend on runtime DOM probing', failures);
 assert(!menuAnchorContent.includes('AdminSubmoduleWorkspace'), 'MenuAnchorSections must not import or render AdminSubmoduleWorkspace', failures);
 assert(menuAnchorContent.includes('data-admin-anchor-fallback'), 'MenuAnchorSections must expose safe hidden anchor fallback markers', failures);
+
+const verifierContent = read('tools/verify-admin-real-workspace-ui.mjs');
+assert(verifierContent.includes('hasDiagnosticCardCluster'), 'Admin real workspace verifier must check diagnostic card clusters without blocking normal business Task/Table labels', failures);
+assert(verifierContent.includes("const sourceRoots = ['app', 'components', 'data'];"), 'Admin real workspace verifier must not scan tooling files as app diagnostics references', failures);
 
 if (failures.length) {
   console.error('V28.4.2 Admin Real Workspace UI verification failed:');
