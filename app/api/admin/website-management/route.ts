@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 type Tone = 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan';
 type Row = Record<string, unknown>;
+type DbError = { message: string } | null;
 type WebsiteSectionKey = 'pages' | 'blocks' | 'public_forms' | 'organic_leads' | 'paid_leads' | 'uploads' | 'publish_audit';
 type QueryBuilder = {
   in: (column: string, values: readonly unknown[]) => QueryBuilder;
@@ -20,6 +21,7 @@ type WebsiteSpec = {
   zh: string;
   table: string;
   select: string;
+  fallbackSelect?: string;
   idField: string;
   route: string;
   tone: Tone;
@@ -34,6 +36,7 @@ const specs: WebsiteSpec[] = [
     zh: 'CMS Pages',
     table: 'website_pages',
     select: 'page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at',
+    fallbackSelect: 'page_id,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at',
     idField: 'page_id',
     route: '/website-management#page-content',
     tone: 'blue',
@@ -45,6 +48,7 @@ const specs: WebsiteSpec[] = [
     zh: 'Content Blocks',
     table: 'website_content_blocks',
     select: 'block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at',
+    fallbackSelect: 'block_id,block_key,locale,title,body,status,sort_order,created_at,updated_at',
     idField: 'block_id',
     route: '/website-management#homepage-content',
     tone: 'cyan',
@@ -144,14 +148,47 @@ function filterRows(rows: Row[], search: string) {
   return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
 }
 
+function isMissingColumnError(message: string | undefined | null) {
+  return Boolean(message && /column .* does not exist/i.test(message));
+}
+
+function normalizeCmsRow(row: Row, spec: WebsiteSpec, fallbackUsed: boolean): Row {
+  if (spec.key === 'pages') {
+    return {
+      ...row,
+      slug: row.slug ?? 'legacy-schema-pending-slug',
+      _schema_fallback: fallbackUsed ? 'website_pages.slug not present in current DB schema' : undefined
+    };
+  }
+  if (spec.key === 'blocks') {
+    return {
+      ...row,
+      page_id: row.page_id ?? null,
+      _schema_fallback: fallbackUsed ? 'website_content_blocks.page_id not present in current DB schema' : undefined
+    };
+  }
+  return row;
+}
+
+async function runListQuery(supabase: ReturnType<typeof createAdminClient>, spec: WebsiteSpec, select: string) {
+  let query = supabase.from(spec.table).select(select) as unknown as QueryBuilder;
+  if (spec.filter) query = spec.filter(query);
+  return query.order(spec.orderColumn ?? 'created_at', { ascending: false }).limit(60);
+}
+
 async function safeList(supabase: ReturnType<typeof createAdminClient>, spec: WebsiteSpec, search: string) {
   try {
-    let query = supabase.from(spec.table).select(spec.select) as unknown as QueryBuilder;
-    if (spec.filter) query = spec.filter(query);
-    const { data, error } = await query.order(spec.orderColumn ?? 'created_at', { ascending: false }).limit(60);
+    let fallbackUsed = false;
+    let { data, error } = await runListQuery(supabase, spec, spec.select);
+    if (error && spec.fallbackSelect && isMissingColumnError(error.message)) {
+      fallbackUsed = true;
+      const fallback = await runListQuery(supabase, spec, spec.fallbackSelect);
+      data = fallback.data;
+      error = fallback.error;
+    }
     if (error) return { spec, rows: [] as Row[], filteredRows: [] as Row[], error: error.message };
     const rawRows: Row[] = Array.isArray(data) ? (data as unknown[]).filter(isRow) : [];
-    const rows = rawRows.map((row) => ({ ...row, _website_href: rowHref(spec, row) }));
+    const rows = rawRows.map((row) => ({ ...normalizeCmsRow(row, spec, fallbackUsed), _website_href: rowHref(spec, row) }));
     return { spec, rows, filteredRows: filterRows(rows, search), error: null };
   } catch (error) {
     return { spec, rows: [] as Row[], filteredRows: [] as Row[], error: error instanceof Error ? error.message : 'Website query failed' };
@@ -175,6 +212,18 @@ function pagePayload(body: Row) {
   };
 }
 
+function legacyPagePayload(body: Row) {
+  const payload = pagePayload(body);
+  return {
+    locale: payload.locale,
+    title: payload.title,
+    meta_title: payload.meta_title,
+    meta_description: payload.meta_description,
+    status: payload.status,
+    updated_at: payload.updated_at
+  };
+}
+
 function blockPayload(body: Row) {
   const sortOrder = Number(body.sort_order ?? 0);
   return {
@@ -186,6 +235,19 @@ function blockPayload(body: Row) {
     status: cleanStatus(body.status),
     sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
     updated_at: new Date().toISOString()
+  };
+}
+
+function legacyBlockPayload(body: Row) {
+  const payload = blockPayload(body);
+  return {
+    block_key: payload.block_key,
+    locale: payload.locale,
+    title: payload.title,
+    body: payload.body,
+    status: payload.status,
+    sort_order: payload.sort_order,
+    updated_at: payload.updated_at
   };
 }
 
@@ -244,18 +306,37 @@ export async function POST(request: NextRequest) {
 
   if (action === 'create_page') {
     const payload = { ...pagePayload(body), created_at: now };
-    const { data, error } = await supabase.from('website_pages').insert(payload).select('page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at').single();
+    const primary = await supabase.from('website_pages').insert(payload).select('page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at').single();
+    let data = primary.data as Row | null;
+    let error: DbError = primary.error;
+    if (error && isMissingColumnError(error.message)) {
+      const fallbackPayload = { ...legacyPagePayload(body), created_at: now };
+      const fallback = await supabase.from('website_pages').insert(fallbackPayload).select('page_id,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at').single();
+      data = fallback.data as Row | null;
+      error = fallback.error;
+    }
     if (error) return jsonError(error.message, 500);
-    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'website_page_create', objectType: 'website_page', objectId: asString((data as Row)?.page_id), after: data as Row, ip: getClientIp(request) }).catch(() => undefined);
-    return json({ ok: true, action, row: data }, 201);
+    const row = normalizeCmsRow(data ?? {}, specs[0], !Object.prototype.hasOwnProperty.call(data ?? {}, 'slug'));
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'website_page_create', objectType: 'website_page', objectId: asString(row.page_id), after: row, ip: getClientIp(request) }).catch(() => undefined);
+    return json({ ok: true, action, row }, 201);
   }
 
   if (action === 'create_block') {
     const payload = { ...blockPayload(body), created_at: now };
-    const { data, error } = await supabase.from('website_content_blocks').insert(payload).select('block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at').single();
+    const primary = await supabase.from('website_content_blocks').insert(payload).select('block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at').single();
+    let data = primary.data as Row | null;
+    let error: DbError = primary.error;
+    if (error && isMissingColumnError(error.message)) {
+      const fallbackPayload = { ...legacyBlockPayload(body), created_at: now };
+      const fallback = await supabase.from('website_content_blocks').insert(fallbackPayload).select('block_id,block_key,locale,title,body,status,sort_order,created_at,updated_at').single();
+      data = fallback.data as Row | null;
+      error = fallback.error;
+    }
     if (error) return jsonError(error.message, 500);
-    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'website_content_block_create', objectType: 'website_content_block', objectId: asString((data as Row)?.block_id), after: data as Row, ip: getClientIp(request) }).catch(() => undefined);
-    return json({ ok: true, action, row: data }, 201);
+    const blockSpec = specs[1];
+    const row = normalizeCmsRow(data ?? {}, blockSpec, !Object.prototype.hasOwnProperty.call(data ?? {}, 'page_id'));
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'website_content_block_create', objectType: 'website_content_block', objectId: asString(row.block_id), after: row, ip: getClientIp(request) }).catch(() => undefined);
+    return json({ ok: true, action, row }, 201);
   }
 
   return jsonError('Unsupported website management action.', 400);
@@ -280,13 +361,33 @@ export async function PATCH(request: NextRequest) {
   const select = spec.key === 'pages'
     ? 'page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at'
     : 'block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at';
+  const fallbackSelect = spec.key === 'pages'
+    ? 'page_id,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at'
+    : 'block_id,block_key,locale,title,body,status,sort_order,created_at,updated_at';
 
-  const { data: before } = await supabase.from(table).select(select).eq(idField, objectId).maybeSingle();
+  const beforePrimary = await supabase.from(table).select(select).eq(idField, objectId).maybeSingle();
+  let beforeData = beforePrimary.data as Row | null;
+  let beforeError: DbError = beforePrimary.error;
+  if (beforeError && isMissingColumnError(beforeError.message)) {
+    const beforeFallback = await supabase.from(table).select(fallbackSelect).eq(idField, objectId).maybeSingle();
+    beforeData = beforeFallback.data as Row | null;
+    beforeError = beforeFallback.error;
+  }
   const patch = spec.key === 'pages' && status === 'published'
     ? { status, published_at: now, updated_at: now }
     : { status, updated_at: now };
-  const { data, error } = await supabase.from(table).update(patch).eq(idField, objectId).select(select).single();
+  const primary = await supabase.from(table).update(patch).eq(idField, objectId).select(select).single();
+  let data = primary.data as Row | null;
+  let error: DbError = primary.error;
+  let fallbackUsed = false;
+  if (error && isMissingColumnError(error.message)) {
+    fallbackUsed = true;
+    const fallback = await supabase.from(table).update(patch).eq(idField, objectId).select(fallbackSelect).single();
+    data = fallback.data as Row | null;
+    error = fallback.error;
+  }
   if (error) return jsonError(error.message, 500);
+  const row = normalizeCmsRow(data ?? {}, spec, fallbackUsed);
 
   await writeAuditLog({
     actorId: auth.actor.profileId,
@@ -294,10 +395,10 @@ export async function PATCH(request: NextRequest) {
     action: spec.key === 'pages' ? 'website_page_status_update' : 'website_content_block_status_update',
     objectType: spec.key === 'pages' ? 'website_page' : 'website_content_block',
     objectId,
-    before: before as Row | null,
-    after: data as Row,
+    before: beforeData,
+    after: row,
     ip: getClientIp(request)
   }).catch(() => undefined);
 
-  return json({ ok: true, action: 'update_status', row: data });
+  return json({ ok: true, action: 'update_status', row });
 }
