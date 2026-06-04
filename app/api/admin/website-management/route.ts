@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 type Tone = 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'cyan';
 type Row = Record<string, unknown>;
+type DbError = { message: string } | null;
 type WebsiteSectionKey = 'pages' | 'blocks' | 'public_forms' | 'organic_leads' | 'paid_leads' | 'uploads' | 'publish_audit';
 type QueryBuilder = {
   in: (column: string, values: readonly unknown[]) => QueryBuilder;
@@ -305,31 +306,35 @@ export async function POST(request: NextRequest) {
 
   if (action === 'create_page') {
     const payload = { ...pagePayload(body), created_at: now };
-    let { data, error } = await supabase.from('website_pages').insert(payload).select('page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at').single();
+    const primary = await supabase.from('website_pages').insert(payload).select('page_id,slug,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at').single();
+    let data = primary.data as Row | null;
+    let error: DbError = primary.error;
     if (error && isMissingColumnError(error.message)) {
       const fallbackPayload = { ...legacyPagePayload(body), created_at: now };
       const fallback = await supabase.from('website_pages').insert(fallbackPayload).select('page_id,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at').single();
-      data = fallback.data;
+      data = fallback.data as Row | null;
       error = fallback.error;
     }
     if (error) return jsonError(error.message, 500);
-    const row = normalizeCmsRow((data as Row) ?? {}, specs[0], !Object.prototype.hasOwnProperty.call((data as Row) ?? {}, 'slug'));
+    const row = normalizeCmsRow(data ?? {}, specs[0], !Object.prototype.hasOwnProperty.call(data ?? {}, 'slug'));
     await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'website_page_create', objectType: 'website_page', objectId: asString(row.page_id), after: row, ip: getClientIp(request) }).catch(() => undefined);
     return json({ ok: true, action, row }, 201);
   }
 
   if (action === 'create_block') {
     const payload = { ...blockPayload(body), created_at: now };
-    let { data, error } = await supabase.from('website_content_blocks').insert(payload).select('block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at').single();
+    const primary = await supabase.from('website_content_blocks').insert(payload).select('block_id,page_id,block_key,locale,title,body,status,sort_order,created_at,updated_at').single();
+    let data = primary.data as Row | null;
+    let error: DbError = primary.error;
     if (error && isMissingColumnError(error.message)) {
       const fallbackPayload = { ...legacyBlockPayload(body), created_at: now };
       const fallback = await supabase.from('website_content_blocks').insert(fallbackPayload).select('block_id,block_key,locale,title,body,status,sort_order,created_at,updated_at').single();
-      data = fallback.data;
+      data = fallback.data as Row | null;
       error = fallback.error;
     }
     if (error) return jsonError(error.message, 500);
     const blockSpec = specs[1];
-    const row = normalizeCmsRow((data as Row) ?? {}, blockSpec, !Object.prototype.hasOwnProperty.call((data as Row) ?? {}, 'page_id'));
+    const row = normalizeCmsRow(data ?? {}, blockSpec, !Object.prototype.hasOwnProperty.call(data ?? {}, 'page_id'));
     await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'website_content_block_create', objectType: 'website_content_block', objectId: asString(row.block_id), after: row, ip: getClientIp(request) }).catch(() => undefined);
     return json({ ok: true, action, row }, 201);
   }
@@ -360,21 +365,29 @@ export async function PATCH(request: NextRequest) {
     ? 'page_id,locale,title,meta_title,meta_description,status,published_at,created_at,updated_at'
     : 'block_id,block_key,locale,title,body,status,sort_order,created_at,updated_at';
 
-  let beforeResult = await supabase.from(table).select(select).eq(idField, objectId).maybeSingle();
-  if (beforeResult.error && isMissingColumnError(beforeResult.error.message)) beforeResult = await supabase.from(table).select(fallbackSelect).eq(idField, objectId).maybeSingle();
+  const beforePrimary = await supabase.from(table).select(select).eq(idField, objectId).maybeSingle();
+  let beforeData = beforePrimary.data as Row | null;
+  let beforeError: DbError = beforePrimary.error;
+  if (beforeError && isMissingColumnError(beforeError.message)) {
+    const beforeFallback = await supabase.from(table).select(fallbackSelect).eq(idField, objectId).maybeSingle();
+    beforeData = beforeFallback.data as Row | null;
+    beforeError = beforeFallback.error;
+  }
   const patch = spec.key === 'pages' && status === 'published'
     ? { status, published_at: now, updated_at: now }
     : { status, updated_at: now };
-  let { data, error } = await supabase.from(table).update(patch).eq(idField, objectId).select(select).single();
+  const primary = await supabase.from(table).update(patch).eq(idField, objectId).select(select).single();
+  let data = primary.data as Row | null;
+  let error: DbError = primary.error;
   let fallbackUsed = false;
   if (error && isMissingColumnError(error.message)) {
     fallbackUsed = true;
     const fallback = await supabase.from(table).update(patch).eq(idField, objectId).select(fallbackSelect).single();
-    data = fallback.data;
+    data = fallback.data as Row | null;
     error = fallback.error;
   }
   if (error) return jsonError(error.message, 500);
-  const row = normalizeCmsRow((data as Row) ?? {}, spec, fallbackUsed);
+  const row = normalizeCmsRow(data ?? {}, spec, fallbackUsed);
 
   await writeAuditLog({
     actorId: auth.actor.profileId,
@@ -382,7 +395,7 @@ export async function PATCH(request: NextRequest) {
     action: spec.key === 'pages' ? 'website_page_status_update' : 'website_content_block_status_update',
     objectType: spec.key === 'pages' ? 'website_page' : 'website_content_block',
     objectId,
-    before: beforeResult.data as Row | null,
+    before: beforeData,
     after: row,
     ip: getClientIp(request)
   }).catch(() => undefined);
