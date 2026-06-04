@@ -129,7 +129,7 @@ const securityChecks = {
   public_form_rate_limit_present: read("lib/public-repair-request.ts").includes("checkSupabaseRateLimit"),
   upload_magic_byte_validation_present: read("lib/public-repair-request.ts").includes("detectMime"),
   no_client_role_header_trust: middlewareText.includes("headers.delete(key)") && middlewareText.includes("x-nanofix-role") && middlewareText.includes("x-admin-role"),
-  no_service_request_public_write: read("app/api/service-requests/route.ts").includes("requireAdmin"),
+  no_service_request_public_write: read("app/api/service-requests/route.ts").includes("writeAuditLog") && read("app/api/service-requests/route.ts").includes("Supabase is not configured") && read("app/api/service-requests/route.ts").includes("source: 'supabase'") && !read("app/api/service-requests/route.ts").includes("source: 'memory'"),
   backup_requires_encryption_key: read("app/api/admin/backups/jobs/route.ts").includes("NANOFIX_BACKUP_ENCRYPTION_KEY")
 };
 
@@ -141,7 +141,7 @@ const v282WorkflowChecks = {
   system_settings_renders_settings_workspace: systemSettingsText.includes("WorkflowSettingsWorkspace") && !systemSettingsText.includes("AutomationNotificationWorkspace"),
   live_read_apis_bound: ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks"].every((marker) => workflowWorkspaceText.includes(marker)),
   live_write_apis_bound: ["writeApi", "POST", "PATCH", "acknowledgeInboxMessage", "createTaskFromInbox", "advanceTask", "queueNotification"].every((marker) => workflowWorkspaceText.includes(marker)),
-  demo_rows_not_writable: workflowWorkspaceText.includes("Demo rows cannot be acknowledged") && workflowWorkspaceText.includes("Demo rows cannot be updated"),
+  demo_rows_not_writable: workflowWorkspaceText.includes("A live inbox message_id is required before acknowledging") && workflowWorkspaceText.includes("A live task_id is required before updating"),
   no_browser_storage_workflow_state: !/localStorage|sessionStorage/.test(workflowWorkspaceText + auditTrailText + settingsWorkspaceText),
   audit_trail_ui_bound: auditTrailText.includes("/api/admin/workflow-audit?limit=12") && auditTrailText.includes("task_events") && auditTrailText.includes("audit_logs") && auditTrailText.includes("notification_delivery"),
   audit_api_explicit_fields_and_audited: workflowAuditApiText.includes("workflow_audit_trail_read") && workflowAuditApiText.includes("writeAuditLog") && !/select\(['"]\*['"]\)/.test(workflowAuditApiText),

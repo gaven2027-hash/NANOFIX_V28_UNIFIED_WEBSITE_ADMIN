@@ -84,8 +84,8 @@ if (requiredFiles.every(exists)) {
     '/api/customer-portal/quote-acceptance',
     'Accept Quote / 接受报价',
     'Quotation accepted. NANOFIX will prepare the invoice and payment link',
-    'acceptQuotation',
-    'onAccept',
+    'submitQuoteResponse',
+    'onRespond',
     "credentials: 'same-origin'",
     "cache: 'no-store'"
   ], 'Customer financial quote acceptance UI');

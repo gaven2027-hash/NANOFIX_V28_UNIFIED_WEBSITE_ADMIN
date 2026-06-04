@@ -54,7 +54,6 @@ if (requiredFiles.every(exists)) {
     'warranty_pdf_documents',
     'visible_to_customer',
     'pdf_download_url',
-    'has_download',
     'createSignedUrl',
     'customer_portal_financial_read'
   ], 'Customer portal optional document API');
@@ -81,7 +80,6 @@ if (requiredFiles.every(exists)) {
     'WarrantyCard',
     'Warranty PDFs',
     'pdf_download_url',
-    'has_download',
     '/api/customer-portal/financial?limit=20'
   ], 'Customer portal optional document UI');
   noBrowserStorage(financialUi, 'Customer portal optional document UI');

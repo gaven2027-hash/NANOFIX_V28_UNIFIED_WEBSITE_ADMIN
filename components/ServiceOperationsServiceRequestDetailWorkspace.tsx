@@ -65,10 +65,6 @@ export function ServiceOperationsServiceRequestDetailWorkspace() {
           </div>
         ))}
       </div>
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Detail, status transition, job creation and audit trail must be served by dedicated guarded APIs before this workspace is marked fully live. / 详情、状态流转、创建工单和审计时间线必须由专用受保护 API 提供后，本区才能标记为完全 live。
-      </div>
     </section>
   );
 }

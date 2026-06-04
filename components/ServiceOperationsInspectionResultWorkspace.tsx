@@ -69,10 +69,6 @@ export function ServiceOperationsInspectionResultWorkspace() {
 
       {state.error ? <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-950 ring-1 ring-amber-200">Live inspection API blocked or not connected: {state.error}<br />Next required endpoint: /api/admin/service-operations/inspection-result</div> : null}
       {state.result ? <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-xs font-bold leading-5 text-emerald-950 ring-1 ring-emerald-200">Inspection result saved by live API. / 查验结果已由真实 API 保存。<br />Inspection ID: {text(state.result.inspection_id)} / Status: {text(state.result.status)}</div> : null}
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Inspection result must write inspection records, job events, quotation handover metadata, task events and audit logs. / 查验结果必须写入查验记录、工单事件、报价交接资料、任务事件和审计日志。
-      </div>
     </section>
   );
 }

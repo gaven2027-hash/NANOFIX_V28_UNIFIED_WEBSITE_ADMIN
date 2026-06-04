@@ -3,13 +3,13 @@ export type AdApprovalStatus = 'draft' | 'pending_review' | 'finance_review' | '
 export type AdRiskLevel = 'normal' | 'watch' | 'high' | 'critical';
 
 export const adPlatforms: Array<{ key: AdPlatform; label: string; status: string; syncMode: string }> = [
-  { key: 'google_ads', label: 'Google Ads / 谷歌广告', status: 'planned_api_or_csv', syncMode: 'API + CSV fallback' },
+  { key: 'google_ads', label: 'Google Ads / 谷歌广告', status: 'planned_api_or_csv', syncMode: 'API + CSV import' },
   { key: 'ga4', label: 'Google Analytics 4 / GA4', status: 'planned_api_or_bigquery', syncMode: 'Event + attribution import' },
   { key: 'google_business_profile', label: 'Google Business Profile / 谷歌商家资料', status: 'planned_api_or_manual', syncMode: 'Review/message/local action import' },
-  { key: 'meta_ads', label: 'Meta Ads / Facebook & Instagram 广告', status: 'planned_api_or_csv', syncMode: 'API + CSV fallback' },
-  { key: 'tiktok_ads', label: 'TikTok Ads / TikTok 广告', status: 'planned_api_or_csv', syncMode: 'API + CSV fallback' },
+  { key: 'meta_ads', label: 'Meta Ads / Facebook & Instagram 广告', status: 'planned_api_or_csv', syncMode: 'API + CSV import' },
+  { key: 'tiktok_ads', label: 'TikTok Ads / TikTok 广告', status: 'planned_api_or_csv', syncMode: 'API + CSV import' },
   { key: 'youtube_ads', label: 'YouTube Ads / YouTube 广告', status: 'via_google_ads', syncMode: 'Google Ads import' },
-  { key: 'xiaohongshu', label: 'Xiaohongshu Promotion / 小红书推广', status: 'manual_or_csv', syncMode: 'Manual + CSV fallback' },
+  { key: 'xiaohongshu', label: 'Xiaohongshu Promotion / 小红书推广', status: 'manual_or_csv', syncMode: 'Manual + CSV import' },
   { key: 'manual_import', label: 'Manual CSV / 手动导入', status: 'enabled_phase_1', syncMode: 'CSV / Excel / manual daily spend' }
 ];
 
@@ -63,29 +63,6 @@ export const adApprovalGateRules = [
   'Every approval, rejection, pause, takeover and ROI correction must be audit logged / 所有批准、驳回、暂停、接管和 ROI 修正必须写入审计日志',
   'Super Admin can take over any role task at any time / 总管理员可以随时接管任何角色任务'
 ];
-
-export const seededFallbackAdAccounts = [
-  { platform: 'google_ads', account_name: 'NANOFIX Google Ads', status: 'planned_api_or_csv', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Pending / 待连接' },
-  { platform: 'meta_ads', account_name: 'NANOFIX Meta Ads', status: 'planned_api_or_csv', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Pending / 待连接' },
-  { platform: 'tiktok_ads', account_name: 'NANOFIX TikTok Ads', status: 'planned_api_or_csv', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Pending / 待连接' },
-  { platform: 'manual_import', account_name: 'Manual CSV Import', status: 'enabled_phase_1', currency: 'SGD', timezone: 'Asia/Singapore', last_sync: 'Manual / 手动' }
-];
-
-export const seededFallbackAdCampaignRows = [
-  { campaign_id: 'seeded-fallback-google-hdb-leak', platform: 'Google Ads', campaign: 'HDB Ceiling Leak Emergency', service: 'Leak Detection', spend: 420, leads: 18, bookings: 7, revenue: 3800, roi: 8.05, status: 'pending_review', risk: 'watch' },
-  { campaign_id: 'seeded-fallback-meta-toilet-repair', platform: 'Meta Ads', campaign: 'No-Hacking Toilet Repair', service: 'No-Hacking Repair', spend: 260, leads: 11, bookings: 4, revenue: 2200, roi: 7.46, status: 'draft', risk: 'normal' },
-  { campaign_id: 'seeded-fallback-tiktok-waterproofing', platform: 'TikTok Ads', campaign: 'Before After Waterproofing Video', service: 'Waterproofing Works', spend: 180, leads: 5, bookings: 1, revenue: 0, roi: -1, status: 'finance_review', risk: 'high' },
-  { campaign_id: 'seeded-fallback-xhs-condo-leak', platform: 'Manual CSV', campaign: 'Xiaohongshu Condo Leak Post Boost', service: 'Condo Leak Repair', spend: 90, leads: 4, bookings: 2, revenue: 980, roi: 9.89, status: 'approved', risk: 'normal' }
-];
-
-export const seededFallbackAdSuggestions = [
-  { suggestion_id: 'seeded-fallback-ai-budget-1', suggestion_type: 'budget', title: 'Shift budget from low-conversion video to high-intent search / 把预算从低转化视频转到高意向搜索', summary: 'Google HDB ceiling leak campaign has stronger booking conversion than TikTok video test.', editable_text: 'Reduce TikTok test budget by 20% and move it to Google high-intent leak detection keywords after Super Admin approval.' },
-  { suggestion_id: 'seeded-fallback-ai-copy-2', suggestion_type: 'copy', title: 'Use no-hacking trust phrase / 使用免敲砖信任表达', summary: 'No-Hacking Repair campaigns should highlight photo consultation and transparent inspection.', editable_text: 'Try headline: No-Hacking Leak Repair — Send Photos First, Inspect Before Hacking.' }
-];
-
-export const sampleAdAccounts = seededFallbackAdAccounts;
-export const sampleAdCampaignRows = seededFallbackAdCampaignRows;
-export const sampleAdSuggestions = seededFallbackAdSuggestions;
 
 export const adWorkflow = [
   'Create or import campaign / 创建或导入广告活动',

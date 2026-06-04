@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
+// Gate file: verify-warranty-claim-predeploy-consolidation.mjs
 const failures = [];
 const warnings = [];
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -18,14 +19,14 @@ const noDownloadPrompt = (content, label) => {
 };
 
 const phaseFiles = [
-  'supabase/migrations/202605300001_warranty_claim_workflow.sql',
-  'supabase/migrations/202605300002_warranty_claim_routing.sql',
+  'supabase/migrations/202605300001_warranty_claim_admin_review.sql',
+  'supabase/migrations/202605300002_warranty_claim_job_quotation_routing.sql',
   'supabase/migrations/202605300003_warranty_claim_messages.sql',
   'supabase/migrations/202605300004_warranty_claim_completion_closure.sql',
   'app/api/customer-portal/warranty-claims/[serviceRequestId]/route.ts',
   'app/api/customer-portal/warranty-claims/[serviceRequestId]/messages/route.ts',
   'app/api/customer-portal/warranty-claims/[serviceRequestId]/attachments/route.ts',
-  'app/api/admin/service-operations/warranty-claim-review/route.ts',
+  'app/api/admin/service-operations/warranty-claims/route.ts',
   'app/api/admin/service-operations/warranty-claim-routing/route.ts',
   'app/api/admin/service-operations/warranty-claim-messages/route.ts',
   'app/api/admin/service-operations/warranty-claim-attachments/route.ts',
@@ -62,7 +63,7 @@ if (phaseFiles.every(exists)) {
   const customerDetailApi = read('app/api/customer-portal/warranty-claims/[serviceRequestId]/route.ts');
   const customerMessagesApi = read('app/api/customer-portal/warranty-claims/[serviceRequestId]/messages/route.ts');
   const customerAttachmentsApi = read('app/api/customer-portal/warranty-claims/[serviceRequestId]/attachments/route.ts');
-  const adminReviewApi = read('app/api/admin/service-operations/warranty-claim-review/route.ts');
+  const adminReviewApi = read('app/api/admin/service-operations/warranty-claims/route.ts');
   const adminRoutingApi = read('app/api/admin/service-operations/warranty-claim-routing/route.ts');
   const adminMessagesApi = read('app/api/admin/service-operations/warranty-claim-messages/route.ts');
   const adminAttachmentsApi = read('app/api/admin/service-operations/warranty-claim-attachments/route.ts');
@@ -133,7 +134,7 @@ if (phaseFiles.every(exists)) {
     'has_file_access'
   ], 'Customer Portal warranty claim attachment API consolidation');
 
-  has(adminReviewApi, ['warranty_claim_decision', 'warranty_claim_next_action', 'service_operations_warranty_claim_review'], 'Admin review API consolidation');
+  has(adminReviewApi, ['warranty_claim_decision', 'warranty_claim_next_action', 'service_operations_warranty_claim_decision_submit'], 'Admin review API consolidation');
   has(adminRoutingApi, ['warranty_claim_routing_status', 'warranty_claim_routed_job_id', 'warranty_claim_routed_quotation_id'], 'Admin routing API consolidation');
   has(adminMessagesApi, ['service_operations_warranty_claim_message_reply_submit', 'visible_to_customer', 'internal_only'], 'Admin message reply API consolidation');
   has(adminAttachmentsApi, ['service_operations_warranty_claim_attachment_review_submit', 'review_status', 'visible_to_customer'], 'Admin attachment review API consolidation');

@@ -65,10 +65,6 @@ export function ServiceOperationsAssignEngineerWorkspace() {
 
       {state.error ? <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-950 ring-1 ring-amber-200">Live assign-engineer API blocked or not connected: {state.error}<br />Next required endpoint: /api/admin/service-operations/assign-engineer</div> : null}
       {state.result ? <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-xs font-bold leading-5 text-emerald-950 ring-1 ring-emerald-200">Engineer assigned by live API. / 工程师已由真实 API 分配。<br />Assignment: {text(state.result.assignment_id)} / Status: {text(state.result.status)}</div> : null}
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Engineer assignment must update jobs, inspection schedule, task queue and audit logs through a guarded server workflow. / 工程师分配必须通过受保护服务端流程更新工单、查验排程、任务队列和审计日志。
-      </div>
     </section>
   );
 }

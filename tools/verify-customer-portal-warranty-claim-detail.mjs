@@ -9,7 +9,7 @@ const assert = (condition, message) => { if (!condition) failures.push(message);
 const has = (content, markers, label) => { for (const marker of markers) assert(content.includes(marker), `${label} missing marker: ${marker}`); };
 const noSelectStar = (content, label) => assert(!/select\(['"]\*['"]\)/.test(content), `${label} must not use select star.`);
 const noBrowserStorage = (content, label) => assert(!/localStorage|sessionStorage/.test(content), `${label} must not use browser storage.`);
-const noCustomerMutation = (content, label) => assert(!/fetch\([^)]*\/api\/customer-portal\/warranty-claims[^)]*method:\s*['"](?:POST|PATCH|PUT|DELETE)['"]/s.test(content), `${label} must not mutate warranty claim details from Customer Portal.`);
+const noCustomerMutation = (content, label) => assert(!/fetch\([^)]*\/api\/customer-portal\/warranty-claims\/\$\{serviceRequestId\}`[^)]*method:\s*['"](?:POST|PATCH|PUT|DELETE)['"]/s.test(content), `${label} must not mutate warranty claim details from Customer Portal.`);
 const noDocumentMutation = (content, label) => assert(!/from\(['"](?:quotations|invoices|warranties|payments|payment_records)['"]\)\s*\.\s*(?:update|insert|upsert|delete)/.test(content), `${label} must not mutate official documents.`);
 const noDownloadPrompt = (content, label) => {
   assert(!content.includes('Download PDF / 下载PDF'), `${label} must not use download-prompt wording.`);

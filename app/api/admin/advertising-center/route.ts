@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient, auditLog } from '@/lib/supabase-server';
 import { auditActor, isSuperAdmin, requireAdmin } from '@/lib/nanofix/auth';
-import { sampleAdAccounts, sampleAdCampaignRows, sampleAdSuggestions } from '@/lib/nanofix/advertising-center';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,23 +22,6 @@ function cleanText(value: unknown, fallback = '', max = 2000) { return typeof va
 function oneOf(value: unknown, allowed: string[], fallback: string) { const next = cleanText(value, fallback, 120); return allowed.includes(next) ? next : fallback; }
 function num(value: unknown) { const n = Number(value || 0); return Number.isFinite(n) ? n : 0; }
 function validUuid(value: unknown) { return typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value); }
-function sampleRows() {
-  return sampleAdCampaignRows.map((row, index) => ({
-    campaign_id: `sample-${index + 1}`,
-    platform: String(row.platform).toLowerCase().replace(/[^a-z0-9]+/g, '_'),
-    campaign_name: row.campaign,
-    service_category: row.service,
-    status: row.status,
-    approval_status: row.status,
-    spend_amount: row.spend,
-    leads_count: row.leads,
-    bookings_count: row.bookings,
-    revenue_amount: row.revenue,
-    gross_profit_amount: row.revenue,
-    sample: true
-  }));
-}
-
 async function safeSelect(supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>, table: string, columns: string, limit = 50) {
   const { data, error } = await supabase.from(table).select(columns).order('created_at', { ascending: false }).limit(limit);
   return error ? { data: [], error: error.message } : { data: data || [], error: null };
@@ -49,17 +31,17 @@ export async function GET(request: Request) {
   const { context, response } = requireAdmin(request, 'read:advertising');
   if (response) return response;
   const supabase = createSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ ok: true, campaigns: sampleRows(), accounts: sampleAdAccounts, suggestions: sampleAdSuggestions, approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'supabase_not_configured' });
+  if (!supabase) return NextResponse.json({ ok: false, campaigns: [], accounts: [], suggestions: [], approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), error: 'supabase_not_configured' }, { status: 503 });
 
   const campaigns = await safeSelect(supabase, 'ad_campaigns', campaignColumns, 100);
-  if (campaigns.error) return NextResponse.json({ ok: true, campaigns: sampleRows(), accounts: sampleAdAccounts, suggestions: sampleAdSuggestions, approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'ad_tables_not_ready', table_error: campaigns.error });
+  if (campaigns.error) return NextResponse.json({ ok: false, campaigns: [], accounts: [], suggestions: [], approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), error: 'ad_tables_not_ready', table_error: campaigns.error }, { status: 500 });
   const accounts = await safeSelect(supabase, 'ad_platform_accounts', accountColumns, 50);
   const suggestions = await safeSelect(supabase, 'ad_ai_suggestions', suggestionColumns, 50);
   const approvals = await safeSelect(supabase, 'ad_approval_requests', approvalColumns, 50);
   const budgetRequests = await safeSelect(supabase, 'ad_budget_change_requests', budgetColumns, 50);
   const syncLogs = await safeSelect(supabase, 'ad_sync_logs', syncLogColumns, 30);
   const takeovers = await safeSelect(supabase, 'ad_super_admin_takeovers', takeoverColumns, 30);
-  return NextResponse.json({ ok: true, campaigns: campaigns.data, accounts: accounts.data.length ? accounts.data : sampleAdAccounts, suggestions: suggestions.data.length ? suggestions.data : sampleAdSuggestions, approvals: approvals.data, budgetRequests: budgetRequests.data, syncLogs: syncLogs.data, takeovers: takeovers.data, context, super_admin_full_access: isSuperAdmin(context), fallback: null });
+  return NextResponse.json({ ok: true, campaigns: campaigns.data, accounts: accounts.data, suggestions: suggestions.data, approvals: approvals.data, budgetRequests: budgetRequests.data, syncLogs: syncLogs.data, takeovers: takeovers.data, context, super_admin_full_access: isSuperAdmin(context), fallback: null });
 }
 
 export async function POST(request: Request) {

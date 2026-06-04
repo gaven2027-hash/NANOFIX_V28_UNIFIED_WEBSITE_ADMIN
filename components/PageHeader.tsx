@@ -47,7 +47,7 @@ export function PageHeader({ eyebrow, title, description }: { eyebrow: string; t
             {orderLabel && orderLabel !== '•' ? <span className="mr-2 text-white/80">{orderLabel}.</span> : null}
             <span>{orderedTitle}</span>
           </h2>
-          <p className="mt-1 block max-w-full overflow-hidden whitespace-nowrap text-[9.5px] font-semibold leading-3 tracking-[-0.01em] text-white/78">{description}</p>
+          {description ? <span className="sr-only">{description}</span> : null}
         </div>
         <button
           type="button"

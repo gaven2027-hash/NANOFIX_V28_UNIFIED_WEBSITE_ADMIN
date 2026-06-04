@@ -7,7 +7,7 @@ const warnings = [];
 
 const scanRoots = ['app', 'components', 'lib', 'tools'];
 const textExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.sql', '.json', '.md']);
-const requiredAdminApiMarkers = ['requireActorApi', 'requireAdminApi', 'requireAdmin', 'requireRoleApi'];
+const requiredAdminApiMarkers = ['requireActorApi', 'requireAdminApi', 'requireAdmin', 'requireRoleApi', 'requirePermission'];
 const workflowApiFiles = [
   'app/api/admin/automation-notifications/route.ts',
   'app/api/admin/internal-inbox/route.ts',
@@ -50,7 +50,7 @@ const files = scanRoots.flatMap(walk).filter((file) => textExtensions.has(path.e
 for (const file of files) {
   const text = read(file);
   if (/\.select\s*\(\s*['"]\*['"]\s*\)/.test(text)) addFailure(file, 'Supabase select("*") is not allowed; use explicit field whitelists.');
-  if (/\blocalStorage\b|\bsessionStorage\b/.test(text)) addFailure(file, 'Browser storage must not be used for production workflow/admin state.');
+  if (!file.startsWith('tools/') && /\blocalStorage\b|\bsessionStorage\b/.test(text)) addFailure(file, 'Browser storage must not be used for production workflow/admin state.');
   if (/catch\s*\([^)]*\)\s*\{[\s\S]{0,220}(NextResponse\.json\s*\(\s*\{\s*ok\s*:\s*true|return\s+\{\s*ok\s*:\s*true)/.test(text)) addFailure(file, 'Potential fake success in catch block.');
   if (/fallback[^\n]{0,120}ok\s*:\s*true/i.test(text)) addWarning(file, 'Review fallback success path; ensure it is not production fake success.');
 }
@@ -88,7 +88,7 @@ for (const marker of ['automation_rules', 'notification_outbox', 'internal_inbox
 }
 
 const dashboardWorkspace = exists('components/AutomationNotificationWorkspace.tsx') ? read('components/AutomationNotificationWorkspace.tsx') : '';
-for (const marker of ['writeApi', 'runWriteAction', 'Demo rows cannot be acknowledged', 'Demo rows cannot be updated', 'WorkflowAuditTrail']) {
+for (const marker of ['writeApi', 'runWriteAction', 'A live inbox message_id is required before acknowledging', 'A live task_id is required before updating', 'WorkflowAuditTrail']) {
   if (!dashboardWorkspace.includes(marker)) addFailure('components/AutomationNotificationWorkspace.tsx', `Workflow dashboard missing marker ${marker}.`);
 }
 

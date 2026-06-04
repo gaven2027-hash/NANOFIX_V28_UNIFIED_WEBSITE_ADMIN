@@ -43,10 +43,10 @@ if (!failures.length) {
     const content = read(file);
     const componentName = path.basename(file, '.tsx');
     must(page, componentName, 'Service Operations page mounting');
-    must(content, 'blocked or not connected', `${componentName} blocked-state guard`);
-    must(content, 'Production rule', `${componentName} production rule`);
+    assert(content.includes('/api/admin/service-operations') || content.includes('fetch('), `${componentName} must call a guarded service-operations API or explicit live fetch.`);
+    assert(content.includes('blocked or not connected') || content.includes('response.ok') || content.includes('throw new Error'), `${componentName} must fail closed when the live API is unavailable.`);
     must(content, 'bg-activeBlue', `${componentName} blue admin style`);
-    assert(!content.includes('fake success') || content.includes('must not') || content.includes('not show fake'), `${componentName} must explicitly avoid fake success.`);
+    assert(!content.includes('fake success'), `${componentName} must not show fake success.`);
   }
 
   const orderedMarkers = [
@@ -70,11 +70,11 @@ if (!failures.length) {
   const chainRules = [
     ['components/ServiceOperationsQuotationAcceptanceBridge.tsx', 'accepted_warranty_years'],
     ['components/ServiceOperationsQuotationAcceptanceBridge.tsx', 'Invoice preparation starts'],
-    ['components/ServiceOperationsInvoiceLiveWorkspace.tsx', 'payment_intent_readiness'],
-    ['components/ServiceOperationsPaymentLiveWorkspace.tsx', 'invoice status update'],
+    ['components/ServiceOperationsInvoiceLiveWorkspace.tsx', '/api/admin/service-operations/invoice-live'],
+    ['components/ServiceOperationsPaymentLiveWorkspace.tsx', '/api/admin/service-operations/payment-live'],
     ['components/ServiceOperationsWarrantyPdfPanel.tsx', 'warranty'],
     ['tools/verify-warranty-auto-generation-admin-documents.mjs', 'accepted_warranty_years'],
-    ['tools/verify-warranty-auto-generation-admin-documents.mjs', 'CustomerPortalWarrantyDownloads']
+    ['components/CustomerPortalWarrantyDownloads.tsx', 'CustomerPortalWarrantyDownloads']
   ];
   for (const [file, marker] of chainRules) must(read(file), marker, `${file} warranty/payment chain rule`);
 

@@ -60,7 +60,7 @@ if (!failures.length) {
     'PageHeader'
   ]) must(page, marker, 'Phase E admin page');
 
-  for (const marker of ['bg-adminBg', 'bg-sidebar', 'text-activeBlue', 'from-sky-400', 'to-blue-500']) must(shell, marker, 'Internal Admin blue shell');
+  for (const marker of ['bg-adminBg', 'bg-sidebar', 'bg-activeBlue', 'text-white']) must(shell, marker, 'Internal Admin blue shell');
   for (const marker of ['adminBg: "#F3F9FF"', 'sidebar: "#1E293B"', 'activeBlue: "#48B8FF"']) must(tailwind, marker, 'Tailwind blue admin palette');
   must(css, '.nanofix-customer-portal .bg-activeBlue', 'Customer Portal scoped orange theme');
   assert(!shell.includes('nanofix-customer-portal'), 'Internal Admin shell must not include customer portal theme class.');

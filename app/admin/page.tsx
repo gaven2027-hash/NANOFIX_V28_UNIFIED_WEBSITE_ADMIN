@@ -46,10 +46,6 @@ export default function AdminPage() {
                 </Link>
               ))}
             </div>
-
-            {item.children.length > 4 ? (
-              <div className="mt-3 text-xs font-bold text-slate-400">+ {item.children.length - 4} more submenu items available from the left sidebar and module shortcut bar. / 其余二级栏目可从左侧菜单和模块顶部快捷栏进入。</div>
-            ) : null}
           </article>
         ))}
       </section>

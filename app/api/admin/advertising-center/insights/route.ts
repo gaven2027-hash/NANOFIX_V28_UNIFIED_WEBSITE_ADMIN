@@ -63,13 +63,6 @@ function buildAlerts(rows: Row[]) {
     return alerts;
   }).slice(0, 50);
 }
-function sampleRows() {
-  return [
-    { performance_date: '2026-05-25', platform: 'google_ads', impressions: 1200, clicks: 84, spend_amount: 45.5, leads_count: 6, bookings_count: 2, jobs_count: 1, payment_amount: 580, gross_profit_amount: 390 },
-    { performance_date: '2026-05-26', platform: 'meta_ads', impressions: 2400, clicks: 96, spend_amount: 58, leads_count: 3, bookings_count: 1, jobs_count: 0, payment_amount: 0, gross_profit_amount: 0 },
-    { performance_date: '2026-05-27', platform: 'tiktok_ads', impressions: 4800, clicks: 130, spend_amount: 120, leads_count: 1, bookings_count: 0, jobs_count: 0, payment_amount: 0, gross_profit_amount: 0 }
-  ];
-}
 function summarize(rows: Row[]) {
   const platformMap = new Map<string, Summary>();
   const dailyMap = new Map<string, Summary>();
@@ -95,8 +88,8 @@ export async function GET(request: Request) {
   const { response } = requireAdmin(request, 'read:advertising');
   if (response) return response;
   const supabase = createSupabaseAdminClient();
-  if (!supabase) return NextResponse.json({ ok: true, ...summarize(sampleRows()), fallback: 'supabase_not_configured' });
+  if (!supabase) return NextResponse.json({ ok: false, error: 'Supabase is required for live advertising insights', total: finalize(empty('total')), byPlatform: [], byDate: [], alerts: [], rows: [], fallback: null }, { status: 503 });
   const { data, error } = await supabase.from('ad_performance_daily').select(performanceColumns).order('performance_date', { ascending: false }).limit(365);
-  if (error) return NextResponse.json({ ok: true, ...summarize(sampleRows()), fallback: 'performance_table_not_ready', table_error: error.message });
+  if (error) return NextResponse.json({ ok: false, error: 'Advertising performance table is not ready', table_error: error.message, total: finalize(empty('total')), byPlatform: [], byDate: [], alerts: [], rows: [], fallback: null }, { status: 500 });
   return NextResponse.json({ ok: true, ...summarize(data || []), rows: data || [], fallback: null });
 }

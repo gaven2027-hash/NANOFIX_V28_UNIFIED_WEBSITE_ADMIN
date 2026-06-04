@@ -68,10 +68,6 @@ export function ServiceOperationsInvoiceLiveWorkspace() {
 
       {state.error ? <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-950 ring-1 ring-amber-200">Live invoice API blocked or not connected: {state.error}<br />Next required endpoint: /api/admin/service-operations/invoice-live</div> : null}
       {state.result ? <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-xs font-bold leading-5 text-emerald-950 ring-1 ring-emerald-200">Invoice saved by live API. / 发票已由真实 API 保存。<br />Invoice ID: {text(state.result.invoice_id)} / Status: {text(state.result.status)}</div> : null}
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Invoice workflow must write invoices, customer visibility state, PDF status, payment intent readiness and audit logs. / 发票流程必须写入发票、客户可见状态、PDF 状态、付款准备状态和审计日志。
-      </div>
     </section>
   );
 }

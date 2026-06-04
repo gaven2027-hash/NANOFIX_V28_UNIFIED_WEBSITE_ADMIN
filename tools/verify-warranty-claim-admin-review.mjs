@@ -56,7 +56,7 @@ if (requiredFiles.every(exists)) {
     'READ_ROLES',
     'WRITE_ROLES',
     'DECISIONS',
-    '/service-operations/warranty-claims',
+    'service_operations_warranty_claims_read',
     'request_origin',
     'customer_portal_request_type',
     'warranty_repair',

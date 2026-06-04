@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
   await writeAuditLog({
     actorId: auth.actor.profileId,
     role: auth.role,
-    action: 'customer_portal_quote_response_submit',
+    action: response === 'accepted' ? 'customer_portal_quote_acceptance_submit' : 'customer_portal_quote_response_submit',
     objectType: 'quotation_customer_response',
     objectId: customerResponse.response_id,
     after: { quotation, response: customerResponse, acceptance, payment_intent: paymentIntent, quote_pdf: quotePdf, accepted_warranty_years: warrantyYears, workflow, confirmation },

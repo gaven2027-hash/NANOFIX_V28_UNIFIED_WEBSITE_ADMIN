@@ -60,10 +60,6 @@ export function ServiceOperationsQuoteAcceptanceBridgeWorkspace() {
 
       {state.error ? <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-950 ring-1 ring-amber-200">Live quote acceptance bridge API blocked or not connected: {state.error}<br />Next required endpoint: /api/admin/service-operations/quote-acceptance-bridge</div> : null}
       {state.result ? <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-xs font-bold leading-5 text-emerald-950 ring-1 ring-emerald-200">Bridge result from live API. / 桥接结果来自真实 API。<br />Quote: {text(state.result.quotation_id)} / Acceptance: {text(state.result.acceptance_status)} / Invoice: {text(state.result.invoice_status)}</div> : null}
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Customer acceptance must not edit official quotation terms from customer side. Internal API must lock accepted_warranty_years, prepare invoice, queue notifications and write audit logs. / 客户接受不能从客户侧修改正式报价条款；内部 API 必须锁定保修年限、准备发票、排入通知并写入审计日志。
-      </div>
     </section>
   );
 }

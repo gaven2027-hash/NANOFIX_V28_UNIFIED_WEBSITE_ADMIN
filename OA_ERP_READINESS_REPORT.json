@@ -1,0 +1,281 @@
+{
+  "ok": true,
+  "generated_at": "2026-06-04T03:42:07.075Z",
+  "audit": "oa-erp-readiness-audit",
+  "liveCoverage": {
+    "menu_primary_count": 9,
+    "submodule_count": 175,
+    "expected_primary_orders_0_to_8": true,
+    "primary_routes": [
+      "/admin",
+      "/dashboard",
+      "/service-operations",
+      "/website-management",
+      "/social-media",
+      "/admin/advertising-center",
+      "/ai-intelligence",
+      "/customer-center",
+      "/system-settings"
+    ],
+    "live_api_count": 15,
+    "api_files_checked": 15,
+    "fully_live_modules_known": [
+      "Automation & Notification Engine",
+      "Internal Inbox",
+      "Unified Task Engine",
+      "Workflow Audit Trail",
+      "Workflow Settings",
+      "Advertising Center partial APIs",
+      "CMS blocks partial APIs",
+      "Social messages partial APIs",
+      "Backup jobs",
+      "Payment reconcile",
+      "Warranty issue"
+    ]
+  },
+  "blueStyleFinding": {
+    "admin_shell_uses_adminBg": true,
+    "admin_shell_uses_sidebar": true,
+    "admin_shell_uses_blue_active": true,
+    "tailwind_admin_colors": true,
+    "customer_orange_is_scoped": true
+  },
+  "menu": [
+    {
+      "order": "0",
+      "href": "/admin",
+      "title": "Global Search & Admin Home",
+      "submodules": 6
+    },
+    {
+      "order": "1",
+      "href": "/dashboard",
+      "title": "Dashboard, Analytics & Alerts",
+      "submodules": 12
+    },
+    {
+      "order": "2",
+      "href": "/service-operations",
+      "title": "Service & Order Operations",
+      "submodules": 26
+    },
+    {
+      "order": "3",
+      "href": "/website-management",
+      "title": "Website Management",
+      "submodules": 22
+    },
+    {
+      "order": "4",
+      "href": "/social-media",
+      "title": "Social Media Management",
+      "submodules": 16
+    },
+    {
+      "order": "5",
+      "href": "/admin/advertising-center",
+      "title": "Advertising & Promotion Center",
+      "submodules": 19
+    },
+    {
+      "order": "6",
+      "href": "/ai-intelligence",
+      "title": "AI Intelligence Center",
+      "submodules": 17
+    },
+    {
+      "order": "7",
+      "href": "/customer-center",
+      "title": "Customer Center",
+      "submodules": 28
+    },
+    {
+      "order": "8",
+      "href": "/system-settings",
+      "title": "Website & System Settings",
+      "submodules": 29
+    }
+  ],
+  "missingPages": [],
+  "missingAnchors": [],
+  "duplicateHrefs": [],
+  "pageMarkerFindings": [
+    {
+      "route": "/admin",
+      "page": "app/admin/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/dashboard",
+      "page": "app/dashboard/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/service-operations",
+      "page": "app/service-operations/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/website-management",
+      "page": "app/website-management/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/social-media",
+      "page": "app/social-media/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/admin/advertising-center",
+      "page": "app/admin/advertising-center/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/ai-intelligence",
+      "page": "app/ai-intelligence/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/customer-center",
+      "page": "app/customer-center/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    },
+    {
+      "route": "/system-settings",
+      "page": "app/system-settings/page.tsx",
+      "ok": true,
+      "missing_markers": []
+    }
+  ],
+  "apiFindings": [
+    {
+      "file": "app/api/admin/automation-notifications/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/internal-inbox/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/unified-tasks/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/workflow-audit/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/workflow-settings/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/advertising-center/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/advertising-center/import/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/advertising-center/insights/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/advertising-center/creatives/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/advertising-center/budgets/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/cms/blocks/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/social/messages/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/backups/jobs/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/payments/reconcile/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    },
+    {
+      "file": "app/api/admin/warranties/issue/route.ts",
+      "exists": true,
+      "auth": true,
+      "audit": true,
+      "explicit_fields": true
+    }
+  ],
+  "genericWorkspaceFinding": {
+    "operations_panel": true,
+    "server_write_api": true,
+    "no_static_explainer": true,
+    "api_probe_controls": true
+  },
+  "pageQualityFindings": [],
+  "blockers": [],
+  "recommendations": [
+    "Keep Customer Portal orange/gold theme scoped under .nanofix-customer-portal only; Internal Admin must remain bg-adminBg + bg-sidebar + activeBlue.",
+    "Promote high-volume generic submodules to dedicated live workspaces one by one: Service Requests, Quotations, Jobs, Invoices, Payments, Warranty, Customer Reviews, Website Publish Approval.",
+    "For each promoted submodule require: explicit Supabase table, GET list, POST create, PATCH update/status, Audit Log write, role permission, degraded UI and E2E smoke.",
+    "Keep AdminSubmoduleWorkspace focused on real module operations: live table probes, guarded API probes, audit writes and follow-up task creation; avoid static説明 blocks.",
+    "Add route-level smoke checks for every primary admin route and representative second-level anchors.",
+    "Use /api/ready and module health checks as the first production go/no-go signal after migrations."
+  ]
+}

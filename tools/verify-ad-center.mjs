@@ -30,12 +30,12 @@ const coreMigration = read('supabase/migrations/20260527010000_v28_1_4_advertisi
 const loopMigration = read('supabase/migrations/20260527013000_v28_1_4_advertising_center_full_loop.sql');
 
 ok(page.includes('AdvertisingCenterWorkspace'), 'ad center page exists', failures);
-ok(importPage.includes('AdvertisingImportWorkspace'), 'ad CSV import page exists', failures);
-ok(insightsPage.includes('AdvertisingInsightsWorkspace'), 'ad insights page exists', failures);
-ok(creativesPage.includes('AdvertisingCreativesWorkspace'), 'ad creatives page exists', failures);
-ok(budgetPage.includes('AdvertisingBudgetWorkspace'), 'ad budgets page exists', failures);
+ok(importPage.includes('AdvertisingImportWorkspace') || importPage.includes('redirect') && importPage.includes('#csv-excel-import'), 'ad CSV import page exists or redirects to live workspace anchor', failures);
+ok(insightsPage.includes('AdvertisingInsightsWorkspace') || insightsPage.includes('redirect') && insightsPage.includes('#roi-insights-alerts'), 'ad insights page exists or redirects to live workspace anchor', failures);
+ok(creativesPage.includes('AdvertisingCreativesWorkspace') || creativesPage.includes('redirect') && creativesPage.includes('#creatives-copy'), 'ad creatives page exists or redirects to live workspace anchor', failures);
+ok(budgetPage.includes('AdvertisingBudgetWorkspace') || budgetPage.includes('redirect') && budgetPage.includes('#budgets-strategy'), 'ad budgets page exists or redirects to live workspace anchor', failures);
 ok(workspace.includes('Advertising & Promotion Center'), 'ad center workspace exists', failures);
-ok(page.includes('/admin/advertising-center/budgets') && page.includes('/admin/advertising-center/creatives'), 'ad center quick links include budgets and creatives', failures);
+ok(page.includes('#budgets-strategy') && page.includes('#creatives-copy'), 'ad center quick links include budgets and creatives anchors', failures);
 ok(importWorkspace.includes('Advertising CSV') && importWorkspace.includes('Import CSV'), 'CSV import workspace exists', failures);
 ok(insightsWorkspace.includes('Advertising ROI Insights') && insightsWorkspace.includes('Risk Alerts'), 'ROI insights workspace exists', failures);
 ok(creativesWorkspace.includes('Creatives & Copy') && creativesWorkspace.includes('Save Creative Draft'), 'creatives workspace exists', failures);
@@ -46,7 +46,7 @@ ok(insightsApi.includes('buildAlerts') && insightsApi.includes('byPlatform') && 
 ok(insightsApi.includes('high_spend_no_leads') && insightsApi.includes('low_roas'), 'insights API checks high spend and low ROAS alerts', failures);
 ok(creativesApi.includes('write:ad_creative') && creativesApi.includes('ad_creatives'), 'creatives API writes ad creative drafts', failures);
 ok(budgetApi.includes('ad_budget.review') && budgetApi.includes('super_admin_approve'), 'budget API supports finance review and Super Admin approval', failures);
-ok(workspace.includes('Connected Accounts') && workspace.includes('AI Suggestions') && workspace.includes('Approval Gates'), 'workspace has accounts, AI suggestions and approval gates', failures);
+ok(workspace.includes('Connected Accounts') && workspace.includes('AI Suggestions') && workspace.includes('Review') && workspace.includes('Approve'), 'workspace has accounts, AI suggestions and approval actions', failures);
 ok(workspace.includes('super_admin_takeover') && workspace.includes('Generated URL'), 'workspace has Super Admin takeover and UTM generation', failures);
 ok(api.includes('read:advertising') && api.includes('ad_campaign.draft'), 'ad center API permissions exist', failures);
 ok(importApi.includes("requireAdmin(request, 'ad_campaign.draft')"), 'CSV import API requires ad campaign draft permission', failures);
@@ -56,7 +56,7 @@ ok(api.includes('ad_budget_change_requests') && api.includes('ad_super_admin_tak
 ok(auth.includes('super_admin: ["*"]'), 'Super Admin wildcard permission exists', failures);
 ok(auth.includes('read:advertising') && auth.includes('write:ad_creative') && auth.includes('read:ad_roi'), 'role advertising permissions exist', failures);
 ok(config.includes('superAdminAdvertisingCapabilities') && config.includes('adApprovalGateRules'), 'Super Admin capability and approval gate config exists', failures);
-ok(config.includes('sampleAdAccounts') && config.includes('sampleAdSuggestions'), 'account and AI suggestion fallback data exists', failures);
+ok(!config.includes('seededFallbackAd') && !config.includes('sampleAdAccounts') && !config.includes('sampleAdSuggestions'), 'ad center config has no seeded fallback business data', failures);
 ok(adminData.includes('Advertising & Promotion Center') && adminData.includes('order: "5"'), 'central admin menu includes advertising center at order 5', failures);
 ok(adminData.includes('Advertising Campaign') && adminData.includes('advertising_center_notice'), 'workflow and editable notice include advertising center', failures);
 ok(coreMigration.includes('public.ad_campaigns'), 'ad campaigns schema exists', failures);
