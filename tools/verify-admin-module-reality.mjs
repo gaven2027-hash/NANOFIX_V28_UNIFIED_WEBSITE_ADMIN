@@ -13,6 +13,8 @@ const requiredFiles = [
   'data/adminNavigation.ts',
   'data/adminModuleReality.ts',
   'components/AdminSubmoduleWorkspace.tsx',
+  'components/SystemSettingsDiagnosticsWorkspace.tsx',
+  'components/MenuAnchorSections.tsx',
   'app/api/admin/module-operations/route.ts',
   'docs/NANOFIX_V28_2_ADMIN_MENU_REALITY_AUDIT_20260529.md'
 ];
@@ -29,6 +31,8 @@ if (requiredFiles.every(exists)) {
   const nav = read('data/adminNavigation.ts');
   const registry = read('data/adminModuleReality.ts');
   const workspace = read('components/AdminSubmoduleWorkspace.tsx');
+  const systemDiagnostics = read('components/SystemSettingsDiagnosticsWorkspace.tsx');
+  const menuAnchorSections = read('components/MenuAnchorSections.tsx');
   const operationsApi = read('app/api/admin/module-operations/route.ts');
   const auditDoc = read('docs/NANOFIX_V28_2_ADMIN_MENU_REALITY_AUDIT_20260529.md');
 
@@ -67,8 +71,13 @@ if (requiredFiles.every(exists)) {
     'Create Follow-up Task / 新建跟进任务',
     'Open Linked API / 打开关联接口',
     'Open Main Workspace / 打开主模块',
-    'Submodule Operations / 二级模块操作台'
+    'Module Diagnostics / 模块诊断'
   ]) assert(workspace.includes(marker), `AdminSubmoduleWorkspace missing operations marker: ${marker}`);
+
+  assert(systemDiagnostics.includes('AdminSubmoduleWorkspace route="/system-settings"'), 'SystemSettingsDiagnosticsWorkspace must be the explicit diagnostics entry.');
+  assert(systemDiagnostics.includes('System Settings Only / 仅系统设置可见'), 'SystemSettingsDiagnosticsWorkspace must state diagnostics are system-settings only.');
+  assert(menuAnchorSections.includes('data-admin-anchor-fallback'), 'MenuAnchorSections must provide safe hidden anchors for daily routes.');
+  assert(!menuAnchorSections.includes('AdminSubmoduleWorkspace'), 'MenuAnchorSections must not render diagnostics in daily workspaces.');
 
   assert(!workspace.includes('function profileFor'), 'AdminSubmoduleWorkspace should not use old keyword-based profileFor guessing.');
   assert(!workspace.includes('slugText'), 'AdminSubmoduleWorkspace should not use old keyword slugText guessing.');
@@ -105,7 +114,7 @@ const report = {
   ok: failures.length === 0,
   generated_at: new Date().toISOString(),
   verifier: 'verify-admin-module-reality',
-  standard: 'V28.4.1 operations UI: real controls/API probes/audit writes instead of visible static説明 blocks',
+  standard: 'V28.4.2 admin reality: daily pages use real workspaces with hidden anchors; diagnostics stay in system settings only',
   failures,
   warnings
 };
