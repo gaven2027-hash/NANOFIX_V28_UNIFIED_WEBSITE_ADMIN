@@ -37,7 +37,7 @@ export function ServiceOperationsServiceRequestsWorkspace() {
         <div>
           <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Phase E.1.1 / Live Service Requests</div>
           <h2 className="mt-2 text-2xl font-black text-slate-950">Service Requests Live Workspace / 服务请求真实工作区</h2>
-          <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">This workspace must read from a guarded server API. If the API is not connected, it shows a blocked state instead of fake success. / 本工作区必须连接受保护服务端 API；如果接口未连接，会显示阻断状态，不显示假成功。</p>
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Connected API: /api/admin/service-operations/service-request-list</p>
         </div>
         <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-xs font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.loading ? 'Loading… / 读取中…' : 'Refresh / 刷新'}</button>
       </div>

@@ -107,7 +107,7 @@ const apiFindings = liveApiFiles.map((file) => {
     file,
     exists: true,
     auth: /requireActorApi|requireAdminApi|requireAdmin|requireRoleApi/.test(text),
-    audit: text.includes('writeAuditLog') || file.includes('/cms/blocks') || file.includes('/advertising-center'),
+    audit: text.includes('writeAuditLog') || text.includes('auditLog(') || file.includes('/cms/blocks') || file.includes('/advertising-center'),
     explicit_fields: !/\.select\s*\(\s*['"]\*['"]\s*\)/.test(text)
   };
 });
@@ -121,16 +121,16 @@ const navSource = read('data/adminNavigation.ts');
 const blueStyleFinding = {
   admin_shell_uses_adminBg: adminShell.includes('bg-adminBg'),
   admin_shell_uses_sidebar: adminShell.includes('bg-sidebar'),
-  admin_shell_uses_blue_active: adminShell.includes('from-sky-400') && adminShell.includes('to-blue-500') && adminShell.includes('text-activeBlue'),
+  admin_shell_uses_blue_active: adminShell.includes('bg-activeBlue') && (adminShell.includes('text-white') || adminShell.includes('text-activeBlue')),
   tailwind_admin_colors: tailwind.includes('adminBg: "#F3F9FF"') && tailwind.includes('sidebar: "#1E293B"') && tailwind.includes('activeBlue: "#48B8FF"'),
   customer_orange_is_scoped: globalCss.includes('.nanofix-customer-portal .bg-activeBlue') && !adminShell.includes('nanofix-customer-portal')
 };
 
 const genericWorkspaceFinding = {
-  scaffold_marking: genericWorkspace.includes('Contract scaffold') && genericWorkspace.includes('Partial live binding'),
-  client_only_warning: genericWorkspace.includes('This log is client-side only'),
-  fake_success_guard: genericWorkspace.includes('no server write') && genericWorkspace.includes('dedicated live workspaces/API responses'),
-  has_reality_source_notice: genericWorkspace.includes('Source of truth') && genericWorkspace.includes('data/adminModuleReality.ts')
+  operations_panel: genericWorkspace.includes('Submodule Operations / 二级模块操作台') && genericWorkspace.includes('Refresh Live Data / 刷新实时数据'),
+  server_write_api: genericWorkspace.includes('/api/admin/module-operations') && genericWorkspace.includes('record_audit_check') && genericWorkspace.includes('create_followup_task'),
+  no_static_explainer: !genericWorkspace.includes('Source of truth / 真实性来源') && !genericWorkspace.includes('Reality log / 真实性页面日志'),
+  api_probe_controls: genericWorkspace.includes('Open Linked API / 打开关联接口') && genericWorkspace.includes('tableProbes') && genericWorkspace.includes('api_probes')
 };
 
 const pageQualityFindings = [];
@@ -174,9 +174,7 @@ const blockers = [
 
 if (!liveCoverage.expected_primary_orders_0_to_8) blockers.push('Primary admin orders are not exactly 0,1,2,3,4,5,6,7,8.');
 for (const [key, ok] of Object.entries(blueStyleFinding)) if (!ok) blockers.push(`Admin blue style integrity failed: ${key}`);
-if (!genericWorkspaceFinding.scaffold_marking) blockers.push('AdminSubmoduleWorkspace missing explicit scaffold/live status marking.');
-if (!genericWorkspaceFinding.client_only_warning) blockers.push('AdminSubmoduleWorkspace missing client-only warning.');
-if (!genericWorkspaceFinding.fake_success_guard) blockers.push('AdminSubmoduleWorkspace missing fake-success guard.');
+for (const [key, ok] of Object.entries(genericWorkspaceFinding)) if (!ok) blockers.push(`AdminSubmoduleWorkspace operations integrity failed: ${key}`);
 
 const report = {
   ok: blockers.length === 0,
@@ -197,7 +195,7 @@ const report = {
     'Keep Customer Portal orange/gold theme scoped under .nanofix-customer-portal only; Internal Admin must remain bg-adminBg + bg-sidebar + activeBlue.',
     'Promote high-volume generic submodules to dedicated live workspaces one by one: Service Requests, Quotations, Jobs, Invoices, Payments, Warranty, Customer Reviews, Website Publish Approval.',
     'For each promoted submodule require: explicit Supabase table, GET list, POST create, PATCH update/status, Audit Log write, role permission, degraded UI and E2E smoke.',
-    'Keep generic AdminSubmoduleWorkspace as contract/readiness preview only; do not use it as production write workflow.',
+    'Keep AdminSubmoduleWorkspace focused on real module operations: live table probes, guarded API probes, audit writes and follow-up task creation; avoid static説明 blocks.',
     'Add route-level smoke checks for every primary admin route and representative second-level anchors.',
     'Use /api/ready and module health checks as the first production go/no-go signal after migrations.'
   ]

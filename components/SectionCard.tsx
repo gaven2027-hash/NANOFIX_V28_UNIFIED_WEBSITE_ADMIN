@@ -27,7 +27,7 @@ export function SectionCard({
         <div className="absolute -right-6 -top-6 h-14 w-20 rotate-12 rounded-[45%] bg-white/15 blur-xl" />
         <div className="relative min-w-0">
           <h3 className="text-[15px] font-black leading-5 text-white">{title}</h3>
-          {subtitle ? <p className="mt-0.5 block max-w-full overflow-hidden whitespace-nowrap text-[9.5px] font-semibold leading-3 tracking-[-0.01em] text-[#CBD5E1]">{subtitle}</p> : null}
+          {subtitle ? <span className="sr-only">{subtitle}</span> : null}
         </div>
         <span className="relative z-10 rounded-full border border-white/25 bg-white/15 px-2.5 py-1.5 text-[10px] font-black text-white shadow-sm">
           {collapsed ? 'Expand / 展开 ▾' : 'Collapse / 收起 ▴'}

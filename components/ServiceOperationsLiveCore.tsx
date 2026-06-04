@@ -250,7 +250,7 @@ export function ServiceOperationsLiveCore() {
 
         <div className="mt-5 rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><div className="text-sm font-black text-slate-950">Live actions / 真实操作</div><p className="mt-1 text-xs font-semibold text-slate-500">Create, update, detail and status actions call server API. No local fake success. / 创建、更新、详情和状态都调用服务端 API，不做本地假成功。</p></div>
+            <div><div className="text-sm font-black text-slate-950">Live actions / 真实操作</div><p className="mt-1 text-xs font-semibold text-slate-500">Connected API: /api/admin/service-operations</p></div>
             <button type="button" disabled={action.loading || !active.createEnabled} onClick={() => void createRecord()} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Create {active.title} / 新增</button>
           </div>
         </div>

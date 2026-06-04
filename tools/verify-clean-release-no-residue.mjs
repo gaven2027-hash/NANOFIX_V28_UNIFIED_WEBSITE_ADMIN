@@ -27,8 +27,8 @@ must(middleware.includes('"/adminb"') && middleware.includes('"/customer"') && m
 must(middleware.includes('"/advertising-center"') && middleware.includes('"/advertising-center/:path*"'), 'advertising center is explicitly listed in protected admin routes');
 must(!existsSync('app/register/engineer/page.tsx'), 'standalone engineer registration route is deleted');
 must(registerForm.includes("type RegisterContext = 'admin' | 'customer'"), 'register form only supports admin/customer contexts');
-must(registerForm.includes('inspection_repair') && registerForm.includes('total_management') && registerForm.includes('finance'), 'admin register role groups exist');
-must(!registerForm.includes("'engineer'") && !registerForm.includes('Engineer Account Application'), 'register form has no standalone engineer registration copy');
+must(registerForm.includes('super_admin') && registerForm.includes('admin') && registerForm.includes('inspection_repair') && registerForm.includes('operations') && registerForm.includes('finance'), 'admin register role groups exist');
+must(!registerForm.includes("type RegisterContext = 'admin' | 'customer' | 'engineer'") && !registerForm.includes('Engineer Account Application') && registerForm.includes('Internal Admin App entry'), 'register form has no standalone engineer registration copy');
 must(publicRegistrationApi.includes("const allowedRequestedRoles = ['customer', 'admin']"), 'public registration API only allows customer/admin');
 must(!publicRegistrationApi.includes("'engineer'") && publicRegistrationApi.includes('requested_role_group'), 'public registration API has no engineer role option and stores group');
 must(adminRegistrationApi.includes('roleFromGroup') && adminRegistrationApi.includes('approved_role_group'), 'admin review API maps final role group');
@@ -43,15 +43,15 @@ must(vercel.includes('npm run validate:predeploy && npm run build:ci'), 'Vercel 
 must(!vercel.includes('"buildCommand": "npm run build:standard"'), 'old Vercel buildCommand residue is removed');
 must(vercel.includes('/api/system/module-health-worker'), 'Vercel module health cron remains configured');
 
-must(adminNavigation.includes('/admin/advertising-center') && adminNavigation.includes('/admin/advertising-center/budgets'), 'clean routed admin navigation includes advertising center module and submodules');
-must(adminShell.includes("@/data/adminNavigation") && adminShell.includes('ModuleShortcutBar'), 'AdminShell uses routed navigation and module shortcut bar');
+must(adminNavigation.includes('/admin/advertising-center') && adminNavigation.includes('/admin/advertising-center#budgets-strategy'), 'clean routed admin navigation includes advertising center module and submodules');
+must(adminShell.includes("@/data/adminNavigation") && adminShell.includes('SidebarNav') && adminShell.includes('TopSearch'), 'AdminShell uses routed navigation and operational shell controls');
 must(adminShell.includes('useState<string | null>(null)') && !adminShell.includes('Object.fromEntries(menu.map'), 'AdminShell left menu defaults collapsed instead of expanding all sections');
 must(adminShell.includes('setOpenSection((current) => (current === item.href ? null : item.href))'), 'AdminShell opens only one primary menu section at a time');
-must(adminShell.includes('Expand submenu only') && adminShell.includes('Open module page'), 'AdminShell separates first-level expand from manual module navigation');
+must(adminShell.includes('aria-expanded') && adminShell.includes('navigateSamePageHash') && adminShell.includes('basePath(child.href)'), 'AdminShell separates first-level expand from routed submodule navigation');
 must(adminHome.includes("@/data/adminNavigation") && adminHome.includes('Open Module / 进入模块') && !adminHome.includes('centerGrid'), 'admin home is routed module launch page, not old preview grid');
 must(!adminHome.includes('href={`#center-${center.order}`}') && !adminHome.includes('id={`center-${center.order}`}'), 'old #center anchor-only admin navigation residue is removed from admin home');
 must(menuAnchorSections.includes('AdminSubmoduleWorkspace') && !menuAnchorSections.includes('Production data should replace'), 'MenuAnchorSections routes to interactive workspace, not text-only placeholder cards');
-must(submoduleWorkspace.includes('Workspace active / 工作区已打开') && submoduleWorkspace.includes('Operational panel / 操作面板') && submoduleWorkspace.includes('window.dispatchEvent(new HashChangeEvent'), 'right-side submenu area is interactive single-page workspace');
+must(submoduleWorkspace.includes('Submodule Operations / 二级模块操作台') && submoduleWorkspace.includes('Refresh Live Data / 刷新实时数据') && submoduleWorkspace.includes('Write Audit Check / 写入审计') && submoduleWorkspace.includes('Open Linked API / 打开关联接口'), 'right-side submenu area is interactive operations workspace');
 
 for (const route of ['/admin/advertising-center', '/admin/advertising-center/import', '/admin/advertising-center/insights', '/admin/advertising-center/creatives', '/admin/advertising-center/budgets']) {
   must(e2eSmoke.includes(route), `E2E smoke protects ${route}`);

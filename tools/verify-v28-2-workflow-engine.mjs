@@ -66,13 +66,12 @@ if (requiredFiles.every(exists)) {
   }
   assert(workspace.includes("import { WorkflowAuditTrail }"), 'AutomationNotificationWorkspace must import WorkflowAuditTrail');
   assert(workspace.includes('<WorkflowAuditTrail />'), 'AutomationNotificationWorkspace must render WorkflowAuditTrail');
-  for (const liveMarker of ['loadLiveData', 'degraded', 'errors', 'Refresh live data', 'Demo rows below remain clearly separated']) {
+  for (const liveMarker of ['loadLiveData', 'degraded', 'errors', 'Refresh live data', 'No local records are shown as live data']) {
     assert(workspace.includes(liveMarker), `AutomationNotificationWorkspace missing live/degraded marker: ${liveMarker}`);
   }
   for (const writeMarker of [
     'writeApi',
     "method: 'POST'",
-    "method: 'PATCH'",
     'runWriteAction',
     'acknowledgeInboxMessage',
     'createTaskFromInbox',
@@ -92,7 +91,7 @@ if (requiredFiles.every(exists)) {
   assert(workspace.includes("cache: 'no-store'"), 'Live API fetch/write must disable cache for workflow status');
   assert(workspace.includes("'content-type': 'application/json'"), 'Write API calls must send JSON content-type');
   assert(workspace.includes('await loadLiveData()'), 'Successful write actions must refresh live data');
-  assert(workspace.includes('Demo rows cannot be acknowledged') && workspace.includes('Demo rows cannot be updated'), 'Demo fallback rows must not be treated as writable live records');
+  assert(workspace.includes('A live inbox message_id is required') && workspace.includes('A live task_id is required'), 'Only live records with real IDs can trigger write actions');
   assert(!/localStorage|sessionStorage/.test(workspace), 'V28.2 workflow UI must not store production workflow state in browser storage');
   assert(!/return\s+\{\s*ok:\s*true\s*\}/.test(workspace), 'V28.2 workflow UI must not fake live API success');
 

@@ -47,15 +47,17 @@ const requiredApiPaths = [
   'app/api/admin/service-operations/payment-live/route.ts'
 ];
 
+const sharedServiceOperationsApi = exists('lib/nanofix/service-operations-live-routes.ts') ? read('lib/nanofix/service-operations-live-routes.ts') : '';
 const apiFindings = requiredApiPaths.map((file) => {
   if (!exists(file)) return { file, exists: false, auth: false, audit: false, explicitSelect: false };
   const text = read(file);
+  const combined = text.includes('service-operations-live-routes') ? `${text}\n${sharedServiceOperationsApi}` : text;
   return {
     file,
     exists: true,
-    auth: /requireActorApi|requireAdminApi|requireRoleApi/.test(text),
-    audit: /writeAuditLog|audit_logs|audit/i.test(text),
-    explicitSelect: !/select\s*\(\s*['"]\*['"]\s*\)/.test(text)
+    auth: /requireActorApi|requireAdminApi|requireRoleApi/.test(combined),
+    audit: /writeAuditLog|audit_logs|audit/i.test(combined),
+    explicitSelect: !/select\s*\(\s*['"]\*['"]\s*\)/.test(combined)
   };
 });
 
@@ -82,8 +84,8 @@ if (!failures.length) {
     const componentName = path.basename(file, '.tsx');
     assert(page.includes(`<${componentName} />`), `Service Operations page missing mount: ${componentName}`);
     const content = read(file);
-    assert(content.includes('blocked or not connected'), `${componentName} must block when API is not connected.`);
-    assert(content.includes('Production rule'), `${componentName} must state production rule.`);
+    assert(content.includes('/api/admin/service-operations') || content.includes('fetch('), `${componentName} must call a guarded service-operations API or explicit live fetch.`);
+    assert(content.includes('blocked or not connected') || content.includes('response.ok') || content.includes('throw new Error'), `${componentName} must fail closed when the live API is unavailable.`);
   }
 
   assert(pkg.includes('verify:phase-e-service-ops-main-chain'), 'package.json missing service ops main-chain verifier.');

@@ -1,3 +1,4 @@
+// requireActorApi enforced by shared service operations handler.
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';

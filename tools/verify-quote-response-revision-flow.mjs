@@ -81,7 +81,7 @@ if (requiredFiles.every(exists)) {
     'Quote Response / 报价回复',
     'You can accept, decline, or request revision with a message',
     'cannot edit quotation or invoice content',
-    'Accept Quote / 同意报价',
+    'Accept Quote / 接受报价',
     'Request Revision / 要求修改',
     'Decline / 不同意',
     "credentials: 'same-origin'",

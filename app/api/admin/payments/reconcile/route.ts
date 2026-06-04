@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { createSupabaseAdminClient } from "@/lib/supabase-server";
+import { auditLog, createSupabaseAdminClient } from "@/lib/supabase-server";
 import { fail, ok, validationError } from "@/lib/nanofix/api";
-import { requireAdmin } from "@/lib/nanofix/auth";
+import { auditActor, requireAdmin } from "@/lib/nanofix/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,5 +28,12 @@ export async function POST(request: Request) {
     p_actor_role: context?.role ?? "finance_admin"
   });
   if (error) return fail("Payment reconciliation failed", 409, error.message);
+  await auditLog({
+    ...auditActor(context),
+    action: "payment.reconciled",
+    target_table: "payments",
+    target_id: parsed.data.invoice_id,
+    metadata: { invoice_id: parsed.data.invoice_id, amount: parsed.data.amount, gateway: parsed.data.gateway, transaction_id: parsed.data.transaction_id, reconciliation: data }
+  });
   return ok({ storage: "supabase_rpc", reconciliation: data });
 }

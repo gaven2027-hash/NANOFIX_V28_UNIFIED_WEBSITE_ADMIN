@@ -83,7 +83,6 @@ export default function Page() {
               className="rounded-3xl bg-white p-4 shadow-soft ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-activeBlue"
             >
               <div className="text-sm font-black text-slate-950">{item.title}</div>
-              <p className="mt-1 text-xs font-bold leading-5 text-slate-500">{item.note}</p>
             </Link>
           ))}
         </section>

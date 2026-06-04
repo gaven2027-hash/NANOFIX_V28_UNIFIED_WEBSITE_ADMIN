@@ -86,10 +86,10 @@ if (requiredFiles.every(exists)) {
     'new_repair',
     'warranty_repair',
     'Quotations, invoices and warranty documents are generated from official admin templates',
-    'customers cannot edit',
     'Submit to Unified Service Operations',
     'Document Feedback'
   ], 'Customer portal request and feedback panel');
+  assert(/customers cannot edit/i.test(customerPanel), 'Customer portal request and feedback panel missing marker: customers cannot edit');
   noBrowserStorage(customerPanel, 'Customer portal request and feedback panel');
 
   has(customerPage, ['CustomerPortalRequestAndFeedbackPanel'], 'Customer submit request page');

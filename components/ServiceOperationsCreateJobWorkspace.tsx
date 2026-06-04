@@ -52,7 +52,7 @@ export function ServiceOperationsCreateJobWorkspace() {
         <div>
           <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Phase E.1.3 / Create Job</div>
           <h2 className="mt-2 text-2xl font-black text-slate-950">Create Job from Service Request / 从服务请求创建工单</h2>
-          <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-slate-600">This workspace starts the production chain from Service Request to Job. It must use a guarded server API and must not create client-side fake success. / 本工作区启动服务请求到工单的生产链路，必须使用受保护服务端 API，不能前端假成功。</p>
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500">Connected API: /api/admin/service-operations/create-job-from-request</p>
         </div>
       </div>
 
@@ -66,10 +66,6 @@ export function ServiceOperationsCreateJobWorkspace() {
 
       {state.error ? <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-950 ring-1 ring-amber-200">Live create-job API blocked or not connected: {state.error}<br />Next required endpoint: /api/admin/service-operations/create-job-from-request</div> : null}
       {state.result ? <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-xs font-bold leading-5 text-emerald-950 ring-1 ring-emerald-200">Job created by live API. / 工单已由真实 API 创建。<br />Job ID: {text(state.result.job_id)} / Status: {text(state.result.status)}</div> : null}
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Creating a job must write jobs, job_events, service request status transition and audit logs in one guarded workflow. / 创建工单必须通过受保护流程写入 jobs、job_events、服务请求状态流转和审计日志。
-      </div>
     </section>
   );
 }

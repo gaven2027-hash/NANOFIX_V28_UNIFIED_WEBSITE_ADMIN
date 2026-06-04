@@ -66,10 +66,6 @@ export function ServiceOperationsPaymentLiveWorkspace() {
 
       {state.error ? <div className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-950 ring-1 ring-amber-200">Live payment API blocked or not connected: {state.error}<br />Next required endpoint: /api/admin/service-operations/payment-live</div> : null}
       {state.result ? <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-xs font-bold leading-5 text-emerald-950 ring-1 ring-emerald-200">Payment action saved by live API. / 付款操作已由真实 API 保存。<br />Payment ID: {text(state.result.payment_id)} / Status: {text(state.result.status)}</div> : null}
-
-      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-xs font-bold leading-5 text-blue-950 ring-1 ring-blue-200">
-        Production rule / 生产规则：Payment workflow must write payments, payment events, receipt readiness, invoice status update and audit logs. / 付款流程必须写入付款记录、付款事件、收据准备状态、发票状态更新和审计日志。
-      </div>
     </section>
   );
 }

@@ -13,14 +13,23 @@ const requiredFiles = [
   'data/adminNavigation.ts',
   'data/adminModuleReality.ts',
   'components/AdminSubmoduleWorkspace.tsx',
+  'app/api/admin/module-operations/route.ts',
   'docs/NANOFIX_V28_2_ADMIN_MENU_REALITY_AUDIT_20260529.md'
 ];
 for (const file of requiredFiles) assert(exists(file), `Missing admin reality file: ${file}`);
+
+function sourceHasHref(source, href) {
+  if (source.includes(`href: '${href}'`) || source.includes(`href: \`${href}\``) || source.includes(`href:${JSON.stringify(href)}`)) return true;
+  const [route, anchor] = href.split('#');
+  if (!route || !anchor) return false;
+  return source.includes(`href: \`${route}#\${anchor}\``) && (source.includes(`'${anchor}'`) || source.includes(`\"${anchor}\"`));
+}
 
 if (requiredFiles.every(exists)) {
   const nav = read('data/adminNavigation.ts');
   const registry = read('data/adminModuleReality.ts');
   const workspace = read('components/AdminSubmoduleWorkspace.tsx');
+  const operationsApi = read('app/api/admin/module-operations/route.ts');
   const auditDoc = read('docs/NANOFIX_V28_2_ADMIN_MENU_REALITY_AUDIT_20260529.md');
 
   const hrefMatches = [...nav.matchAll(/child\('([^']+)'/g)].map((match) => match[1]);
@@ -28,7 +37,7 @@ if (requiredFiles.every(exists)) {
   assert(uniqueHrefs.length >= 140, `Expected broad 0-8 menu coverage; found only ${uniqueHrefs.length} child hrefs.`);
 
   for (const href of uniqueHrefs) {
-    assert(registry.includes(`href: '${href}'`) || registry.includes(`href: \`${href}\``) || registry.includes(`href: \`/${href.split('#')[0].replace(/^\//, '')}#`), `adminModuleReality missing menu href: ${href}`);
+    assert(sourceHasHref(registry, href), `adminModuleReality missing menu href: ${href}`);
   }
 
   for (const marker of [
@@ -47,21 +56,36 @@ if (requiredFiles.every(exists)) {
   for (const status of ["status: 'live'", "status: 'partial'", "status: 'contract'"]) {
     assert(registry.includes(status), `adminModuleReality missing status bucket: ${status}`);
   }
-  warn(registry.includes("status: 'missing'"), 'No current module is explicitly marked missing; this is acceptable only if all menu anchors have at least a contract entry.');
+  warn(registry.includes("status: 'missing'"), 'No current module is explicitly marked missing; acceptable if all menu anchors have at least a contract entry.');
 
   for (const marker of [
     "import { getAdminModuleReality",
     '@/data/adminModuleReality',
-    'Source of truth / 真实性来源',
-    'data/adminModuleReality.ts',
-    'Registry live marker only',
-    'Registry non-live marker',
-    'Reality log / 真实性页面日志'
-  ]) assert(workspace.includes(marker), `AdminSubmoduleWorkspace missing registry-driven marker: ${marker}`);
+    '/api/admin/module-operations',
+    'Refresh Live Data / 刷新实时数据',
+    'Write Audit Check / 写入审计',
+    'Create Follow-up Task / 新建跟进任务',
+    'Open Linked API / 打开关联接口',
+    'Open Main Workspace / 打开主模块',
+    'Submodule Operations / 二级模块操作台'
+  ]) assert(workspace.includes(marker), `AdminSubmoduleWorkspace missing operations marker: ${marker}`);
 
   assert(!workspace.includes('function profileFor'), 'AdminSubmoduleWorkspace should not use old keyword-based profileFor guessing.');
   assert(!workspace.includes('slugText'), 'AdminSubmoduleWorkspace should not use old keyword slugText guessing.');
-  assert(workspace.includes('fallbackReality'), 'AdminSubmoduleWorkspace should safely treat missing registry entries as contract fallback.');
+  assert(!workspace.includes('Source of truth / 真实性来源'), 'AdminSubmoduleWorkspace must not show static reality-source説明 text in the operations UI.');
+  assert(!workspace.includes('Reality log / 真实性页面日志'), 'AdminSubmoduleWorkspace must not show static reality-log説明 text in the operations UI.');
+
+  for (const marker of [
+    'requireActorApi',
+    'writeAuditLog',
+    'unified_tasks',
+    'entity_events',
+    'audit_logs',
+    'tableProbe',
+    'api_probes',
+    'record_audit_check',
+    'create_followup_task'
+  ]) assert(operationsApi.includes(marker), `module-operations API missing live operation marker: ${marker}`);
 
   for (const marker of [
     'Admin Menu Reality Audit Matrix',
@@ -73,7 +97,7 @@ if (requiredFiles.every(exists)) {
   ]) assert(auditDoc.includes(marker), `Admin menu reality audit doc missing marker: ${marker}`);
 
   for (const href of ['/service-operations#leads', '/customer-center#customer-list', '/website-management#homepage-content']) {
-    assert(registry.includes(`href: '${href}'`), `High-priority anchor missing from adminModuleReality: ${href}`);
+    assert(sourceHasHref(registry, href), `High-priority anchor missing from adminModuleReality: ${href}`);
   }
 }
 
@@ -81,6 +105,7 @@ const report = {
   ok: failures.length === 0,
   generated_at: new Date().toISOString(),
   verifier: 'verify-admin-module-reality',
+  standard: 'V28.4.1 operations UI: real controls/API probes/audit writes instead of visible static説明 blocks',
   failures,
   warnings
 };

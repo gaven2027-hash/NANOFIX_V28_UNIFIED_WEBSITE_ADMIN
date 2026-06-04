@@ -81,13 +81,13 @@ must(middleware.includes('url.pathname = "/dashboard"'), 'Legacy engineer portal
 must(middleware.includes('"/api/portal/engineer"') && middleware.includes('apiAdminRoutes'), 'Engineer portal API is protected as internal admin API');
 must(!middleware.includes('type PortalContext = "admin" | "customer" | "engineer"'), 'Middleware no longer treats engineer as portal context');
 
-must(customerPortalPage.includes('<PortalShell type="customer">') && !customerPortalPage.includes('AdminShell'), 'Customer portal remains outside Internal Admin left menu shell');
+must(customerPortalPage.includes('<CustomerPortalShell>') && !customerPortalPage.includes('AdminShell'), 'Customer portal remains outside Internal Admin left menu shell');
 must(customerPortalPage.includes('CustomerPortalRequestWorkspace'), 'Customer portal wires real request workspace');
 must(portalShell.includes('New Repair Request') && portalShell.includes('Warranty Claim'), 'Customer Portal includes New Repair Request and Warranty Claim');
 must(portalShell.includes('Submit Review') && portalShell.includes('Review Privacy Settings'), 'Customer Portal includes reviews and privacy settings');
 must(!portalShell.includes('EngineerPortalAnchors') && !portalShell.includes('const engineerLinks'), 'PortalShell no longer exposes standalone engineer portal menu');
 must(customerRequestWorkspace.includes("type RequestKind = 'new_repair' | 'warranty_claim'"), 'Customer request workspace supports repair and warranty claim types');
-must(customerRequestWorkspace.includes("fetch('/api/public/service-requests'") && customerRequestWorkspace.includes('Customer Portal submissions are customer-owned records'), 'Customer request workspace submits to public service request API');
+must(customerRequestWorkspace.includes("fetch('/api/customer-portal/service-requests'") && customerRequestWorkspace.includes('Customer Portal submissions are customer-owned records'), 'Customer request workspace submits to authenticated customer portal service request API');
 
 must(publicRegistrationApi.includes("const allowedRequestedRoles = ['customer', 'admin']"), 'Public registration API allows only customer/admin request types');
 must(publicRegistrationApi.includes('super_admin') && publicRegistrationApi.includes('inspection_repair') && publicRegistrationApi.includes('operations') && publicRegistrationApi.includes('finance'), 'Public registration API accepts final internal role groups');

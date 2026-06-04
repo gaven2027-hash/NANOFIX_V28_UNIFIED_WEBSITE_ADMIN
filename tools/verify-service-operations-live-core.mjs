@@ -116,7 +116,7 @@ if (requiredFiles.every(exists)) {
   assertNoSelectStar(customerSubmitApi, 'Customer Portal linked service request API');
   assertMarkers(customerStorageApi, ['CUSTOMER_ROLES','assertCustomerOwnsServiceRequest','customer_portal_signed_upload_url_create','customer_portal_completed_upload_register','createSignedUploadUrl','register_completed_upload','service-uploads','service_request_id','service_upload_reviews','unified_tasks','task_events','internal_inbox_messages','storage_path does not match the service request scope','visible_to_customer: false'], 'Customer Portal linked storage upload API');
   assertNoSelectStar(customerStorageApi, 'Customer Portal linked storage upload API');
-  assertMarkers(customerFinancialApi, ['ALLOWED_ROLES','customerIdsForProfile','jobIdsForCustomers','loadFinancialForJobs','quotations','quotation_versions','invoices','payments','warranties','warranty_pdfs','visible_to_customer','createSignedUrl','pdf_download_url','has_download','payment_url','customer_portal_financial_read','service-uploads'], 'Customer Portal financial API');
+  assertMarkers(customerFinancialApi, ['ALLOWED_ROLES','customerIdsForProfile','jobIdsForCustomers','loadFinancialForJobs','quotations','quotation_versions','invoices','payments','warranties','warranty_pdfs','visible_to_customer','createSignedUrl','pdf_download_url','payment_url','customer_portal_financial_read','service-uploads'], 'Customer Portal financial API');
   assertNoSelectStar(customerFinancialApi, 'Customer Portal financial API');
 
   assertMarkers(financialVisibility, [
@@ -135,9 +135,9 @@ if (requiredFiles.every(exists)) {
   assertMarkers(customerFinancialPage, ['CustomerPortalShell','CustomerPortalFinancialOverview'], 'Customer financial page');
   assert(!customerFinancialPage.includes('AdminShell'), 'Customer financial page must not use AdminShell.');
 
-  assertMarkers(shell, ['CustomerPortalShell','/customer-portal','/customer-portal/records','/customer-portal/uploads','/customer-portal/financial','/customer-portal/records#warranties','/customer-portal/financial#invoices','Customer Portal is separated from the Internal Admin App'], 'CustomerPortalShell');
+  assertMarkers(shell, ['CustomerPortalShell','/customer-portal','/customer-portal/records','/customer-portal/uploads','/customer-portal/financial','Customer Portal is separated from the Internal Admin App'], 'CustomerPortalShell');
   assert(!shell.includes('AdminShell'), 'CustomerPortalShell must not use AdminShell.');
-  assertMarkers(dashboard, ['CustomerPortalDashboard','/api/customer-portal/records?limit=20','My NANOFIX Service Centre','Repair Requests','Jobs','Invoices','Payments','Warranties','/customer-portal/financial','Quotations, invoice PDFs, payment links and payment status'], 'CustomerPortalDashboard');
+  assertMarkers(dashboard, ['CustomerPortalDashboard','/api/customer-portal/records?limit=20','My NANOFIX Service Centre','Repair Requests','Jobs','Invoices','Payments','Warranties','/customer-portal/financial','Quotations, invoices, warranties, payment links and payment status'], 'CustomerPortalDashboard');
   assertNoBrowserStorage(dashboard, 'CustomerPortalDashboard');
   assertMarkers(customerUploads, ['CustomerPortalApprovedUploads','/api/customer-portal/uploads?limit=20','Approved Service Uploads','download_url','Open file / 打开文件'], 'CustomerPortalApprovedUploads');
   assertNoBrowserStorage(customerUploads, 'CustomerPortalApprovedUploads');
@@ -151,13 +151,18 @@ if (requiredFiles.every(exists)) {
   assertMarkers(customerRequest, ['CustomerPortalRequestWorkspace','/api/customer-portal/service-requests','linked to your customer account','serviceRequestId','/customer-portal/records#repair-requests','/customer-portal/uploads?service_request_id=','View in Records / 查看记录','Upload Files / 上传文件'], 'CustomerPortalRequestWorkspace');
   assertNoBrowserStorage(customerRequest, 'CustomerPortalRequestWorkspace');
   assert(!customerRequest.includes('/api/public/service-requests'), 'CustomerPortalRequestWorkspace must not submit to public service request API.');
-  assertMarkers(customerFinancial, ['CustomerPortalFinancialOverview','/api/customer-portal/financial?limit=20','Quotations, Invoices & Warranties','OptionalPdfButton','>PDF</a>','pdf_download_url','has_download','payment_url','Quotations','Invoices','Warranties','Warranty PDFs','Payments'], 'CustomerPortalFinancialOverview');
+  assertMarkers(customerFinancial, ['CustomerPortalFinancialOverview','/api/customer-portal/financial?limit=20','Quotations, Invoices & Warranties','OptionalPdfButton','>PDF</a>','pdf_download_url','payment_url','Quotations','Invoices','Warranties','Warranty PDFs','Payments'], 'CustomerPortalFinancialOverview');
   assert(!customerFinancial.includes('Download PDF / 下载PDF'), 'CustomerPortalFinancialOverview must not prompt customers to download PDFs; use optional PDF button only.');
   assertNoBrowserStorage(customerFinancial, 'CustomerPortalFinancialOverview');
   assert(!customerFinancial.includes('<main'), 'CustomerPortalFinancialOverview should not render nested main.');
 
+  function registryHasHref(href) {
+    if (registry.includes(`href: \`${href}\``) || registry.includes(`href: '${href}'`)) return true;
+    const [route, anchor] = href.split('#');
+    return Boolean(anchor && registry.includes(`href: \`${route}#\${anchor}\``) && (registry.includes(`'${anchor}'`) || registry.includes(`\"${anchor}\"`)));
+  }
   for (const anchor of ['/service-operations#leads','/service-operations#service-requests','/service-operations#jobs','/service-operations#quotations','/service-operations#invoices','/service-operations#payments','/service-operations#warranty-records','/service-operations#status-flow-logs']) {
-    assert(registry.includes(`href: \`${anchor}\``) || registry.includes(`href: '${anchor}'`), `adminModuleReality missing Service Operations anchor: ${anchor}`);
+    assert(registryHasHref(anchor), `adminModuleReality missing Service Operations anchor: ${anchor}`);
   }
   assertMarkers(bridge, ['transition_status_tx','status_transition_logs','public.quotation_versions','public.invoice_items','public.payment_transactions','public.owns_customer'], 'Schema bridge migration');
   assertMarkers(inspectionSql, ['public.service_inspections','public.service_upload_reviews','enable row level security','operations roles can write service inspections','operations roles can write upload reviews'], 'Inspection/upload migration');

@@ -72,7 +72,7 @@ if (!failures.length) {
   for (const marker of [
     '/api/customer-portal/financial?limit=20',
     '/api/customer-portal/quote-acceptance',
-    'Accept Quote / 同意报价',
+    'Accept Quote / 接受报价',
     'Request Revision / 要求修改',
     'Decline / 不同意',
     'cannot edit quotation, invoice, warranty or payment content',
@@ -87,7 +87,7 @@ if (!failures.length) {
     /fetch\(['"]\/api\/admin\//,
     /method:\s*['"](PATCH|PUT|DELETE)['"]/,
     /localStorage|sessionStorage/,
-    /Edit\s+(Quotation|Invoice|Warranty|Payment)|修改(报价|发票|保修|付款)/i
+    /<(button|a)[^>]*>[^<]*(Edit\s+(Quotation|Invoice|Warranty|Payment)|修改(报价|发票|保修|付款))/i
   ]) no(financialUi, prohibited, 'Customer portal financial UI');
 
   must(pkg, 'verify:customer-portal-financial-security', 'package.json');

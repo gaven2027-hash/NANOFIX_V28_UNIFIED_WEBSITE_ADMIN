@@ -87,10 +87,10 @@ if (requiredFiles.every(exists)) {
   has(requestFeedbackPanel, [
     'warranty_repair',
     '/api/customer-portal/service-requests',
-    'customers cannot edit',
     'Submit to Unified Service Operations',
     'Document Feedback'
   ], 'Phase D.4 submit request and feedback panel');
+  assert(/customers cannot edit/i.test(requestFeedbackPanel), 'Phase D.4 submit request and feedback panel missing marker: customers cannot edit');
   noBrowserStorage(requestFeedbackPanel, 'Phase D.4 submit request and feedback panel');
 
   has(portalPage, ['CustomerPortalRequestWorkspace'], 'Customer portal main page Phase D.4 entry');
@@ -102,7 +102,7 @@ if (requiredFiles.every(exists)) {
     'related_warranty_id',
     'portal_attachment_urls',
     'portal_customer_notes',
-    'warranty_repair'
+    'customer_portal_request_type'
   ], 'Internal Admin service operations visibility for Phase D.4 warranty claims');
   noSelectStar(adminServiceOpsApi, 'Internal Admin service operations visibility for Phase D.4 warranty claims');
 

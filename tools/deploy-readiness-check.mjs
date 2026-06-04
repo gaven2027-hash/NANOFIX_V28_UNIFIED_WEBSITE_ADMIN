@@ -103,11 +103,19 @@ const requiredEnv = [
   "ALLOW_ADMIN_API_SECRET_FALLBACK=false",
   "NANOFIX_ALLOW_FORM_WITHOUT_SUPABASE=false",
   "NANOFIX_BACKUP_ENCRYPTION_KEY",
+  "JWT_SECRET",
   "CRON_SECRET",
   "PAYMENT_WEBHOOK_SECRET",
-  "SOCIAL_WEBHOOK_SECRET"
+  "SOCIAL_WEBHOOK_SECRET",
+  "ADMIN_REPAIR_REQUEST_URL",
+  "ADMIN_REPAIR_REQUEST_WEBHOOK_SECRET",
+  "CLOUDFLARE_TURNSTILE_SECRET_KEY",
+  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+  "NANOFIX_PUBLIC_FORM_RATE_LIMIT_MAX"
 ];
 for (const key of requiredEnv) assert(env.includes(key), `.env.example missing required deployment variable/default: ${key}`);
+assert(!/sb_secret_|service_role_[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/.test(env), ".env.example appears to contain a real token/key instead of placeholders");
+assert(!/NEXT_PUBLIC_SUPABASE_SERVICE_ROLE/i.test(env), ".env.example must never expose a public service role key");
 
 const middleware = read("middleware.ts");
 assert(middleware.includes("x-admin-role") && middleware.includes("x-nanofix-role"), "middleware should explicitly strip untrusted client role headers");
@@ -144,7 +152,7 @@ assert(systemSettings.includes("WorkflowSettingsWorkspace"), "System Settings mu
 assert(!systemSettings.includes("AutomationNotificationWorkspace"), "System Settings should not render the Dashboard workflow operation workspace");
 
 const workflowWorkspace = read("components/AutomationNotificationWorkspace.tsx");
-for (const marker of ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks", "WorkflowAuditTrail", "writeApi", "Demo rows cannot be acknowledged", "Demo rows cannot be updated"]) assert(workflowWorkspace.includes(marker), `AutomationNotificationWorkspace missing V28.2 marker: ${marker}`);
+for (const marker of ["/api/admin/automation-notifications", "/api/admin/internal-inbox", "/api/admin/unified-tasks", "WorkflowAuditTrail", "writeApi", "A live inbox message_id is required", "A live task_id is required"]) assert(workflowWorkspace.includes(marker), `AutomationNotificationWorkspace missing V28.2 marker: ${marker}`);
 assert(!/localStorage|sessionStorage/.test(workflowWorkspace), "AutomationNotificationWorkspace must not use browser storage for workflow state");
 
 const auditTrail = read("components/WorkflowAuditTrail.tsx");

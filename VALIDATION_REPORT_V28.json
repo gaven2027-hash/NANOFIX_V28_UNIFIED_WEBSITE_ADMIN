@@ -1,7 +1,7 @@
 {
   "ok": true,
-  "generated_at": "2026-05-23T10:46:52.776Z",
-  "package": "NANOFIX V28 CG Stable Base + GP Complete Unified Super Stable",
+  "generated_at": "2026-06-04T03:42:07.966Z",
+  "package": "NANOFIX V28.2 Automation Inbox Task Engine Final Preflight",
   "missing_required_files": [],
   "map_checks": [
     {
@@ -50,5 +50,26 @@
     "no_client_role_header_trust": true,
     "no_service_request_public_write": true,
     "backup_requires_encryption_key": true
+  },
+  "v28_2_workflow_checks": {
+    "master_memory_is_current_basis": true,
+    "final_runbook_present": true,
+    "final_handoff_present": true,
+    "dashboard_renders_workflow_workspace": true,
+    "system_settings_renders_settings_workspace": true,
+    "live_read_apis_bound": true,
+    "live_write_apis_bound": true,
+    "demo_rows_not_writable": true,
+    "no_browser_storage_workflow_state": true,
+    "audit_trail_ui_bound": true,
+    "audit_api_explicit_fields_and_audited": true,
+    "settings_ui_bound": true,
+    "settings_api_explicit_fields_and_audited": true,
+    "workflow_tables_exist_in_migrations": true,
+    "workflow_settings_defaults_exist": true,
+    "ready_checks_workflow_settings": true,
+    "global_search_includes_workflow_settings": true,
+    "e2e_smoke_covers_settings_audit": true,
+    "static_scan_present_and_guarding": true
   }
 }

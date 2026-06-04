@@ -82,7 +82,7 @@ function LogoutPanel({ onLoggedOut }: { onLoggedOut?: () => void }) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   async function signOut() { setSigningOut(true); try { const supabase = createBrowserClient(); await supabase.auth.signOut(); } catch {} finally { clearAdminAccessCookie(); onLoggedOut?.(); router.replace('/login?role=admin'); router.refresh(); setSigningOut(false); } }
-  return <div className="border-t border-white/10 p-4"><button type="button" onClick={signOut} disabled={signingOut} className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-left text-sm font-black text-white transition hover:bg-red-500/25 disabled:cursor-wait disabled:opacity-70">{signingOut ? 'Signing out... / 正在退出...' : 'Logout / 退出账号'}</button><p className="mt-2 text-[11px] font-semibold leading-4 text-slate-400">Clear session and return to secure login. / 清除登录状态并返回登录页。</p></div>;
+  return <div className="border-t border-white/10 p-4"><button type="button" onClick={signOut} disabled={signingOut} className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-left text-sm font-black text-white transition hover:bg-red-500/25 disabled:cursor-wait disabled:opacity-70">{signingOut ? 'Signing out... / 正在退出...' : 'Logout / 退出账号'}</button></div>;
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -108,7 +108,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           max-width: none !important;
         }
       ` }} />
-      <aside className="nanofix-admin-sidebar fixed inset-y-0 left-0 z-30 hidden w-80 flex-col bg-sidebar text-white shadow-2xl lg:flex"><BrandBlock /><SidebarNav /><div className="border-t border-white/10 p-4 text-xs text-slate-300">QR display is backend-only. Public website QR sections are disabled.</div><LogoutPanel /></aside>
+      <aside className="nanofix-admin-sidebar fixed inset-y-0 left-0 z-30 hidden w-80 flex-col bg-sidebar text-white shadow-2xl lg:flex"><BrandBlock /><SidebarNav /><LogoutPanel /></aside>
       <div className="nanofix-admin-mobile-header sticky top-0 z-30 flex items-center justify-between bg-sidebar px-4 py-3 text-white shadow-lg lg:hidden"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1"><img src="/icon.png" alt="NANOFIX logo" className="h-full w-full object-contain" /></div><div><div className="text-base font-black">NANOFIX V28</div><div className="text-xs font-semibold text-slate-300">Admin Menu / 后台菜单</div></div></div><button type="button" onClick={() => setMobileMenuOpen((value) => !value)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-black">{mobileMenuOpen ? 'Close' : 'Menu'}</button></div>
       {mobileMenuOpen ? <div className="fixed inset-x-0 top-[64px] z-40 max-h-[calc(100vh-64px)] overflow-y-auto bg-sidebar text-white shadow-2xl lg:hidden"><SidebarNav onNavigate={() => setMobileMenuOpen(false)} /><LogoutPanel onLoggedOut={() => setMobileMenuOpen(false)} /></div> : null}
       <div className="nanofix-admin-content lg:pl-80"><div className="nanofix-admin-top-search"><TopSearch /></div><main className="nanofix-admin-main w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">{children}</main></div>
