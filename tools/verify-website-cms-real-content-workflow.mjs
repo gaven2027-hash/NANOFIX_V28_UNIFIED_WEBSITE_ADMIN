@@ -44,6 +44,11 @@ assert(migration.includes('Do not reset the production database'), 'Migration mu
 assert(migration.includes('Do not run migration repair blindly'), 'Migration must document no blind migration repair.');
 assert(migration.includes('website_pages_locale_slug_uidx'), 'Migration must ensure page locale+slug uniqueness.');
 assert(migration.includes('website_content_blocks_page_locale_key_uidx'), 'Migration must ensure block page+locale+key uniqueness.');
+assert(migration.includes('route_path'), 'Migration must include route_path for production CMS schema compatibility.');
+assert(migration.includes('content_type'), 'Migration must include content_type for website_content_blocks production schema.');
+assert(migration.includes('content_json'), 'Migration must include content_json for website_content_blocks production schema.');
+assert(migration.includes('published_version'), 'Migration must include published_version for website_content_blocks production schema.');
+assert(migration.includes('jsonb_build_object'), 'Migration must build content_json for seeded content blocks.');
 assert(migration.includes('on conflict (locale, slug)'), 'CMS pages must be idempotent via upsert.');
 assert(migration.includes('on conflict (page_id, locale, block_key)'), 'CMS blocks must be idempotent via upsert.');
 assert(!/drop\s+table|drop\s+column|truncate\s+table|delete\s+from/i.test(migration), 'Migration must not drop, truncate, or delete CMS data.');
