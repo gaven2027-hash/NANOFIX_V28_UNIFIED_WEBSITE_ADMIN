@@ -59,7 +59,7 @@ async function safeList(
   };
 }
 
-function buildChains(payload: Record<string, Row[]>) {
+function buildChains(payload: Record<string, Row[]>, knownServiceRequestIds: Set<string>) {
   const serviceRequests = payload.service_requests ?? [];
   const jobs = payload.jobs ?? [];
   const quotations = payload.quotations ?? [];
@@ -109,12 +109,52 @@ function buildChains(payload: Record<string, Row[]>) {
     };
   });
 
-  const linkedRequestIds = new Set(serviceRequests.map((row) => idOf(row, 'service_request_id')).filter(Boolean) as string[]);
-  const orphanJobs = jobs.filter((job) => !linkedRequestIds.has(String(job.service_request_id ?? '')));
+  const orphanJobs = jobs.filter((job) => {
+    const serviceRequestId = idOf(job, 'service_request_id');
+    return !serviceRequestId || !knownServiceRequestIds.has(serviceRequestId);
+  });
 
   return { chains, orphan_jobs: orphanJobs };
 }
 
+
+async function fetchKnownServiceRequestIds(
+  supabase: ReturnType<typeof createAdminClient>,
+  loadedServiceRequests: Row[],
+  jobs: Row[]
+) {
+  const known = new Set(
+    loadedServiceRequests
+      .map((row) => idOf(row, 'service_request_id'))
+      .filter(Boolean) as string[]
+  );
+
+  const missingIds = Array.from(new Set(
+    jobs
+      .map((job) => idOf(job, 'service_request_id'))
+      .filter((id): id is string => Boolean(id) && !known.has(id))
+  ));
+
+  if (!missingIds.length) {
+    return { known, error: null as string | null };
+  }
+
+  const { data, error } = await supabase
+    .from('service_requests')
+    .select('service_request_id')
+    .in('service_request_id', missingIds);
+
+  if (error) {
+    return { known, error: error.message };
+  }
+
+  for (const row of asRows(data)) {
+    const serviceRequestId = idOf(row, 'service_request_id');
+    if (serviceRequestId) known.add(serviceRequestId);
+  }
+
+  return { known, error: null as string | null };
+}
 function countRows(payload: Record<string, Row[]>) {
   return Object.fromEntries(Object.entries(payload).map(([key, rows]) => [key, rows.length]));
 }
@@ -144,7 +184,17 @@ export async function GET(request: NextRequest) {
     if (result.error) errors.push(`${result.key}: ${result.error}`);
   }
 
-  const chain = buildChains(payload);
+  const knownRequestCheck = await fetchKnownServiceRequestIds(
+    supabase,
+    payload.service_requests ?? [],
+    payload.jobs ?? []
+  );
+
+  if (knownRequestCheck.error) {
+    errors.push(service_request_reference_check: );
+  }
+
+  const chain = buildChains(payload, knownRequestCheck.known);
 
   await writeAuditLog({
     actorId: auth.actor.profileId,

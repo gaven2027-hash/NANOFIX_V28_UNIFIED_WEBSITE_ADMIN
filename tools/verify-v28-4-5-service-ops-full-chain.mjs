@@ -36,10 +36,12 @@ if (!failures.length) {
   must(route, "writeAuditLog", 'Full-chain API audit write');
   must(route, "buildChains", 'Full-chain API chain builder');
   must(route, "orphan_jobs", 'Full-chain API orphan job reporting');
+  must(route, "fetchKnownServiceRequestIds", 'Full-chain API database-backed service request reference check');
+  must(route, ".in('service_request_id', missingIds)", 'Full-chain API validates out-of-window service request references before orphan reporting');
   assert(!/\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(|\.rpc\s*\(/.test(route), 'Full-chain API must remain read-only for business records.');
 
   must(component, "/api/admin/service-operations/full-chain", 'Full-chain workspace guarded API call');
-  must(component, "Service Request → Job → Quotation → Invoice → Payment → Warranty", 'Full-chain workspace chain title');
+  must(component, "Service Request 鈫?Job 鈫?Quotation 鈫?Invoice 鈫?Payment 鈫?Warranty", 'Full-chain workspace chain title');
   must(component, "bg-activeBlue", 'Full-chain workspace admin blue style');
   must(component, "blocked or not connected", 'Full-chain workspace fail-closed message');
   assert(!component.includes('fake success'), 'Full-chain workspace must not show fake success.');
