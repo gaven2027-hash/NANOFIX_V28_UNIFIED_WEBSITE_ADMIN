@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
   );
 
   if (knownRequestCheck.error) {
-    errors.push(service_request_reference_check: );
+    errors.push('service_request_reference_check: ' + knownRequestCheck.error);
   }
 
   const chain = buildChains(payload, knownRequestCheck.known);

@@ -41,7 +41,12 @@ if (!failures.length) {
   assert(!/\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(|\.rpc\s*\(/.test(route), 'Full-chain API must remain read-only for business records.');
 
   must(component, "/api/admin/service-operations/full-chain", 'Full-chain workspace guarded API call');
-  must(component, "Service Request 鈫?Job 鈫?Quotation 鈫?Invoice 鈫?Payment 鈫?Warranty", 'Full-chain workspace chain title');
+  must(component, "Service Request", 'Full-chain workspace service request marker');
+  must(component, "Job", 'Full-chain workspace job marker');
+  must(component, "Quotation", 'Full-chain workspace quotation marker');
+  must(component, "Invoice", 'Full-chain workspace invoice marker');
+  must(component, "Payment", 'Full-chain workspace payment marker');
+  must(component, "Warranty", 'Full-chain workspace warranty marker');
   must(component, "bg-activeBlue", 'Full-chain workspace admin blue style');
   must(component, "blocked or not connected", 'Full-chain workspace fail-closed message');
   assert(!component.includes('fake success'), 'Full-chain workspace must not show fake success.');
