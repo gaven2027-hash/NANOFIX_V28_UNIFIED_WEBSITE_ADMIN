@@ -132,7 +132,8 @@ async function fetchKnownServiceRequestIds(
   const missingIds = Array.from(new Set(
     jobs
       .map((job) => idOf(job, 'service_request_id'))
-      .filter((id): id is string => Boolean(id) && !known.has(id))
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      .filter((id) => !known.has(id))
   ));
 
   if (!missingIds.length) {
