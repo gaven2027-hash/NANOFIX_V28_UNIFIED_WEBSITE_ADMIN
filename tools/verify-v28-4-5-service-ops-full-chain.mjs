@@ -28,6 +28,8 @@ if (!failures.length) {
   must(route, "service_requests", 'Full-chain API service request source');
   must(route, "jobs", 'Full-chain API job source');
   must(route, "quotations", 'Full-chain API quotation source');
+  must(route, "service_request_id,current_version,total", 'Full-chain API quotation direct service-request linkage select');
+  must(route, "equalsId(quotationServiceRequestId, serviceRequestId)", 'Full-chain API direct service-request quotation linkage');
   must(route, "invoices", 'Full-chain API invoice source');
   must(route, "payments", 'Full-chain API payment source');
   must(route, "warranties", 'Full-chain API warranty source');
