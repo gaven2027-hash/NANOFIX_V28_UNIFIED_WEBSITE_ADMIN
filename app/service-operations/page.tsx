@@ -45,7 +45,11 @@ import { MenuAnchorSections } from '@/components/MenuAnchorSections';
 export default function Page() {
   return (
     <AdminShell>
-      <PageHeader eyebrow="涓氬姟璁㈠崟澶勭悊" title="Service & Order Operations" description="Manage lead, request, inspection, quote, job, payment, warranty and Super Admin override. / 绠＄悊绾跨储銆佹姤淇€佹煡楠屻€佹姤浠枫€佸伐鍗曘€佷粯娆俱€佷繚淇拰鎬荤鐞嗗憳寮哄埗娴佽浆銆? />
+      <PageHeader
+        eyebrow="Service Operations"
+        title="Service & Order Operations"
+        description="Manage leads, service requests, inspections, quotations, jobs, invoices, payments, warranties, audit logs and Super Admin status transitions."
+      />
       <div className="space-y-6">
         <ServiceOperationsLiveCore />
         <ServiceOperationsFullChainWorkspace />

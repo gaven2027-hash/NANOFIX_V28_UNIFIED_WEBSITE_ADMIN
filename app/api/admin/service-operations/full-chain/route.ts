@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cleanText, getClientIp, jsonError, requireActorApi } from '@/lib/apiSecurity';
+import { cleanText, getClientIp, requireActorApi } from '@/lib/apiSecurity';
 import { writeAuditLog } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 
