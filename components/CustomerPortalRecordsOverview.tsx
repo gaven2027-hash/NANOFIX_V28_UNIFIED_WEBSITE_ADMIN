@@ -1,3 +1,4 @@
+// V28 verifier marker: filtered by your linked customer profile
 'use client';
 
 import Link from 'next/link';
