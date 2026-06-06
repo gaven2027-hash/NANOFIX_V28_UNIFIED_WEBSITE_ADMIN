@@ -6,8 +6,7 @@ import { writeAuditLog } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const ALLOWED_ROLES = ['customer'] as const;
-const DOCUMENT_TYPES = ['quotation', 'invoice', 'warranty'] as const;
-type DocumentType = typeof DOCUMENT_TYPES[number];
+type DocumentType = 'quotation' | 'invoice' | 'warranty';
 type Row = Record<string, unknown>;
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -135,7 +134,7 @@ export async function POST(request: NextRequest) {
   const documentId = cleanText(body.document_id, 120);
 
   if (!isDocumentType(documentType)) return jsonError('document_type must be quotation, invoice or warranty.', 400);
-  if (!isUuid(documentId)) return jsonError('Valid document_id is required.', 400);
+  if (!documentId || !isUuid(documentId)) return jsonError('Valid document_id is required.', 400);
 
   const supabase = createAdminClient();
   const customerIds = await customerIdsForProfile(supabase, auth.actor.profileId);
