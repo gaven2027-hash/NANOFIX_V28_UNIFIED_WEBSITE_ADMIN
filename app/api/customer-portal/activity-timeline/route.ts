@@ -73,7 +73,7 @@ function isPaidStatus(status: string) {
 }
 
 function isOpenInvoiceStatus(status: string) {
-  return !isPaidStatus(status) && !['void', 'cancelled', 'canceled', 'refunded'].includes(status.toLowerCase());
+  return !isPaidStatus(status) && !['void', 'voided', 'cancelled', 'canceled', 'refunded', 'written_off', 'reversed'].includes(status.toLowerCase());
 }
 
 function labelAuditAction(action: string) {
@@ -275,9 +275,13 @@ function buildTimeline(rows: Awaited<ReturnType<typeof loadLinkedObjects>>, audi
 }
 
 function buildPaymentStatusSummary(invoices: Row[], payments: Row[]) {
-  const invoiceTotal = invoices.reduce((sum, row) => sum + numberOf(row, 'total'), 0);
-  const paidAmount = payments.filter((row) => isPaidStatus(textOf(row, 'status', ''))).reduce((sum, row) => sum + numberOf(row, 'amount'), 0);
-  const openInvoices = invoices.filter((row) => isOpenInvoiceStatus(textOf(row, 'status', 'open'))).length;
+  const payableInvoices = invoices.filter((row) => isOpenInvoiceStatus(textOf(row, 'status', 'open')));
+  const payableInvoiceIds = new Set(payableInvoices.map((row) => idOf(row, 'invoice_id')).filter((value): value is string => Boolean(value)));
+  const invoiceTotal = payableInvoices.reduce((sum, row) => sum + numberOf(row, 'total'), 0);
+  const paidAmount = payments
+    .filter((row) => isPaidStatus(textOf(row, 'status', '')) && payableInvoiceIds.has(idOf(row, 'invoice_id') ?? ''))
+    .reduce((sum, row) => sum + numberOf(row, 'amount'), 0);
+  const openInvoices = payableInvoices.length;
   const paidInvoices = invoices.filter((row) => isPaidStatus(textOf(row, 'status', ''))).length;
   const paymentLinksOpened = payments.filter((row) => Boolean(idOf(row, 'payment_url'))).length;
 

@@ -24,6 +24,9 @@ if (!failures.length) {
   has(api, 'activity_timeline', 'api timeline missing');
   has(api, 'visible_to_customer', 'api visibility missing');
   has(api, 'buildPaymentStatusSummary', 'api payment builder missing');
+  has(api, 'payableInvoices', 'api payable invoice filter missing');
+  has(api, 'written_off', 'api written_off invoice exclusion missing');
+  has(api, 'reversed', 'api reversed invoice exclusion missing');
   has(ui, '/api/customer-portal/activity-timeline', 'ui fetch missing');
   has(ui, 'Real Payment Status + Document Activity', 'ui heading missing');
   has(ui, 'outstanding_amount', 'ui outstanding missing');
