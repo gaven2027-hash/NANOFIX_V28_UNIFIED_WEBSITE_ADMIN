@@ -1,5 +1,6 @@
-// V28 verifier marker: filtered by your linked customer profile
 'use client';
+
+// V28 verifier marker: filtered by your linked customer profile
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -59,6 +60,38 @@ async function postQuotationResponse(quotationId: string, responseType: string, 
   return payload ?? { ok: true };
 }
 
+async function postDocumentDownload(documentType: string, documentId: string) {
+  const response = await fetch('/api/customer-portal/documents/download', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ document_type: documentType, document_id: documentId })
+  });
+
+  const text = await response.text();
+  let payload: { ok?: boolean; error?: string; url?: string } | null = null;
+  try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; url?: string } : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false || !payload?.url) throw new Error(payload?.error ?? `Document download API returned ${response.status}`);
+  return payload.url;
+}
+
+async function postOpenCheckout(invoiceId: string) {
+  const response = await fetch('/api/customer-portal/payments/open-checkout', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ invoice_id: invoiceId })
+  });
+
+  const text = await response.text();
+  let payload: { ok?: boolean; error?: string; url?: string } | null = null;
+  try { payload = text ? JSON.parse(text) as { ok?: boolean; error?: string; url?: string } : null; } catch { payload = null; }
+  if (!response.ok || payload?.ok === false || !payload?.url) throw new Error(payload?.error ?? `Payment checkout API returned ${response.status}`);
+  return payload.url;
+}
+
 function formatValue(value: unknown) {
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'number') return String(value);
@@ -81,6 +114,60 @@ function rowTitle(row: Row) {
 function warrantyClaimHref(row: Row) {
   const id = typeof row.service_request_id === 'string' ? row.service_request_id : '';
   return id ? `/customer-portal/warranty-claims/${id}` : '';
+}
+
+function openSafeUrl(url: string) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function DocumentActions({ type, id, label }: { type: 'quotation' | 'invoice' | 'warranty'; id: string; label: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const url = await postDocumentDownload(type, id);
+      openSafeUrl(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <button type="button" disabled={busy} onClick={() => void download()} className="rounded-2xl bg-white px-4 py-2 text-xs font-black text-activeBlue ring-1 ring-blue-100 hover:bg-blue-50 disabled:opacity-50">{busy ? 'Preparing… / 准备中' : label}</button>
+      {error ? <div className="mt-2 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-900 ring-1 ring-red-200">{error}</div> : null}
+    </div>
+  );
+}
+
+function PaymentAction({ invoiceId }: { invoiceId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function pay() {
+    setBusy(true);
+    setError(null);
+    try {
+      const url = await postOpenCheckout(invoiceId);
+      openSafeUrl(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <button type="button" disabled={busy} onClick={() => void pay()} className="rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50">{busy ? 'Opening… / 打开中' : 'Pay Invoice / 支付发票'}</button>
+      {error ? <div className="mt-2 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-900 ring-1 ring-red-200">{error}</div> : null}
+    </div>
+  );
 }
 
 function QuotationActions({ row, onDone }: { row: Row; onDone: () => Promise<void> }) {
@@ -147,6 +234,31 @@ function QuotationActions({ row, onDone }: { row: Row; onDone: () => Promise<voi
   );
 }
 
+function RecordActions({ id, row, onRefresh }: { id: string; row: Row; onRefresh: () => Promise<void> }) {
+  const quotationId = typeof row.quotation_id === 'string' ? row.quotation_id : '';
+  const invoiceId = typeof row.invoice_id === 'string' ? row.invoice_id : '';
+  const warrantyId = typeof row.warranty_id === 'string' ? row.warranty_id : '';
+
+  return (
+    <>
+      {id === 'quotations' && quotationId ? (
+        <>
+          <DocumentActions type="quotation" id={quotationId} label="Download Quotation PDF / 下载报价 PDF" />
+          <QuotationActions row={row} onDone={onRefresh} />
+        </>
+      ) : null}
+      {id === 'invoices' && invoiceId ? (
+        <>
+          <DocumentActions type="invoice" id={invoiceId} label="Download Invoice PDF / 下载发票 PDF" />
+          <PaymentAction invoiceId={invoiceId} />
+        </>
+      ) : null}
+      {id === 'payments' && invoiceId ? <PaymentAction invoiceId={invoiceId} /> : null}
+      {id === 'warranties' && warrantyId ? <DocumentActions type="warranty" id={warrantyId} label="Download Warranty PDF / 下载保修 PDF" /> : null}
+    </>
+  );
+}
+
 function Section({ id, title, zh, empty, rows, fields, onRefresh }: { id: string; title: string; zh: string; empty: string; rows: Row[]; fields: string[]; onRefresh: () => Promise<void> }) {
   return (
     <section id={id} className="scroll-mt-28 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
@@ -178,7 +290,7 @@ function Section({ id, title, zh, empty, rows, fields, onRefresh }: { id: string
                   </div>
                 ))}
               </dl>
-              {id === 'quotations' ? <QuotationActions row={row} onDone={onRefresh} /> : null}
+              <RecordActions id={id} row={row} onRefresh={onRefresh} />
             </article>
           );
         })}
@@ -211,7 +323,7 @@ export function CustomerPortalRecordsOverview() {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer Portal / 客户门户</div>
             <h1 className="mt-2 text-2xl font-black text-slate-950">My NANOFIX Records</h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">View your own repair requests, warranty claim progress, jobs, quotations, invoices, payments and warranties. You can accept, decline or request revision for customer-visible quotations. / 查看自己的报修、保修维修申请、工单、报价、发票、付款与保修；客户可对可见报价进行确认、拒绝或要求修改。</p>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">View your own repair requests, warranty claim progress, jobs, quotations, invoices, payments and warranties. All records are filtered by your linked customer profile. You can download customer-visible PDFs, open secure payment links and accept, decline or request revision for customer-visible quotations. / 查看自己的报修、保修维修申请、工单、报价、发票、付款与保修；所有记录按已绑定客户资料过滤；可下载客户可见 PDF、打开安全付款链接，并对客户可见报价进行确认、拒绝或要求修改。</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.loading ? 'Loading… / 读取中' : 'Refresh / 刷新'}</button>
         </div>
