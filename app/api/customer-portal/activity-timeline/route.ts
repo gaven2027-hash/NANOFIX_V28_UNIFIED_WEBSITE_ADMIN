@@ -279,6 +279,9 @@ function buildPaymentStatusSummary(invoices: Row[], payments: Row[]) {
   const payableInvoiceIds = new Set(payableInvoices.map((row) => idOf(row, 'invoice_id')).filter((value): value is string => Boolean(value)));
   const invoiceTotal = payableInvoices.reduce((sum, row) => sum + numberOf(row, 'total'), 0);
   const paidAmount = payments
+    .filter((row) => isPaidStatus(textOf(row, 'status', '')))
+    .reduce((sum, row) => sum + numberOf(row, 'amount'), 0);
+  const payablePaidAmount = payments
     .filter((row) => isPaidStatus(textOf(row, 'status', '')) && payableInvoiceIds.has(idOf(row, 'invoice_id') ?? ''))
     .reduce((sum, row) => sum + numberOf(row, 'amount'), 0);
   const openInvoices = payableInvoices.length;
@@ -293,7 +296,7 @@ function buildPaymentStatusSummary(invoices: Row[], payments: Row[]) {
     payment_links_available: paymentLinksOpened,
     invoice_total: Number(invoiceTotal.toFixed(2)),
     paid_amount: Number(paidAmount.toFixed(2)),
-    outstanding_amount: Number(Math.max(invoiceTotal - paidAmount, 0).toFixed(2))
+    outstanding_amount: Number(Math.max(invoiceTotal - payablePaidAmount, 0).toFixed(2))
   };
 }
 
