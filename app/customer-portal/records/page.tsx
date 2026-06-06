@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { CustomerPortalActivityTimeline } from '@/components/CustomerPortalActivityTimeline';
 import { CustomerPortalPageFrame } from '@/components/CustomerPortalPageFrame';
 import { CustomerPortalRecordsOverview } from '@/components/CustomerPortalRecordsOverview';
 import { CustomerPortalShell } from '@/components/CustomerPortalShell';
@@ -15,6 +16,7 @@ export default function Page() {
         secondaryLabel="Read-Only Records / 只读记录"
       >
         <CustomerPortalRecordsOverview />
+        <CustomerPortalActivityTimeline />
       </CustomerPortalPageFrame>
     </CustomerPortalShell>
   );
