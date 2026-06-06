@@ -11,6 +11,21 @@ function unique(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
+function asRows(data: unknown) {
+  return Array.isArray(data) ? data : [];
+}
+
+function dedupeBy<T extends Record<string, unknown>>(rows: T[], key: string) {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const value = row[key];
+    const marker = typeof value === 'string' && value ? value : JSON.stringify(row);
+    if (seen.has(marker)) return false;
+    seen.add(marker);
+    return true;
+  });
+}
+
 async function customerIdsForProfile(profileId: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -25,7 +40,9 @@ async function customerIdsForProfile(profileId: string) {
 
 async function loadCustomerRecords(customerIds: string[], limit: number) {
   const supabase = createAdminClient();
-  if (!customerIds.length) return { service_requests: [], warranty_claims: [], jobs: [], invoices: [], payments: [], warranties: [] };
+  if (!customerIds.length) {
+    return { service_requests: [], warranty_claims: [], jobs: [], quotations: [], invoices: [], payments: [], warranties: [] };
+  }
 
   const { data: serviceRequests, error: requestError } = await supabase
     .from('service_requests')
@@ -58,8 +75,33 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
     requestJobs = byRequest.data ?? [];
   }
 
-  const jobs = [...(directJobs.data ?? []), ...(requestJobs ?? [])].filter((job, index, list) => list.findIndex((item) => item.job_id === job.job_id) === index).slice(0, limit);
-  const jobIds = unique(jobs.map((row) => row.job_id as string));
+  const jobs = dedupeBy([...(directJobs.data ?? []), ...(requestJobs ?? [])] as Array<Record<string, unknown>>, 'job_id').slice(0, limit);
+  const jobIds = unique(jobs.map((row) => row.job_id as string | undefined));
+
+  const quotationRows: unknown[] = [];
+  if (jobIds.length) {
+    const byJob = await supabase
+      .from('quotations')
+      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,created_at')
+      .in('job_id', jobIds)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (byJob.error) throw new Error(byJob.error.message);
+    quotationRows.push(...asRows(byJob.data));
+  }
+
+  if (serviceRequestIds.length) {
+    const byRequest = await supabase
+      .from('quotations')
+      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,created_at')
+      .in('service_request_id', serviceRequestIds)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (byRequest.error) throw new Error(byRequest.error.message);
+    quotationRows.push(...asRows(byRequest.data));
+  }
+
+  const quotations = dedupeBy(quotationRows as Array<Record<string, unknown>>, 'quotation_id').slice(0, limit);
 
   let invoices: unknown[] = [];
   if (jobIds.length) {
@@ -98,7 +140,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
     warranties = warrantyResult.data ?? [];
   }
 
-  return { service_requests: serviceRequests ?? [], warranty_claims: warrantyClaims, jobs, invoices, payments, warranties };
+  return { service_requests: serviceRequests ?? [], warranty_claims: warrantyClaims, jobs, quotations, invoices, payments, warranties };
 }
 
 export async function GET(request: NextRequest) {
@@ -124,6 +166,7 @@ export async function GET(request: NextRequest) {
       service_requests: records.service_requests.length,
       warranty_claims: records.warranty_claims.length,
       jobs: records.jobs.length,
+      quotations: records.quotations.length,
       invoices: records.invoices.length,
       payments: records.payments.length,
       warranties: records.warranties.length

@@ -11,6 +11,7 @@ type Payload = {
   service_requests?: Row[];
   warranty_claims?: Row[];
   jobs?: Row[];
+  quotations?: Row[];
   invoices?: Row[];
   payments?: Row[];
   warranties?: Row[];
@@ -22,6 +23,7 @@ const sections: Array<{ key: keyof Payload; title: string; zh: string; empty: st
   { key: 'service_requests', title: 'Repair Requests', zh: '报修记录', empty: 'No repair requests yet. / 暂无报修记录。', fields: ['status', 'leak_location', 'issue_description', 'address_text', 'created_at'], id: 'repair-requests' },
   { key: 'warranty_claims', title: 'Warranty Claim Tracking', zh: '保修维修申请跟踪', empty: 'No warranty claims yet. / 暂无保修维修申请。', fields: ['status', 'related_warranty_id', 'warranty_claim_decision', 'warranty_claim_next_action', 'warranty_claim_routing_status', 'warranty_claim_routed_job_id', 'warranty_claim_routed_quotation_id', 'warranty_claim_reviewed_at', 'warranty_claim_routed_at'], id: 'warranty-claims' },
   { key: 'jobs', title: 'Jobs & Site Works', zh: '工单与施工', empty: 'No jobs yet. / 暂无工单。', fields: ['status', 'scheduled_at', 'notes', 'created_at'], id: 'jobs' },
+  { key: 'quotations', title: 'Quotations', zh: '报价', empty: 'No quotations yet. / 暂无报价。', fields: ['quotation_id', 'job_id', 'service_request_id', 'current_version', 'total', 'approval_status', 'created_at'], id: 'quotations' },
   { key: 'invoices', title: 'Invoices', zh: '发票', empty: 'No invoices yet. / 暂无发票。', fields: ['invoice_no', 'total', 'status', 'visible_to_customer', 'public_ref', 'created_at'], id: 'invoices' },
   { key: 'payments', title: 'Payments', zh: '付款', empty: 'No payments yet. / 暂无付款记录。', fields: ['amount', 'status', 'fee', 'reconciled_at', 'visible_to_customer', 'created_at'], id: 'payments' },
   { key: 'warranties', title: 'Warranties', zh: '保修', empty: 'No warranties yet. / 暂无保修记录。', fields: ['status', 'coverage', 'starts_at', 'ends_at', 'visible_to_customer', 'public_ref', 'created_at'], id: 'warranties' }
@@ -123,7 +125,7 @@ export function CustomerPortalRecordsOverview() {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer Portal / 客户门户</div>
             <h1 className="mt-2 text-2xl font-black text-slate-950">My NANOFIX Records</h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">View your own repair requests, warranty claim progress, jobs, invoices, payments and warranties. All records are filtered by your linked customer profile. / 查看自己的报修、保修维修申请进度、工单、发票、付款与保修；所有记录按已绑定客户资料过滤。</p>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">View your own repair requests, warranty claim progress, jobs, quotations, invoices, payments and warranties. All records are filtered by your linked customer profile. / 查看自己的报修、保修维修申请进度、工单、报价、发票、付款与保修；所有记录按已绑定客户资料过滤。</p>
           </div>
           <button type="button" onClick={() => void refresh()} disabled={state.loading} className="rounded-2xl bg-activeBlue px-4 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">{state.loading ? 'Loading… / 读取中' : 'Refresh / 刷新'}</button>
         </div>
