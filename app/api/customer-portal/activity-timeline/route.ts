@@ -73,7 +73,7 @@ function isPaidStatus(status: string) {
 }
 
 function isOpenInvoiceStatus(status: string) {
-  return !isPaidStatus(status) && !['void', 'cancelled', 'canceled', 'refunded'].includes(status.toLowerCase());
+  return !isPaidStatus(status) && !['void', 'voided', 'cancelled', 'canceled', 'refunded', 'written_off', 'reversed'].includes(status.toLowerCase());
 }
 
 function labelAuditAction(action: string) {
