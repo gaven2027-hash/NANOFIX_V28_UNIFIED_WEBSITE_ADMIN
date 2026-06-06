@@ -82,8 +82,9 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
   if (jobIds.length) {
     const byJob = await supabase
       .from('quotations')
-      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,created_at')
+      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,visible_to_customer,pdf_storage_path,public_ref,created_at')
       .in('job_id', jobIds)
+      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (byJob.error) throw new Error(byJob.error.message);
@@ -93,8 +94,9 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
   if (serviceRequestIds.length) {
     const byRequest = await supabase
       .from('quotations')
-      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,created_at')
+      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,visible_to_customer,pdf_storage_path,public_ref,created_at')
       .in('service_request_id', serviceRequestIds)
+      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (byRequest.error) throw new Error(byRequest.error.message);
@@ -109,6 +111,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
       .from('invoices')
       .select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,pdf_storage_path,payment_url,public_ref,created_at')
       .in('job_id', jobIds)
+      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (invoiceResult.error) throw new Error(invoiceResult.error.message);
@@ -122,6 +125,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
       .from('payments')
       .select('payment_id,invoice_id,amount,status,fee,reconciled_at,visible_to_customer,payment_url,created_at')
       .in('invoice_id', invoiceIds)
+      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (paymentResult.error) throw new Error(paymentResult.error.message);
@@ -134,6 +138,7 @@ async function loadCustomerRecords(customerIds: string[], limit: number) {
       .from('warranties')
       .select('warranty_id,job_id,customer_id,status,coverage,starts_at,ends_at,warranty_years,pdf_storage_path,visible_to_customer,public_ref,created_at')
       .in('job_id', jobIds)
+      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (warrantyResult.error) throw new Error(warrantyResult.error.message);
@@ -169,7 +174,8 @@ export async function GET(request: NextRequest) {
       quotations: records.quotations.length,
       invoices: records.invoices.length,
       payments: records.payments.length,
-      warranties: records.warranties.length
+      warranties: records.warranties.length,
+      customer_visible_filter: true
     },
     ip: getClientIp(request)
   }).catch(() => undefined);
