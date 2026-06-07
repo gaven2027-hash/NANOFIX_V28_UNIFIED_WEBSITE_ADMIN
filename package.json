@@ -36,6 +36,7 @@
     "verify:v28-4-7-customer-portal-real-actions": "node tools/verify-v28-4-7-customer-portal-real-actions.mjs",
     "verify:v28-4-8-customer-portal-payment-pdf-actions": "node tools/verify-v28-4-8-customer-portal-payment-pdf-actions.mjs",
     "verify:v28-4-9-customer-payment-status-document-timeline": "node tools/verify-v28-4-9-customer-payment-status-document-timeline.mjs",
+    "verify:v28-5-real-module-linkage": "node tools/verify-v28-5-real-module-linkage-batch-audit.mjs",
     "verify:phase-e-api-migration-rls-readiness": "node tools/verify-phase-e-api-migration-rls-readiness.mjs",
     "verify:ready-full-business-chain": "node tools/verify-ready-full-business-chain.mjs",
     "verify:supabase-production-audit": "node tools/verify-supabase-production-audit.mjs",
