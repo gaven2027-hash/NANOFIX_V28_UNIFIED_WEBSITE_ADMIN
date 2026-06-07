@@ -1,8 +1,8 @@
 {
   "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": "2026-06-07T08:22:00+08:00",
-  "status": "batch_1_schema_fix_batch_2_rls_hardened_batch_3_status_log_seeded_batch_4_full_chain_schema_aligned",
+  "generated_at": "2026-06-07T16:50:00+08:00",
+  "status": "batch_1_schema_fix_batch_2_rls_hardened_batch_3_status_log_seeded_batch_4_full_chain_schema_aligned_batch_5_live_core_schema_status_logs",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
@@ -13,13 +13,14 @@
     "number": 19,
     "branch": "v28-5-0-real-module-linkage-batch-audit",
     "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
-    "head_sha": "b8c5bb286f87ecf2068b177f6fc354b3caf89af1",
+    "head_sha": "af188d2b7dd8150143ecf70a15b08a0348fc018f",
     "draft": true,
     "mergeable": true
   },
   "environment_checks": {
-    "last_verified_success_head": "1ef71129a72eeb74dd62771217e77883dfb6c1fe",
-    "current_head": "b8c5bb286f87ecf2068b177f6fc354b3caf89af1",
+    "last_verified_success_head": "f8109d061875e747326ab99710a4708ad1bc51a6",
+    "current_head": "af188d2b7dd8150143ecf70a15b08a0348fc018f",
+    "vercel_status_for_current_head": "pending_at_report_update",
     "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
     "supabase_project_status": "ACTIVE_HEALTHY",
     "supabase_changes_applied": false
@@ -73,6 +74,20 @@
         "Full-chain warranties now use starts_on/ends_on and production-visible linkage fields.",
         "Verifier now blocks the deprecated selectors from returning."
       ]
+    },
+    {
+      "batch": 5,
+      "module": "Service Operations Live Core",
+      "fix": "Aligned live-core GET/POST/PATCH schema with production fields and added status_transition_logs writes for admin-created records and update-based status changes.",
+      "file": "app/api/admin/service-operations/route.ts",
+      "details": [
+        "Live Core quotation fields now use service_request_id/customer_id/version/total_amount/currency/status instead of job_id/current_version/total/approval_status.",
+        "Live Core invoice fields now use total_amount/currency/visible_to_customer and no longer use total.",
+        "Live Core payment fields no longer use fee/payment_url/visible_to_customer and use amount/currency/status/reconciled_at.",
+        "Live Core warranty fields now use starts_on/ends_on and production-visible linkage keys.",
+        "POST create now writes status_transition_logs when a created record has a status.",
+        "PATCH action=update now writes status_transition_logs when the record status actually changes. PATCH transition continues using transition_status_tx RPC."
+      ]
     }
   ],
   "remaining_blocking_findings": [
@@ -86,12 +101,12 @@
     {
       "priority": "P3_PARTIAL",
       "module": "Service Operations Main Chain",
-      "finding": "status_transition_logs integration has started at public service_request creation, but job / quotation / invoice / payment / warranty transition routes still need route-level integration review."
+      "finding": "status_transition_logs integration is now connected to public service_request creation and Service Operations Live Core create/update, but dedicated job / quotation / invoice / payment / warranty routes still need route-level review."
     }
   ],
   "next_batch": [
-    "Wait for Vercel/GitHub status for current head b8c5bb286f87ecf2068b177f6fc354b3caf89af1.",
-    "Find and patch the next 3 to 5 real status-changing routes for job / quotation / invoice / payment / warranty.",
+    "Wait for Vercel/GitHub status for current head af188d2b7dd8150143ecf70a15b08a0348fc018f.",
+    "Continue reviewing dedicated job / quotation / invoice / payment / warranty routes for status_transition_logs and production schema compatibility.",
     "Keep RLS migration staged until preview/staging access paths are verified."
   ],
   "safety_notes": [
