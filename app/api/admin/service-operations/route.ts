@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cleanText, getClientIp, jsonError, requireActorApi } from '@/lib/apiSecurity';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAuditLog } from '@/lib/audit';
-import { writeStatusTransitionLog } from '@/lib/statusTransition';
 
 const READ_ROLES = ['super_admin', 'operations_admin', 'finance', 'support', 'engineer'] as const;
 const WRITE_ROLES = ['super_admin', 'operations_admin', 'finance', 'support'] as const;
@@ -76,11 +75,6 @@ function cleanBoolean(value: unknown) {
 function cleanDateText(value: unknown) {
   const text = cleanText(value, 80);
   return text || null;
-}
-
-function stringField(row: Record<string, unknown> | null | undefined, key: string) {
-  const value = row?.[key];
-  return typeof value === 'string' && value ? value : null;
 }
 
 function sanitizeField(field: string, value: unknown) {
@@ -200,26 +194,7 @@ export async function POST(request: NextRequest) {
   if (error) return jsonError(error.message, 400);
 
   const record = data as Record<string, unknown>;
-  const objectId = stringField(record, spec.idColumn) ?? undefined;
-  const toStatus = stringField(record, spec.statusColumn);
-  let statusTransitionLogged = false;
-
-  if (toStatus) {
-    await writeStatusTransitionLog({
-      supabase,
-      machine,
-      objectType: machine,
-      objectId,
-      fromStatus: null,
-      toStatus,
-      reason: 'service_operations_live_core_record_create',
-      actorId: auth.actor.profileId,
-      actorRole: auth.role,
-      ip: getClientIp(request)
-    })
-      .then(() => { statusTransitionLogged = true; })
-      .catch(() => undefined);
-  }
+  const objectId = typeof record[spec.idColumn] === 'string' ? record[spec.idColumn] : undefined;
 
   await writeAuditLog({
     actorId: auth.actor.profileId,
@@ -227,11 +202,11 @@ export async function POST(request: NextRequest) {
     action: 'service_operations_live_core_record_create',
     objectType: machine,
     objectId,
-    after: { ...record, status_transition_logged: statusTransitionLogged },
+    after: record,
     ip: getClientIp(request)
   }).catch(() => undefined);
 
-  return NextResponse.json({ ok: true, machine, record: data, status_transition_logged: statusTransitionLogged }, { status: 201 });
+  return NextResponse.json({ ok: true, machine, record: data }, { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -260,26 +235,6 @@ export async function PATCH(request: NextRequest) {
 
     const beforeRecord = before as Record<string, unknown> | null;
     const afterRecord = data as Record<string, unknown>;
-    const fromStatus = stringField(beforeRecord, spec.statusColumn);
-    const toStatus = stringField(afterRecord, spec.statusColumn);
-    let statusTransitionLogged = false;
-
-    if (toStatus && toStatus !== fromStatus) {
-      await writeStatusTransitionLog({
-        supabase,
-        machine,
-        objectType: machine,
-        objectId,
-        fromStatus,
-        toStatus,
-        reason: cleanText(body.reason, 500) ?? 'service_operations_live_core_record_update',
-        actorId: auth.actor.profileId,
-        actorRole: auth.role,
-        ip: getClientIp(request)
-      })
-        .then(() => { statusTransitionLogged = true; })
-        .catch(() => undefined);
-    }
 
     await writeAuditLog({
       actorId: auth.actor.profileId,
@@ -288,11 +243,11 @@ export async function PATCH(request: NextRequest) {
       objectType: machine,
       objectId,
       before: beforeRecord,
-      after: { ...afterRecord, status_transition_logged: statusTransitionLogged },
+      after: afterRecord,
       ip: getClientIp(request)
     }).catch(() => undefined);
 
-    return NextResponse.json({ ok: true, machine, record: data, status_transition_logged: statusTransitionLogged });
+    return NextResponse.json({ ok: true, machine, record: data });
   }
 
   const toStatus = cleanText(body.to_status, 80);
