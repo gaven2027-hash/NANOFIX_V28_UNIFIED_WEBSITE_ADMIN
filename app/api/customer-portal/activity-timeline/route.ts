@@ -6,6 +6,17 @@ import { writeAuditLog } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const ALLOWED_ROLES = ['customer'] as const;
+const CUSTOMER_VISIBLE_QUOTATION_STATUSES = [
+  'sent',
+  'issued',
+  'approved',
+  'accepted',
+  'rejected',
+  'expired',
+  'converted',
+  'invoiced'
+] as const;
+const CUSTOMER_VISIBLE_QUOTATION_STATUS_SET = new Set<string>(CUSTOMER_VISIBLE_QUOTATION_STATUSES);
 type Row = Record<string, unknown>;
 type TimelineEvent = {
   event_id: string;
@@ -74,6 +85,10 @@ function isPaidStatus(status: string) {
 
 function isOpenInvoiceStatus(status: string) {
   return !isPaidStatus(status) && !['void', 'voided', 'cancelled', 'canceled', 'refunded', 'written_off', 'reversed'].includes(status.toLowerCase());
+}
+
+function isCustomerVisibleQuotationStatus(status: string) {
+  return CUSTOMER_VISIBLE_QUOTATION_STATUS_SET.has(status.toLowerCase());
 }
 
 function labelAuditAction(action: string) {
@@ -147,6 +162,7 @@ async function loadLinkedObjects(customerIds: string[], limit: number) {
     .from('quotations')
     .select('quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at')
     .in('customer_id', customerIds)
+    .in('status', [...CUSTOMER_VISIBLE_QUOTATION_STATUSES])
     .order('created_at', { ascending: false })
     .limit(limit);
   if (directQuotations.error) throw new Error(directQuotations.error.message);
@@ -157,6 +173,7 @@ async function loadLinkedObjects(customerIds: string[], limit: number) {
       .from('quotations')
       .select('quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at')
       .in('service_request_id', serviceRequestIds)
+      .in('status', [...CUSTOMER_VISIBLE_QUOTATION_STATUSES])
       .order('created_at', { ascending: false })
       .limit(limit);
     if (byRequest.error) throw new Error(byRequest.error.message);
@@ -166,6 +183,7 @@ async function loadLinkedObjects(customerIds: string[], limit: number) {
   const seenQuotations = new Set<string>();
   const quotations = quotationRows.filter((row) => {
     const id = idOf(row, 'quotation_id') ?? JSON.stringify(row);
+    if (!isCustomerVisibleQuotationStatus(textOf(row, 'status', ''))) return false;
     if (seenQuotations.has(id)) return false;
     seenQuotations.add(id);
     return true;
