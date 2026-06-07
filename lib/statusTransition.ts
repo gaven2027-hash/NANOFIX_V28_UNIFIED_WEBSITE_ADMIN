@@ -7,7 +7,7 @@ type StatusTransitionInsertBuilder = {
 };
 
 type StatusTransitionSupabaseClient = {
-  from(table: 'status_transition_logs'): StatusTransitionInsertBuilder;
+  from(table: string): StatusTransitionInsertBuilder;
 };
 
 type WriteStatusTransitionLogInput = {
