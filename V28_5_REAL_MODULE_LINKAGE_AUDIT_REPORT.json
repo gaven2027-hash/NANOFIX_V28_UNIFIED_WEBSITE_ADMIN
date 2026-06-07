@@ -1,8 +1,8 @@
 {
   "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": "2026-06-07T04:25:00+08:00",
-  "status": "connector_supabase_github_first_pass_completed",
+  "generated_at": "2026-06-07T06:58:00+08:00",
+  "status": "batch_1_schema_runtime_fix_committed",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
@@ -16,30 +16,44 @@
     "draft": true
   },
   "environment_checks": {
-    "github_quality_gate": "success_on_head_26ec864ba0fb6cdcafffaa9830e5e7f9c477f600",
-    "vercel_github_commit_status": "success",
+    "github_branch_head": "c01664204cc72024a147a1b497fa1a7d022d937b",
+    "vercel_github_commit_status": "pending_after_branch_commit",
     "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
-    "supabase_project_status": "ACTIVE_HEALTHY"
+    "supabase_project_status": "ACTIVE_HEALTHY",
+    "supabase_changes_applied": false
   },
-  "blocking_findings": [
+  "completed_batch_1": [
+    {
+      "module": "Customer Portal Activity Timeline",
+      "fix": "Aligned Supabase selects with production schema fields.",
+      "file": "app/api/customer-portal/activity-timeline/route.ts",
+      "details": [
+        "quotations now use service_request_id/customer_id linkage and total_amount/status/version fields instead of job_id/current_version/total/approval_status/visible_to_customer/public_ref.",
+        "invoices now use total_amount and production-visible columns instead of total/payment_url/public_ref/updated_at.",
+        "payments now use payment_id/invoice_id/customer_id/amount/currency/status/reconciled_at/created_at instead of fee/visible_to_customer/payment_url/updated_at.",
+        "warranties now use starts_on/ends_on instead of starts_at/ends_at."
+      ]
+    },
+    {
+      "module": "V28.5 Audit Gate",
+      "fix": "Added production schema compatibility guard to block invalid table selects from re-entering the codebase.",
+      "file": "tools/verify-v28-5-real-module-linkage-batch-audit.mjs",
+      "blocked_fields": {
+        "customers": ["source"],
+        "quotations": ["job_id", "current_version", "total", "approval_status", "visible_to_customer", "public_ref"],
+        "invoices": ["total", "payment_url", "public_ref", "updated_at"],
+        "payments": ["fee", "visible_to_customer", "payment_url", "updated_at"],
+        "warranties": ["starts_at", "ends_at", "updated_at"]
+      }
+    }
+  ],
+  "remaining_blocking_findings": [
     {
       "priority": "P0",
       "module": "Customer Account Claiming / Customer Record Linking",
       "finding": "RLS disabled in public schema",
       "tables": ["customer_account_claims", "customer_record_links"],
-      "safe_action": "Do not blindly enable RLS until admin/customer policies are added, because both tables currently have no policies."
-    },
-    {
-      "priority": "P2",
-      "module": "Customer Portal Activity Timeline",
-      "finding": "Runtime schema mismatch against production Supabase columns",
-      "invalid_columns_seen_in_logs_or_code": ["customers.source", "payments.fee", "invoices.total", "quotations.job_id"],
-      "production_schema_replacements": {
-        "customers.source": "customers.created_source",
-        "invoices.total": "invoices.total_amount",
-        "payments.fee": "remove_from_select",
-        "quotations.job_id": "link_via_service_request_id_or_customer_id"
-      }
+      "safe_action": "Review staged RLS migration and customer/admin access paths before applying to production. Do not blindly enable RLS without policies."
     },
     {
       "priority": "P3",
@@ -48,8 +62,14 @@
     }
   ],
   "next_batch": [
-    "Fix Customer Portal Activity Timeline API selects to production schema fields.",
-    "Add guard verifier to block old invalid fields from returning.",
-    "Prepare RLS policy migration for customer_account_claims and customer_record_links without applying blindly to production."
+    "Check CI/build result for PR head c01664204cc72024a147a1b497fa1a7d022d937b.",
+    "Review staged RLS policy migration for customer_account_claims and customer_record_links; keep it staged until customer/admin access paths are verified.",
+    "Repair Service Operations status_transition_logs integration in batches of 3 to 5 route modules."
+  ],
+  "safety_notes": [
+    "No Supabase production mutation was applied.",
+    "No production database reset or migration repair was run.",
+    "No TypeScript/ESLint bypass was introduced.",
+    "PR remains draft and main was not modified."
   ]
 }
