@@ -1,8 +1,8 @@
 {
   "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": "2026-06-07T17:40:00+08:00",
-  "status": "stable_after_batch_4_and_verifier_self_report_guard",
+  "generated_at": "2026-06-07T18:05:00+08:00",
+  "status": "stable_after_batch_6_payment_webhook_schema_alignment",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
@@ -13,14 +13,14 @@
     "number": 19,
     "branch": "v28-5-0-real-module-linkage-batch-audit",
     "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
-    "head_sha": "e0137cd202492cb8747a4e71933364e30703b63b",
+    "head_sha": "b8e768b01a16793c6a60e29c9a1619ac30125476",
     "draft": true,
     "mergeable": true
   },
   "environment_checks": {
-    "last_verified_success_head": "e0137cd202492cb8747a4e71933364e30703b63b",
+    "last_verified_success_head": "b8e768b01a16793c6a60e29c9a1619ac30125476",
     "vercel_status_for_last_verified_head": "success",
-    "github_quality_gate_for_last_verified_head": "success",
+    "github_quality_gate_for_last_known_success_head": "e0137cd202492cb8747a4e71933364e30703b63b",
     "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
     "supabase_project_status": "ACTIVE_HEALTHY",
     "supabase_changes_applied": false
@@ -84,6 +84,18 @@
         "Service Operations Live Core direct edits were rolled back after Preview failure and are not part of the stable batch set.",
         "Next Live Core repair must be done as a smaller dedicated batch after route-level review."
       ]
+    },
+    {
+      "batch": 6,
+      "module": "Payment Webhook Reconciliation",
+      "fix": "Aligned payment webhook writes with the production payments schema without changing production Supabase.",
+      "file": "app/api/webhooks/payments/route.ts",
+      "details": [
+        "Payment webhook updates now write only production payment fields: amount, currency, status and reconciled_at.",
+        "New payment records now include invoice_id, customer_id, amount, currency, status and reconciled_at.",
+        "The existing payment_intents, payment_transactions, invoice status, finance task, notification_outbox and audit log flow remains intact.",
+        "Vercel status for head b8e768b01a16793c6a60e29c9a1619ac30125476 returned success."
+      ]
     }
   ],
   "rolled_back_batches": [
@@ -112,8 +124,8 @@
     }
   ],
   "next_batch": [
-    "Review dedicated job, quotation, invoice, payment and warranty routes for production schema compatibility.",
-    "Add status_transition_logs only through small route-specific changes that can be verified independently.",
+    "Wait for the report-only Batch 6 audit-report update to return Preview/Quality Gate status.",
+    "Continue with dedicated job, quotation, invoice and warranty routes only after the current head is stable.",
     "Keep RLS migration staged until preview/staging access paths are verified."
   ],
   "safety_notes": [
