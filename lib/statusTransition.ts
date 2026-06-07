@@ -25,27 +25,23 @@ type WriteStatusTransitionLogInput = {
 
 /**
  * Writes a real status transition log for V28.5 service-chain state changes.
- *
- * This helper is intentionally small and accepts an existing Supabase admin client so
- * route handlers can write the business row, audit log, and status log in the same
- * request flow without introducing browser/localStorage state or fake success.
+ * This helper accepts an existing Supabase admin client and avoids browser state.
  */
 export async function writeStatusTransitionLog(input: WriteStatusTransitionLogInput) {
   if (!input.supabase || !input.objectId || !input.toStatus) return;
 
-  const { error } = await input.supabase
-    .from('status_transition_logs')
-    .insert({
-      machine: input.machine,
-      object_type: input.objectType,
-      object_id: input.objectId,
-      from_status: input.fromStatus ?? null,
-      to_status: input.toStatus,
-      reason: input.reason ?? null,
-      actor_id: input.actorId ?? null,
-      actor_role: input.actorRole ?? null,
-      ip_address: input.ip ?? null
-    });
+  const payload = {
+    machine: input.machine,
+    object_type: input.objectType,
+    object_id: input.objectId,
+    from_status: input.fromStatus ?? null,
+    to_status: input.toStatus,
+    reason: input.reason ?? null,
+    actor_id: input.actorId ?? null,
+    actor_role: input.actorRole ?? null,
+    ip_address: input.ip ?? null
+  };
 
+  const { error } = await input.supabase.from('status_transition_logs').insert(payload);
   if (error) throw new Error(error.message || 'Status transition log write failed');
 }
