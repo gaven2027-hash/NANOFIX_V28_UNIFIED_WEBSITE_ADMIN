@@ -2,6 +2,12 @@
 -- This migration is intentionally committed to the PR branch first.
 -- Do not run directly on production until reviewed against Customer Center and Customer Portal flows.
 -- Reason: Supabase advisor reports RLS disabled on these public-schema tables.
+--
+-- Design notes:
+-- 1) Server-side Next.js APIs that use service_role continue to bypass RLS as expected.
+-- 2) Authenticated internal users can manage claims/links only through approved active internal roles.
+-- 3) Customers can read only claim/link rows that belong to their own account through any confirmed binding path:
+--    customers.auth_user_id, customers.claimed_auth_user_id, or customers.profile_id -> profiles.auth_user_id.
 
 alter table public.customer_account_claims enable row level security;
 alter table public.customer_record_links enable row level security;
@@ -18,7 +24,35 @@ using (
     from public.profiles p
     where p.auth_user_id = auth.uid()
       and p.is_active = true
-      and p.role = any (array['super_admin'::text, 'operations_admin'::text, 'support'::text])
+      and coalesce(p.profile_status, 'active') <> 'blocked'
+      and coalesce(p.approved_role, p.role, p.requested_role) = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
+  )
+  or exists (
+    select 1
+    from public.admin_profiles ap
+    where ap.auth_user_id = auth.uid()
+      and ap.status = 'active'
+      and ap.role = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
   )
 )
 with check (
@@ -27,7 +61,35 @@ with check (
     from public.profiles p
     where p.auth_user_id = auth.uid()
       and p.is_active = true
-      and p.role = any (array['super_admin'::text, 'operations_admin'::text, 'support'::text])
+      and coalesce(p.profile_status, 'active') <> 'blocked'
+      and coalesce(p.approved_role, p.role, p.requested_role) = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
+  )
+  or exists (
+    select 1
+    from public.admin_profiles ap
+    where ap.auth_user_id = auth.uid()
+      and ap.status = 'active'
+      and ap.role = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
   )
 );
 
@@ -38,11 +100,17 @@ on public.customer_account_claims
 for select
 to authenticated
 using (
-  exists (
+  claimed_auth_user_id = auth.uid()
+  or exists (
     select 1
     from public.customers c
+    left join public.profiles p on p.profile_id = c.profile_id
     where c.customer_id = customer_account_claims.customer_id
-      and c.auth_user_id = auth.uid()
+      and (
+        c.auth_user_id = auth.uid()
+        or c.claimed_auth_user_id = auth.uid()
+        or p.auth_user_id = auth.uid()
+      )
   )
 );
 
@@ -58,7 +126,35 @@ using (
     from public.profiles p
     where p.auth_user_id = auth.uid()
       and p.is_active = true
-      and p.role = any (array['super_admin'::text, 'operations_admin'::text, 'support'::text])
+      and coalesce(p.profile_status, 'active') <> 'blocked'
+      and coalesce(p.approved_role, p.role, p.requested_role) = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
+  )
+  or exists (
+    select 1
+    from public.admin_profiles ap
+    where ap.auth_user_id = auth.uid()
+      and ap.status = 'active'
+      and ap.role = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
   )
 )
 with check (
@@ -67,7 +163,35 @@ with check (
     from public.profiles p
     where p.auth_user_id = auth.uid()
       and p.is_active = true
-      and p.role = any (array['super_admin'::text, 'operations_admin'::text, 'support'::text])
+      and coalesce(p.profile_status, 'active') <> 'blocked'
+      and coalesce(p.approved_role, p.role, p.requested_role) = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
+  )
+  or exists (
+    select 1
+    from public.admin_profiles ap
+    where ap.auth_user_id = auth.uid()
+      and ap.status = 'active'
+      and ap.role = any (
+        array[
+          'super_admin'::text,
+          'admin'::text,
+          'operations_admin'::text,
+          'support_admin'::text,
+          'support'::text,
+          'finance_admin'::text,
+          'finance'::text
+        ]
+      )
   )
 );
 
@@ -82,7 +206,12 @@ using (
   and exists (
     select 1
     from public.customers c
+    left join public.profiles p on p.profile_id = c.profile_id
     where c.customer_id = customer_record_links.customer_id
-      and c.auth_user_id = auth.uid()
+      and (
+        c.auth_user_id = auth.uid()
+        or c.claimed_auth_user_id = auth.uid()
+        or p.auth_user_id = auth.uid()
+      )
   )
 );
