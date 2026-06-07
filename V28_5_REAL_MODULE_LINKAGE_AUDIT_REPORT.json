@@ -1,8 +1,8 @@
 {
   "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": "2026-06-07T16:50:00+08:00",
-  "status": "batch_1_schema_fix_batch_2_rls_hardened_batch_3_status_log_seeded_batch_4_full_chain_schema_aligned_batch_5_live_core_schema_status_logs",
+  "generated_at": "2026-06-07T17:40:00+08:00",
+  "status": "stable_after_batch_4_and_verifier_self_report_guard",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
@@ -13,14 +13,14 @@
     "number": 19,
     "branch": "v28-5-0-real-module-linkage-batch-audit",
     "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
-    "head_sha": "af188d2b7dd8150143ecf70a15b08a0348fc018f",
+    "head_sha": "e0137cd202492cb8747a4e71933364e30703b63b",
     "draft": true,
     "mergeable": true
   },
   "environment_checks": {
-    "last_verified_success_head": "f8109d061875e747326ab99710a4708ad1bc51a6",
-    "current_head": "af188d2b7dd8150143ecf70a15b08a0348fc018f",
-    "vercel_status_for_current_head": "pending_at_report_update",
+    "last_verified_success_head": "e0137cd202492cb8747a4e71933364e30703b63b",
+    "vercel_status_for_last_verified_head": "success",
+    "github_quality_gate_for_last_verified_head": "success",
     "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
     "supabase_project_status": "ACTIVE_HEALTHY",
     "supabase_changes_applied": false
@@ -43,7 +43,7 @@
       "details": [
         "Internal access now checks both profiles and admin_profiles.",
         "Allowed active internal roles include super_admin, admin, operations_admin, support_admin, support, finance_admin and finance.",
-        "Customer read access now supports customers.auth_user_id, customers.claimed_auth_user_id and customers.profile_id -> profiles.auth_user_id."
+        "Customer read access now supports customers.auth_user_id, customers.claimed_auth_user_id and customers.profile_id linked through profiles.auth_user_id."
       ]
     },
     {
@@ -68,26 +68,30 @@
         "tools/verify-v28-4-5-service-ops-full-chain.mjs"
       ],
       "details": [
-        "Full-chain quotations now use service_request_id/customer_id/version/total_amount/status instead of deprecated job_id/current_version/total/approval_status fields.",
-        "Full-chain invoices now use total_amount and quotation_id instead of total.",
-        "Full-chain payments no longer select fee or payment_url fields that do not exist in production.",
-        "Full-chain warranties now use starts_on/ends_on and production-visible linkage fields.",
-        "Verifier now blocks the deprecated selectors from returning."
+        "Full-chain quotations now use service_request_id, customer_id, version, total_amount and status fields.",
+        "Full-chain invoices now use total_amount and quotation_id.",
+        "Full-chain payments use production payment columns only.",
+        "Full-chain warranties now use starts_on, ends_on and production-visible linkage fields.",
+        "Verifier now blocks deprecated production-schema selectors from returning."
       ]
     },
     {
       "batch": 5,
-      "module": "Service Operations Live Core",
-      "fix": "Aligned live-core GET/POST/PATCH schema with production fields and added status_transition_logs writes for admin-created records and update-based status changes.",
-      "file": "app/api/admin/service-operations/route.ts",
+      "module": "V28.5 Verifier Stability",
+      "fix": "Verifier now skips generated V28 report JSON files to avoid self-scanning historical audit text.",
+      "file": "tools/verify-v28-5-real-module-linkage-batch-audit.mjs",
       "details": [
-        "Live Core quotation fields now use service_request_id/customer_id/version/total_amount/currency/status instead of job_id/current_version/total/approval_status.",
-        "Live Core invoice fields now use total_amount/currency/visible_to_customer and no longer use total.",
-        "Live Core payment fields no longer use fee/payment_url/visible_to_customer and use amount/currency/status/reconciled_at.",
-        "Live Core warranty fields now use starts_on/ends_on and production-visible linkage keys.",
-        "POST create now writes status_transition_logs when a created record has a status.",
-        "PATCH action=update now writes status_transition_logs when the record status actually changes. PATCH transition continues using transition_status_tx RPC."
+        "Service Operations Live Core direct edits were rolled back after Preview failure and are not part of the stable batch set.",
+        "Next Live Core repair must be done as a smaller dedicated batch after route-level review."
       ]
+    }
+  ],
+  "rolled_back_batches": [
+    {
+      "batch": "5A",
+      "module": "Service Operations Live Core",
+      "reason": "The larger Live Core route edit caused Preview or Quality Gate instability and was rolled back to the last verified successful baseline.",
+      "stable_plan": "Re-review Live Core as a later small batch, separating schema-only changes from status logging changes."
     }
   ],
   "remaining_blocking_findings": [
@@ -95,24 +99,27 @@
       "priority": "P0_REVIEW_REQUIRED_BEFORE_PRODUCTION_MIGRATION",
       "module": "Customer Account Claiming / Customer Record Linking",
       "finding": "RLS disabled in production remains unresolved until staged migration is reviewed and applied deliberately.",
-      "tables": ["customer_account_claims", "customer_record_links"],
+      "tables": [
+        "customer_account_claims",
+        "customer_record_links"
+      ],
       "safe_action": "Do not blindly apply to production. First verify Customer Center admin flows and Customer Portal own-record visibility on preview/staging."
     },
     {
       "priority": "P3_PARTIAL",
       "module": "Service Operations Main Chain",
-      "finding": "status_transition_logs integration is now connected to public service_request creation and Service Operations Live Core create/update, but dedicated job / quotation / invoice / payment / warranty routes still need route-level review."
+      "finding": "status_transition_logs integration is connected to public service_request creation, but dedicated job, quotation, invoice, payment and warranty routes still need route-level review."
     }
   ],
   "next_batch": [
-    "Wait for Vercel/GitHub status for current head af188d2b7dd8150143ecf70a15b08a0348fc018f.",
-    "Continue reviewing dedicated job / quotation / invoice / payment / warranty routes for status_transition_logs and production schema compatibility.",
+    "Review dedicated job, quotation, invoice, payment and warranty routes for production schema compatibility.",
+    "Add status_transition_logs only through small route-specific changes that can be verified independently.",
     "Keep RLS migration staged until preview/staging access paths are verified."
   ],
   "safety_notes": [
     "No Supabase production mutation was applied.",
     "No production database reset or migration repair was run.",
-    "No TypeScript/ESLint bypass was introduced.",
+    "No TypeScript or ESLint bypass was introduced.",
     "PR remains draft and main was not modified."
   ]
 }
