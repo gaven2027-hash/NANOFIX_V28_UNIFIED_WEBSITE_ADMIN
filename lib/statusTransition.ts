@@ -1,17 +1,17 @@
 type StatusTransitionInsertResult = {
-  error: { message?: string } | null;
-};
+  error?: { message?: string } | null;
+} | null;
 
-type StatusTransitionInsertBuilder = {
+type StatusTransitionTableClient = {
   insert(values: Record<string, unknown>): PromiseLike<StatusTransitionInsertResult>;
 };
 
-type StatusTransitionSupabaseClient = {
-  from(table: string): StatusTransitionInsertBuilder;
+type StatusTransitionClient = {
+  from(table: string): StatusTransitionTableClient;
 };
 
 type WriteStatusTransitionLogInput = {
-  supabase: StatusTransitionSupabaseClient | null | undefined;
+  supabase: unknown;
   machine: string;
   objectType: string;
   objectId: string | null | undefined;
@@ -23,12 +23,20 @@ type WriteStatusTransitionLogInput = {
   ip?: string | null;
 };
 
+function asStatusTransitionClient(value: unknown): StatusTransitionClient | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as { from?: unknown };
+  if (typeof candidate.from !== 'function') return null;
+  return value as StatusTransitionClient;
+}
+
 /**
  * Writes a real status transition log for V28.5 service-chain state changes.
  * This helper accepts an existing Supabase admin client and avoids browser state.
  */
 export async function writeStatusTransitionLog(input: WriteStatusTransitionLogInput) {
-  if (!input.supabase || !input.objectId || !input.toStatus) return;
+  const supabase = asStatusTransitionClient(input.supabase);
+  if (!supabase || !input.objectId || !input.toStatus) return;
 
   const payload = {
     machine: input.machine,
@@ -42,6 +50,6 @@ export async function writeStatusTransitionLog(input: WriteStatusTransitionLogIn
     ip_address: input.ip ?? null
   };
 
-  const { error } = await input.supabase.from('status_transition_logs').insert(payload);
-  if (error) throw new Error(error.message || 'Status transition log write failed');
+  const result = await supabase.from('status_transition_logs').insert(payload);
+  if (result?.error) throw new Error(result.error.message || 'Status transition log write failed');
 }
