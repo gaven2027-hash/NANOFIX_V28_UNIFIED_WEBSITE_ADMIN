@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { getClientIp } from '@/lib/apiSecurity';
 import { writeAuditLog } from '@/lib/audit';
+import { writeStatusTransitionLog } from '@/lib/statusTransition';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
   const issueText = [data.issueType, data.message].filter(Boolean).join(' ');
   const priority = estimatePriority(issueText);
   const now = new Date().toISOString();
+  const requestIp = getClientIp(request);
 
   const intake = {
     source_platform: data.sourcePlatform,
@@ -135,6 +137,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Service request creation failed' }, { status: 500 });
     }
 
+    await writeStatusTransitionLog({
+      supabase,
+      machine: 'service_request_lifecycle',
+      objectType: 'service_request',
+      objectId: requestRow?.service_request_id,
+      fromStatus: null,
+      toStatus: serviceRequest.status,
+      reason: 'public_service_request_create',
+      actorRole: 'public',
+      ip: requestIp
+    }).catch(() => undefined);
+
     await writeAuditLog({
       role: 'public',
       action: 'public_service_request_create',
@@ -145,9 +159,10 @@ export async function POST(request: NextRequest) {
         intake_id: intakeRow?.intake_id,
         lead_id: leadRow?.lead_id,
         service_request_id: requestRow?.service_request_id,
-        binding_status: serviceRequest.binding_status
+        binding_status: serviceRequest.binding_status,
+        status_transition_logged: true
       },
-      ip: getClientIp(request)
+      ip: requestIp
     }).catch(() => undefined);
 
     return NextResponse.json({
