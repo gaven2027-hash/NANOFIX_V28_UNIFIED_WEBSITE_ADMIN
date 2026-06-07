@@ -1,8 +1,8 @@
 {
   "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": "2026-06-07T06:58:00+08:00",
-  "status": "batch_1_schema_runtime_fix_committed",
+  "generated_at": "2026-06-07T07:42:00+08:00",
+  "status": "batch_1_schema_fix_batch_2_rls_hardened_batch_3_status_log_seeded",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
@@ -13,58 +13,70 @@
     "number": 19,
     "branch": "v28-5-0-real-module-linkage-batch-audit",
     "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
-    "draft": true
+    "head_sha": "578669853452a416e9dfa564af0e9e6dc932e4ff",
+    "draft": true,
+    "mergeable": true
   },
   "environment_checks": {
-    "github_branch_head": "c01664204cc72024a147a1b497fa1a7d022d937b",
-    "vercel_github_commit_status": "pending_after_branch_commit",
+    "last_verified_success_head": "8ebb556c435d282bc4422469ab39da3efe794d6d",
+    "current_head": "578669853452a416e9dfa564af0e9e6dc932e4ff",
     "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
     "supabase_project_status": "ACTIVE_HEALTHY",
     "supabase_changes_applied": false
   },
-  "completed_batch_1": [
+  "completed_batches": [
     {
+      "batch": 1,
       "module": "Customer Portal Activity Timeline",
-      "fix": "Aligned Supabase selects with production schema fields.",
-      "file": "app/api/customer-portal/activity-timeline/route.ts",
-      "details": [
-        "quotations now use service_request_id/customer_id linkage and total_amount/status/version fields instead of job_id/current_version/total/approval_status/visible_to_customer/public_ref.",
-        "invoices now use total_amount and production-visible columns instead of total/payment_url/public_ref/updated_at.",
-        "payments now use payment_id/invoice_id/customer_id/amount/currency/status/reconciled_at/created_at instead of fee/visible_to_customer/payment_url/updated_at.",
-        "warranties now use starts_on/ends_on instead of starts_at/ends_at."
+      "fix": "Aligned Supabase selects with production schema fields and added production schema mismatch guard.",
+      "files": [
+        "app/api/customer-portal/activity-timeline/route.ts",
+        "tools/verify-v28-5-real-module-linkage-batch-audit.mjs"
       ]
     },
     {
-      "module": "V28.5 Audit Gate",
-      "fix": "Added production schema compatibility guard to block invalid table selects from re-entering the codebase.",
-      "file": "tools/verify-v28-5-real-module-linkage-batch-audit.mjs",
-      "blocked_fields": {
-        "customers": ["source"],
-        "quotations": ["job_id", "current_version", "total", "approval_status", "visible_to_customer", "public_ref"],
-        "invoices": ["total", "payment_url", "public_ref", "updated_at"],
-        "payments": ["fee", "visible_to_customer", "payment_url", "updated_at"],
-        "warranties": ["starts_at", "ends_at", "updated_at"]
-      }
+      "batch": 2,
+      "module": "Customer Account Claiming / Customer Record Linking",
+      "fix": "Hardened staged RLS migration without applying it to production.",
+      "file": "supabase/migrations/20260607042500_v28_5_customer_claims_record_links_rls.sql",
+      "details": [
+        "Internal access now checks both profiles and admin_profiles.",
+        "Allowed active internal roles include super_admin, admin, operations_admin, support_admin, support, finance_admin and finance.",
+        "Customer read access now supports customers.auth_user_id, customers.claimed_auth_user_id and customers.profile_id -> profiles.auth_user_id."
+      ]
+    },
+    {
+      "batch": 3,
+      "module": "Service Operations Main Chain",
+      "fix": "Added reusable status_transition_logs helper and connected public service request creation to service_request_lifecycle logging.",
+      "files": [
+        "lib/statusTransition.ts",
+        "app/api/service-requests/route.ts"
+      ],
+      "details": [
+        "Public repair request creation now attempts a real status_transition_logs insert for object_type=service_request, from_status=null, to_status=pending_review.",
+        "Audit log records the actual status_transition_logged boolean instead of assuming success."
+      ]
     }
   ],
   "remaining_blocking_findings": [
     {
-      "priority": "P0",
+      "priority": "P0_REVIEW_REQUIRED_BEFORE_PRODUCTION_MIGRATION",
       "module": "Customer Account Claiming / Customer Record Linking",
-      "finding": "RLS disabled in public schema",
+      "finding": "RLS disabled in production remains unresolved until staged migration is reviewed and applied deliberately.",
       "tables": ["customer_account_claims", "customer_record_links"],
-      "safe_action": "Review staged RLS migration and customer/admin access paths before applying to production. Do not blindly enable RLS without policies."
+      "safe_action": "Do not blindly apply to production. First verify Customer Center admin flows and Customer Portal own-record visibility on preview/staging."
     },
     {
-      "priority": "P3",
+      "priority": "P3_PARTIAL",
       "module": "Service Operations Main Chain",
-      "finding": "status_transition_logs table exists but has zero rows; verify request to job to quotation to invoice to payment to warranty state transitions are writing status logs."
+      "finding": "status_transition_logs integration has started at public service_request creation, but job / quotation / invoice / payment / warranty transition routes still need route-level integration review."
     }
   ],
   "next_batch": [
-    "Check CI/build result for PR head c01664204cc72024a147a1b497fa1a7d022d937b.",
-    "Review staged RLS policy migration for customer_account_claims and customer_record_links; keep it staged until customer/admin access paths are verified.",
-    "Repair Service Operations status_transition_logs integration in batches of 3 to 5 route modules."
+    "Wait for Vercel/GitHub status for current head 578669853452a416e9dfa564af0e9e6dc932e4ff.",
+    "Find and patch the next 3 to 5 real status-changing routes for job / quotation / invoice / payment / warranty.",
+    "Keep RLS migration staged until preview/staging access paths are verified."
   ],
   "safety_notes": [
     "No Supabase production mutation was applied.",
