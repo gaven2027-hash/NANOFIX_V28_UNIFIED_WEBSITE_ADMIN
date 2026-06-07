@@ -1,0 +1,12 @@
+{
+  "ok": null,
+  "verifier": "verify-v28-5-real-module-linkage-batch-audit",
+  "generated_at": null,
+  "status": "not_executed_in_connector_runtime",
+  "note": "Run npm run verify:v28-5-real-module-linkage from the repository root to generate the real audit report. This placeholder prevents consumers from mistaking a missing report file for a passed audit. The verifier overwrites this file with live scan results.",
+  "production_baseline": {
+    "locked_tag": "v28.4.9.2-production-live-20260606",
+    "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
+    "production_domain": "https://app.nanofixsg.com"
+  }
+}
