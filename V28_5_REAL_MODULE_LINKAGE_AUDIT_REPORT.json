@@ -1,8 +1,8 @@
 {
   "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": "2026-06-07T07:42:00+08:00",
-  "status": "batch_1_schema_fix_batch_2_rls_hardened_batch_3_status_log_seeded",
+  "generated_at": "2026-06-07T08:22:00+08:00",
+  "status": "batch_1_schema_fix_batch_2_rls_hardened_batch_3_status_log_seeded_batch_4_full_chain_schema_aligned",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
@@ -13,13 +13,13 @@
     "number": 19,
     "branch": "v28-5-0-real-module-linkage-batch-audit",
     "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
-    "head_sha": "578669853452a416e9dfa564af0e9e6dc932e4ff",
+    "head_sha": "b8c5bb286f87ecf2068b177f6fc354b3caf89af1",
     "draft": true,
     "mergeable": true
   },
   "environment_checks": {
-    "last_verified_success_head": "8ebb556c435d282bc4422469ab39da3efe794d6d",
-    "current_head": "578669853452a416e9dfa564af0e9e6dc932e4ff",
+    "last_verified_success_head": "1ef71129a72eeb74dd62771217e77883dfb6c1fe",
+    "current_head": "b8c5bb286f87ecf2068b177f6fc354b3caf89af1",
     "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
     "supabase_project_status": "ACTIVE_HEALTHY",
     "supabase_changes_applied": false
@@ -57,6 +57,22 @@
         "Public repair request creation now attempts a real status_transition_logs insert for object_type=service_request, from_status=null, to_status=pending_review.",
         "Audit log records the actual status_transition_logged boolean instead of assuming success."
       ]
+    },
+    {
+      "batch": 4,
+      "module": "Service Operations Full Chain",
+      "fix": "Aligned full-chain read API and existing V28.4.5 verifier with production Supabase schema.",
+      "files": [
+        "app/api/admin/service-operations/full-chain/route.ts",
+        "tools/verify-v28-4-5-service-ops-full-chain.mjs"
+      ],
+      "details": [
+        "Full-chain quotations now use service_request_id/customer_id/version/total_amount/status instead of deprecated job_id/current_version/total/approval_status fields.",
+        "Full-chain invoices now use total_amount and quotation_id instead of total.",
+        "Full-chain payments no longer select fee or payment_url fields that do not exist in production.",
+        "Full-chain warranties now use starts_on/ends_on and production-visible linkage fields.",
+        "Verifier now blocks the deprecated selectors from returning."
+      ]
     }
   ],
   "remaining_blocking_findings": [
@@ -74,7 +90,7 @@
     }
   ],
   "next_batch": [
-    "Wait for Vercel/GitHub status for current head 578669853452a416e9dfa564af0e9e6dc932e4ff.",
+    "Wait for Vercel/GitHub status for current head b8c5bb286f87ecf2068b177f6fc354b3caf89af1.",
     "Find and patch the next 3 to 5 real status-changing routes for job / quotation / invoice / payment / warranty.",
     "Keep RLS migration staged until preview/staging access paths are verified."
   ],
