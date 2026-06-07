@@ -137,6 +137,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Service request creation failed' }, { status: 500 });
     }
 
+    let statusTransitionLogged = false;
     await writeStatusTransitionLog({
       supabase,
       machine: 'service_request_lifecycle',
@@ -147,7 +148,9 @@ export async function POST(request: NextRequest) {
       reason: 'public_service_request_create',
       actorRole: 'public',
       ip: requestIp
-    }).catch(() => undefined);
+    })
+      .then(() => { statusTransitionLogged = true; })
+      .catch(() => undefined);
 
     await writeAuditLog({
       role: 'public',
@@ -160,7 +163,7 @@ export async function POST(request: NextRequest) {
         lead_id: leadRow?.lead_id,
         service_request_id: requestRow?.service_request_id,
         binding_status: serviceRequest.binding_status,
-        status_transition_logged: true
+        status_transition_logged: statusTransitionLogged
       },
       ip: requestIp
     }).catch(() => undefined);
