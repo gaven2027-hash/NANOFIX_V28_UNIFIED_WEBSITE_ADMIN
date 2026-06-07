@@ -139,8 +139,71 @@ function auditSecurityCore() {
   return { key: 'rbac_rls_audit_layer', name: 'RBAC / RLS / Audit Layer', scanned_files_count: files.length, findings };
 }
 
+const productionSchemaSelectRules = [
+  { table: 'customers', forbidden: ['source'], safe: 'Use created_source for public/customer origin metadata.' },
+  { table: 'quotations', forbidden: ['job_id', 'current_version', 'total', 'approval_status', 'visible_to_customer', 'public_ref'], safe: 'Use service_request_id/customer_id, version, total_amount, and status.' },
+  { table: 'invoices', forbidden: ['total', 'payment_url', 'public_ref', 'updated_at'], safe: 'Use total_amount; payment links/public refs are not columns on invoices in production.' },
+  { table: 'payments', forbidden: ['fee', 'visible_to_customer', 'payment_url', 'updated_at'], safe: 'Use payment_id, invoice_id, customer_id, amount, currency, status, reconciled_at, created_at.' },
+  { table: 'warranties', forbidden: ['starts_at', 'ends_at', 'updated_at'], safe: 'Use starts_on and ends_on for warranty dates.' }
+];
+
+function normalizeSelectedColumn(raw) {
+  return raw
+    .trim()
+    .split(/\s+/)[0]
+    .replace(/^['"`]+|['"`]+$/g, '')
+    .replace(/!inner$/g, '')
+    .replace(/\(.*$/g, '');
+}
+
+function findSelectColumnsForTable(fileText, table) {
+  const regex = new RegExp(`\\.from\\(\\s*['\"\`]${table}['\"\`]\\s*\\)[\\s\\S]{0,600}?\\.select\\(\\s*(['\"\`])([\\s\\S]*?)\\1\\s*\\)`, 'g');
+  const selections = [];
+  for (const match of fileText.matchAll(regex)) {
+    const selectText = match[2] ?? '';
+    const columns = selectText.split(',').map(normalizeSelectedColumn).filter(Boolean);
+    selections.push({ columns, selectText: selectText.replace(/\s+/g, ' ').trim() });
+  }
+  return selections;
+}
+
+function auditProductionSchemaCompatibility() {
+  const findings = [];
+  const affectedFiles = [];
+
+  for (const file of allFiles) {
+    const fileText = body(file);
+    if (!fileText.includes('.from(') || !fileText.includes('.select(')) continue;
+
+    for (const rule of productionSchemaSelectRules) {
+      const selections = findSelectColumnsForTable(fileText, rule.table);
+      for (const selection of selections) {
+        const forbiddenFound = rule.forbidden.filter((name) => selection.columns.includes(name));
+        if (!forbiddenFound.length) continue;
+        affectedFiles.push(file);
+        add(
+          findings,
+          'P2',
+          'PRODUCTION_SCHEMA_MISMATCH_SELECT',
+          `${file} selects invalid production columns from ${rule.table}: ${forbiddenFound.join(', ')}. ${rule.safe}`,
+          { file, table: rule.table, forbidden_columns: forbiddenFound, select: selection.selectText }
+        );
+      }
+    }
+  }
+
+  return {
+    key: 'production_schema_compatibility',
+    name: 'Production Schema Compatibility Guard',
+    scanned_files_count: allFiles.length,
+    affected_files: [...new Set(affectedFiles)].sort(),
+    rules: productionSchemaSelectRules,
+    findings
+  };
+}
+
 const moduleReports = modules.map(auditModule);
-const crossModuleChecks = [auditMainChain(), auditCustomerIsolation(), auditSecurityCore()];
+const crossModuleChecks = [auditMainChain(), auditCustomerIsolation(), auditSecurityCore(), auditProductionSchemaCompatibility()];
 const findings = [...moduleReports, ...crossModuleChecks].flatMap((module) => module.findings.map((finding) => ({ module_key: module.key, module_name: module.name, ...finding })));
 const order = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
 findings.sort((a, b) => order[a.priority] - order[b.priority] || a.module_key.localeCompare(b.module_key) || a.code.localeCompare(b.code));
@@ -161,7 +224,7 @@ const report = {
     priority_rules: {
       P0: 'missing route/API/auth boundary',
       P1: 'placeholder/demo/fake success/browser storage/local state risk',
-      P2: 'API exists but no detectable Supabase read/write',
+      P2: 'API exists but no detectable Supabase read/write or code selects columns that do not exist in production schema',
       P3: 'read/write exists but no audit/status log detected',
       P4: 'module linkage keys missing'
     }
