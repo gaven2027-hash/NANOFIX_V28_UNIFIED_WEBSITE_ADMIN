@@ -141,27 +141,22 @@ async function loadLinkedObjects(customerIds: string[], limit: number) {
     seenJobs.add(jobId);
     return true;
   }).slice(0, limit);
-  const jobIds = unique(jobs.map((row) => idOf(row, 'job_id')));
 
   const quotationRows: Row[] = [];
-  if (jobIds.length) {
-    const byJob = await supabase
-      .from('quotations')
-      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,visible_to_customer,public_ref,created_at,updated_at')
-      .in('job_id', jobIds)
-      .eq('visible_to_customer', true)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (byJob.error) throw new Error(byJob.error.message);
-    quotationRows.push(...asRows(byJob.data));
-  }
+  const directQuotations = await supabase
+    .from('quotations')
+    .select('quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at')
+    .in('customer_id', customerIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (directQuotations.error) throw new Error(directQuotations.error.message);
+  quotationRows.push(...asRows(directQuotations.data));
 
   if (serviceRequestIds.length) {
     const byRequest = await supabase
       .from('quotations')
-      .select('quotation_id,job_id,service_request_id,current_version,total,approval_status,visible_to_customer,public_ref,created_at,updated_at')
+      .select('quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at')
       .in('service_request_id', serviceRequestIds)
-      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (byRequest.error) throw new Error(byRequest.error.message);
@@ -176,45 +171,38 @@ async function loadLinkedObjects(customerIds: string[], limit: number) {
     return true;
   }).slice(0, limit);
 
-  let invoices: Row[] = [];
-  if (jobIds.length) {
-    const invoiceResult = await supabase
-      .from('invoices')
-      .select('invoice_id,invoice_no,job_id,total,status,visible_to_customer,payment_url,public_ref,created_at,updated_at')
-      .in('job_id', jobIds)
-      .eq('visible_to_customer', true)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (invoiceResult.error) throw new Error(invoiceResult.error.message);
-    invoices = asRows(invoiceResult.data);
-  }
+  const invoiceResult = await supabase
+    .from('invoices')
+    .select('invoice_id,invoice_no,customer_id,job_id,quotation_id,total_amount,currency,status,visible_to_customer,created_at')
+    .in('customer_id', customerIds)
+    .eq('visible_to_customer', true)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (invoiceResult.error) throw new Error(invoiceResult.error.message);
+  const invoices = asRows(invoiceResult.data);
 
   const invoiceIds = unique(invoices.map((row) => idOf(row, 'invoice_id')));
   let payments: Row[] = [];
   if (invoiceIds.length) {
     const paymentResult = await supabase
       .from('payments')
-      .select('payment_id,invoice_id,amount,status,fee,reconciled_at,visible_to_customer,payment_url,created_at,updated_at')
+      .select('payment_id,invoice_id,customer_id,amount,currency,status,reconciled_at,created_at')
       .in('invoice_id', invoiceIds)
-      .eq('visible_to_customer', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (paymentResult.error) throw new Error(paymentResult.error.message);
     payments = asRows(paymentResult.data);
   }
 
-  let warranties: Row[] = [];
-  if (jobIds.length) {
-    const warrantyResult = await supabase
-      .from('warranties')
-      .select('warranty_id,job_id,customer_id,status,coverage,starts_at,ends_at,visible_to_customer,public_ref,created_at,updated_at')
-      .in('job_id', jobIds)
-      .eq('visible_to_customer', true)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (warrantyResult.error) throw new Error(warrantyResult.error.message);
-    warranties = asRows(warrantyResult.data);
-  }
+  const warrantyResult = await supabase
+    .from('warranties')
+    .select('warranty_id,job_id,customer_id,invoice_id,quotation_id,status,coverage,starts_on,ends_on,visible_to_customer,public_ref,created_at')
+    .in('customer_id', customerIds)
+    .eq('visible_to_customer', true)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (warrantyResult.error) throw new Error(warrantyResult.error.message);
+  const warranties = asRows(warrantyResult.data);
 
   return { serviceRequests, jobs, quotations, invoices, payments, warranties };
 }
@@ -249,11 +237,11 @@ function buildTimeline(rows: Awaited<ReturnType<typeof loadLinkedObjects>>, audi
   }
 
   for (const row of rows.quotations) {
-    events.push(event('quotation_status', `Quotation ${textOf(row, 'public_ref', idOf(row, 'quotation_id') ?? '')}`.trim(), textOf(row, 'approval_status', 'pending_customer'), numberOf(row, 'total'), 'quotation', idOf(row, 'quotation_id'), 'quotations', eventTime(row)));
+    events.push(event('quotation_status', `Quotation ${idOf(row, 'quotation_id') ?? ''}`.trim(), textOf(row, 'status', 'pending_customer'), numberOf(row, 'total_amount'), 'quotation', idOf(row, 'quotation_id'), 'quotations', eventTime(row)));
   }
 
   for (const row of rows.invoices) {
-    events.push(event('invoice_status', `Invoice ${textOf(row, 'invoice_no', textOf(row, 'public_ref', idOf(row, 'invoice_id') ?? ''))}`.trim(), textOf(row, 'status', 'open'), numberOf(row, 'total'), 'invoice', idOf(row, 'invoice_id'), 'invoices', eventTime(row)));
+    events.push(event('invoice_status', `Invoice ${textOf(row, 'invoice_no', idOf(row, 'invoice_id') ?? '')}`.trim(), textOf(row, 'status', 'open'), numberOf(row, 'total_amount'), 'invoice', idOf(row, 'invoice_id'), 'invoices', eventTime(row)));
   }
 
   for (const row of rows.payments) {
@@ -277,7 +265,7 @@ function buildTimeline(rows: Awaited<ReturnType<typeof loadLinkedObjects>>, audi
 function buildPaymentStatusSummary(invoices: Row[], payments: Row[]) {
   const payableInvoices = invoices.filter((row) => isOpenInvoiceStatus(textOf(row, 'status', 'open')));
   const payableInvoiceIds = new Set(payableInvoices.map((row) => idOf(row, 'invoice_id')).filter((value): value is string => Boolean(value)));
-  const invoiceTotal = payableInvoices.reduce((sum, row) => sum + numberOf(row, 'total'), 0);
+  const invoiceTotal = payableInvoices.reduce((sum, row) => sum + numberOf(row, 'total_amount'), 0);
   const paidAmount = payments
     .filter((row) => isPaidStatus(textOf(row, 'status', '')))
     .reduce((sum, row) => sum + numberOf(row, 'amount'), 0);
@@ -286,14 +274,13 @@ function buildPaymentStatusSummary(invoices: Row[], payments: Row[]) {
     .reduce((sum, row) => sum + numberOf(row, 'amount'), 0);
   const openInvoices = payableInvoices.length;
   const paidInvoices = invoices.filter((row) => isPaidStatus(textOf(row, 'status', ''))).length;
-  const paymentLinksOpened = payments.filter((row) => Boolean(idOf(row, 'payment_url'))).length;
 
   return {
     invoice_count: invoices.length,
     open_invoice_count: openInvoices,
     paid_invoice_count: paidInvoices,
     payment_record_count: payments.length,
-    payment_links_available: paymentLinksOpened,
+    payment_links_available: 0,
     invoice_total: Number(invoiceTotal.toFixed(2)),
     paid_amount: Number(paidAmount.toFixed(2)),
     outstanding_amount: Number(Math.max(invoiceTotal - payablePaidAmount, 0).toFixed(2))
