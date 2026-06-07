@@ -1,12 +1,55 @@
 {
-  "ok": null,
+  "ok": false,
   "verifier": "verify-v28-5-real-module-linkage-batch-audit",
-  "generated_at": null,
-  "status": "not_executed_in_connector_runtime",
-  "note": "Run npm run verify:v28-5-real-module-linkage from the repository root to generate the real audit report. This placeholder prevents consumers from mistaking a missing report file for a passed audit. The verifier overwrites this file with live scan results.",
+  "generated_at": "2026-06-07T04:25:00+08:00",
+  "status": "connector_supabase_github_first_pass_completed",
   "production_baseline": {
     "locked_tag": "v28.4.9.2-production-live-20260606",
     "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
-    "production_domain": "https://app.nanofixsg.com"
-  }
+    "production_domain": "https://app.nanofixsg.com",
+    "supabase_project_ref": "qjwcjttdyzsgexswbygt"
+  },
+  "github_pr": {
+    "number": 19,
+    "branch": "v28-5-0-real-module-linkage-batch-audit",
+    "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
+    "draft": true
+  },
+  "environment_checks": {
+    "github_quality_gate": "success_on_head_26ec864ba0fb6cdcafffaa9830e5e7f9c477f600",
+    "vercel_github_commit_status": "success",
+    "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
+    "supabase_project_status": "ACTIVE_HEALTHY"
+  },
+  "blocking_findings": [
+    {
+      "priority": "P0",
+      "module": "Customer Account Claiming / Customer Record Linking",
+      "finding": "RLS disabled in public schema",
+      "tables": ["customer_account_claims", "customer_record_links"],
+      "safe_action": "Do not blindly enable RLS until admin/customer policies are added, because both tables currently have no policies."
+    },
+    {
+      "priority": "P2",
+      "module": "Customer Portal Activity Timeline",
+      "finding": "Runtime schema mismatch against production Supabase columns",
+      "invalid_columns_seen_in_logs_or_code": ["customers.source", "payments.fee", "invoices.total", "quotations.job_id"],
+      "production_schema_replacements": {
+        "customers.source": "customers.created_source",
+        "invoices.total": "invoices.total_amount",
+        "payments.fee": "remove_from_select",
+        "quotations.job_id": "link_via_service_request_id_or_customer_id"
+      }
+    },
+    {
+      "priority": "P3",
+      "module": "Service Operations Main Chain",
+      "finding": "status_transition_logs table exists but has zero rows; verify request to job to quotation to invoice to payment to warranty state transitions are writing status logs."
+    }
+  ],
+  "next_batch": [
+    "Fix Customer Portal Activity Timeline API selects to production schema fields.",
+    "Add guard verifier to block old invalid fields from returning.",
+    "Prepare RLS policy migration for customer_account_claims and customer_record_links without applying blindly to production."
+  ]
 }
