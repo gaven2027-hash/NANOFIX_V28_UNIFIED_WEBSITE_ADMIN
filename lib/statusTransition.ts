@@ -1,11 +1,5 @@
-type StatusTransitionClient = {
-  from: (table: string) => {
-    insert: (values: Record<string, unknown>) => Promise<{ error?: { message?: string } | null }>;
-  };
-};
-
 type WriteStatusTransitionLogInput = {
-  supabase: StatusTransitionClient | null | undefined;
+  supabase: any;
   machine: string;
   objectType: string;
   objectId: string | null | undefined;
