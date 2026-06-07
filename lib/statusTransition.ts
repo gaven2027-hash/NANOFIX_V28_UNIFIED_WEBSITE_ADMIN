@@ -1,5 +1,17 @@
+type StatusTransitionInsertResult = {
+  error: { message?: string } | null;
+};
+
+type StatusTransitionInsertBuilder = {
+  insert(values: Record<string, unknown>): PromiseLike<StatusTransitionInsertResult>;
+};
+
+type StatusTransitionSupabaseClient = {
+  from(table: 'status_transition_logs'): StatusTransitionInsertBuilder;
+};
+
 type WriteStatusTransitionLogInput = {
-  supabase: any;
+  supabase: StatusTransitionSupabaseClient | null | undefined;
   machine: string;
   objectType: string;
   objectId: string | null | undefined;
