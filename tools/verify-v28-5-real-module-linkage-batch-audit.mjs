@@ -6,6 +6,7 @@ const reportFile = 'V28_5_REAL_MODULE_LINKAGE_AUDIT_REPORT.json';
 const reportPath = path.join(root, reportFile);
 const textExt = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.sql', '.md', '.css', '.html', '.yml', '.yaml']);
 const skipDirs = new Set(['.git', '.next', 'node_modules', '.vercel', 'out', 'dist', 'coverage', '.turbo']);
+const generatedReportPattern = /^V28_.*_REPORT(?:\.[^.]+)?\.json$/;
 
 const exists = (p) => fs.existsSync(path.join(root, p));
 const isDir = (p) => {
@@ -15,12 +16,17 @@ const read = (p) => {
   try { return fs.readFileSync(path.join(root, p), 'utf8'); } catch { return ''; }
 };
 
+function shouldSkipFile(relative) {
+  return relative === reportFile || generatedReportPattern.test(relative);
+}
+
 function walk(dir = root, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (skipDirs.has(entry.name)) continue;
     const absolute = path.join(dir, entry.name);
+    const relative = path.relative(root, absolute).replace(/\\/g, '/');
     if (entry.isDirectory()) walk(absolute, out);
-    if (entry.isFile() && textExt.has(path.extname(entry.name))) out.push(path.relative(root, absolute).replace(/\\/g, '/'));
+    if (entry.isFile() && textExt.has(path.extname(entry.name)) && !shouldSkipFile(relative)) out.push(relative);
   }
   return out;
 }
@@ -157,7 +163,7 @@ function normalizeSelectedColumn(raw) {
 }
 
 function findSelectColumnsForTable(fileText, table) {
-  const regex = new RegExp(`\\.from\\(\\s*['\"\`]${table}['\"\`]\\s*\\)[\\s\\S]{0,600}?\\.select\\(\\s*(['\"\`])([\\s\\S]*?)\\1\\s*\\)`, 'g');
+  const regex = new RegExp(`\\.from\\(\\s*['"\`]${table}['"\`]\\s*\\)[\\s\\S]{0,600}?\\.select\\(\\s*(['"\`])([\\s\\S]*?)\\1\\s*\\)`, 'g');
   const selections = [];
   for (const match of fileText.matchAll(regex)) {
     const selectText = match[2] ?? '';
