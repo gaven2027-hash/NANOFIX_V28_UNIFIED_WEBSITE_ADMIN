@@ -12,6 +12,11 @@
 alter table public.customer_account_claims enable row level security;
 alter table public.customer_record_links enable row level security;
 
+-- Remove older broad internal policies before creating the narrower admin/customer policies below.
+-- PostgreSQL combines permissive RLS policies with OR, so leaving these in place would bypass the staged hardening.
+drop policy if exists customer_account_claims_internal_all on public.customer_account_claims;
+drop policy if exists customer_record_links_internal_all on public.customer_record_links;
+
 -- Admin / operations / support users may manage customer account claims.
 drop policy if exists customer_account_claims_admin_all on public.customer_account_claims;
 create policy customer_account_claims_admin_all
