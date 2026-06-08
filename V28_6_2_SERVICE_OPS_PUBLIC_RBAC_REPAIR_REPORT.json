@@ -1,9 +1,9 @@
 {
   "ok": true,
   "report": "V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT",
-  "generated_at": "2026-06-08T14:45:00+08:00",
+  "generated_at": "2026-06-08T15:15:00+08:00",
   "branch": "v28-6-2-service-ops-public-rbac-repair",
-  "latest_ready_commit": "09e246c34390109520be8a8c7d35c34911f12dd7",
+  "latest_ready_commit": "7c9f6602e4adb39f0a7ecca747307dc18df47c1f",
   "preview_status": "Vercel Preview Ready on latest commit; validate:predeploy and build:ci passed according to Vercel deployment UI.",
   "scope": [
     "V28.6.2 Service & Order Operations",
@@ -48,16 +48,12 @@
       "summary": "Restored the existing Phase D.4 warranty claim workflow verifier marker without changing business behavior."
     },
     {
-      "sha": "e0321273784ba0c39c36b3d758ede0e77d99ac74",
-      "summary": "Updated the Batch A JSON report after the Ready preview."
-    },
-    {
-      "sha": "85af8cc3096459e56c214025834502f63e71faa4",
-      "summary": "Updated the Batch A Markdown report after the Ready preview."
-    },
-    {
       "sha": "09e246c34390109520be8a8c7d35c34911f12dd7",
-      "summary": "Extended Batch A verifier to cover Customer Portal Activity Timeline ownership, production fields, audit marker and timeline/payment summary response markers; latest Vercel Preview is Ready."
+      "summary": "Extended Batch A verifier to cover Customer Portal Activity Timeline ownership, production fields, audit marker and timeline/payment summary response markers."
+    },
+    {
+      "sha": "7c9f6602e4adb39f0a7ecca747307dc18df47c1f",
+      "summary": "Added Batch A Preview smoke test runner for readiness, health and unauthenticated permission boundary checks; latest Vercel Preview is Ready."
     }
   ],
   "repaired_files": [
@@ -68,6 +64,7 @@
   ],
   "added_or_updated_files": [
     "tools/verify-v28-6-2-service-ops-public-rbac.mjs",
+    "tools/smoke-v28-6-2-batch-a-preview.mjs",
     "V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.json",
     "V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.md"
   ],
@@ -88,7 +85,8 @@
     "Customer Portal service request attachments are normalized and validated against NANOFIX/Supabase Storage URL rules before DB write.",
     "Untrusted Customer Portal attachment URLs are rejected with HTTP 400 and audit_logs entries instead of fake success.",
     "Customer Portal warranty claim request type marker required by Phase D.4 verifier is preserved.",
-    "Batch A verifier now covers Customer Portal Activity Timeline ownership and production-field response markers."
+    "Batch A verifier now covers Customer Portal Activity Timeline ownership and production-field response markers.",
+    "Batch A Preview smoke runner now exists for readiness, health and unauthenticated RBAC boundary checks without writing business data by default."
   ],
   "public_rbac_foundation_review": {
     "public_submit_route": "app/api/service-requests/route.ts already writes unified_intake, leads and service_requests and fails explicitly when Supabase is not configured.",
@@ -96,18 +94,28 @@
     "rbac_foundation": "lib/apiSecurity.ts already resolves actor identity server-side through Supabase auth tokens, profiles/admin_profiles and default-disabled secret fallback.",
     "status_transition_helper": "lib/statusTransition.ts writes real status_transition_logs with object_type/object_id/from_status/to_status.",
     "attachment_storage_guard": "lib/storageAttachments.ts and Customer Portal service request API now reject untrusted external attachment URLs and allow only controlled NANOFIX/Supabase Storage paths/URLs.",
-    "customer_portal_timeline_gate": "tools/verify-v28-6-2-service-ops-public-rbac.mjs now checks Customer Portal Activity Timeline route markers: requireActorApi, customer-only actor guard, profile_id/customer ownership lookup, real table coverage, production fields, payment_status_summary/activity_timeline response markers and customer_portal_activity_timeline_read audit marker."
+    "customer_portal_timeline_gate": "tools/verify-v28-6-2-service-ops-public-rbac.mjs now checks Customer Portal Activity Timeline route markers: requireActorApi, customer-only actor guard, profile_id/customer ownership lookup, real table coverage, production fields, payment_status_summary/activity_timeline response markers and customer_portal_activity_timeline_read audit marker.",
+    "preview_smoke_runner": "tools/smoke-v28-6-2-batch-a-preview.mjs can be run against a Vercel Preview URL to check /api/ready, /api/system/health, unauthenticated Customer Portal timeline denial, unauthenticated Admin Service Operations denial, unauthenticated Global Search denial and optional invalid public-submit rejection."
   },
   "validation_status": {
     "vercel_preview_latest_commit": "ready",
-    "latest_ready_commit": "09e246c34390109520be8a8c7d35c34911f12dd7",
+    "latest_ready_commit": "7c9f6602e4adb39f0a7ecca747307dc18df47c1f",
     "typecheck": "passed after UUID type guard fix",
-    "validate_predeploy": "passed after warranty claim workflow marker restoration and timeline verifier extension",
+    "validate_predeploy": "passed after warranty claim workflow marker restoration, timeline verifier extension and smoke runner addition",
     "build_ci": "passed on latest Vercel Preview deployment shown by UI"
+  },
+  "smoke_test_command": {
+    "read_only_default": "V28_6_SMOKE_BASE_URL=https://<preview-url> node tools/smoke-v28-6-2-batch-a-preview.mjs",
+    "optional_invalid_public_submit_rejection_test": "V28_6_SMOKE_BASE_URL=https://<preview-url> V28_6_SMOKE_ALLOW_INVALID_POST=1 node tools/smoke-v28-6-2-batch-a-preview.mjs",
+    "outputs": [
+      "V28_6_2_BATCH_A_PREVIEW_SMOKE_REPORT.json",
+      "V28_6_2_BATCH_A_PREVIEW_SMOKE_REPORT.md"
+    ]
   },
   "remaining_work": [
     "Run node tools/verify-v28-6-2-service-ops-public-rbac.mjs locally/CI to archive exact runtime JSON output when full checkout execution is available.",
-    "Continue Batch A browser smoke test: Public Submit Request -> Admin Service Operations -> Customer Portal timeline.",
+    "Run tools/smoke-v28-6-2-batch-a-preview.mjs against the latest Vercel Preview URL and review generated smoke report.",
+    "Continue full browser smoke test with real test accounts: Public Submit Request -> Admin Service Operations -> Customer Portal timeline.",
     "Do not apply customer_account_claims/customer_record_links RLS to production until preview/staging verification is complete.",
     "Do not start Batch B until Batch A smoke test and report review are accepted."
   ],
@@ -117,6 +125,7 @@
     "No production database reset.",
     "No RLS disable.",
     "No TypeScript or ESLint bypass.",
-    "No fake success or localStorage business-state fallback added."
+    "No fake success or localStorage business-state fallback added.",
+    "Smoke runner is read-only by default and only sends invalid public-submit payload when explicitly enabled."
   ]
 }
