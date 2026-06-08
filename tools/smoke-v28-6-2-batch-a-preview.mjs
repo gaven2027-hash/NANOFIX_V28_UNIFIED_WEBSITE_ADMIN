@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const baseUrlRaw = process.env.V28_6_SMOKE_BASE_URL || process.env.PREVIEW_BASE_URL || '';
 const allowInvalidPost = process.env.V28_6_SMOKE_ALLOW_INVALID_POST === '1';
+const vercelBypassSecret = String(process.env.VERCEL_AUTOMATION_BYPASS_SECRET || process.env.V28_6_VERCEL_BYPASS_SECRET || '').trim();
 const root = process.cwd();
 const jsonReport = 'V28_6_2_BATCH_A_PREVIEW_SMOKE_REPORT.json';
 const mdReport = 'V28_6_2_BATCH_A_PREVIEW_SMOKE_REPORT.md';
@@ -23,16 +24,26 @@ function url(pathname) {
   return `${baseUrl}${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
 }
 
+function smokeHeaders(initHeaders = {}) {
+  const headers = {
+    accept: 'application/json,text/plain,*/*',
+    ...initHeaders
+  };
+
+  if (vercelBypassSecret) {
+    headers['x-vercel-protection-bypass'] = vercelBypassSecret;
+  }
+
+  return headers;
+}
+
 async function request(pathname, init = {}) {
   const started = Date.now();
   try {
     const response = await fetch(url(pathname), {
       redirect: 'manual',
       ...init,
-      headers: {
-        accept: 'application/json,text/plain,*/*',
-        ...(init.headers || {})
-      }
+      headers: smokeHeaders(init.headers || {})
     });
     const text = await response.text().catch(() => '');
     let json = null;
@@ -124,6 +135,7 @@ function md(data) {
     `- Overall: ${data.ok ? 'PASS' : 'FAIL'}`,
     `- Passed: ${data.passed}/${data.total}`,
     `- Mutating invalid POST check enabled: ${data.allow_invalid_post ? 'yes' : 'no'}`,
+    `- Vercel protection bypass header enabled: ${data.vercel_bypass_enabled ? 'yes' : 'no'}`,
     '',
     '## Checks',
     '',
@@ -133,7 +145,7 @@ function md(data) {
   for (const check of data.checks) {
     lines.push(`| ${check.name} | ${check.pass ? 'PASS' : 'FAIL'} | ${check.response?.status ?? 'n/a'} | ${String(check.expectation).replace(/\|/g, '\\|')} |`);
   }
-  lines.push('', '## Notes', '', '- This smoke runner does not use production Supabase credentials and does not mutate data by default.', '- It is intended for Vercel Preview URL validation after validate:predeploy and build:ci pass.', '- Run with `V28_6_SMOKE_BASE_URL=https://<preview-host> node tools/smoke-v28-6-2-batch-a-preview.mjs`.', '- To also verify invalid public submit rejection, add `V28_6_SMOKE_ALLOW_INVALID_POST=1`.', '');
+  lines.push('', '## Notes', '', '- This smoke runner does not use production Supabase credentials and does not mutate data by default.', '- It is intended for Vercel Preview URL validation after validate:predeploy and build:ci pass.', '- Run with `V28_6_SMOKE_BASE_URL=https://<preview-host> node tools/smoke-v28-6-2-batch-a-preview.mjs`.', '- For protected Vercel Preview deployments, set `VERCEL_AUTOMATION_BYPASS_SECRET` or `V28_6_VERCEL_BYPASS_SECRET` before running the smoke test.', '- To also verify invalid public submit rejection, add `V28_6_SMOKE_ALLOW_INVALID_POST=1`.', '');
   return `${lines.join('\n')}\n`;
 }
 
@@ -144,6 +156,7 @@ async function main() {
       generated_at: nowIso(),
       base_url: '',
       allow_invalid_post: allowInvalidPost,
+      vercel_bypass_enabled: Boolean(vercelBypassSecret),
       total: 0,
       passed: 0,
       checks: [],
@@ -169,6 +182,7 @@ async function main() {
     generated_at: nowIso(),
     base_url: baseUrl,
     allow_invalid_post: allowInvalidPost,
+    vercel_bypass_enabled: Boolean(vercelBypassSecret),
     total: checks.length,
     passed,
     checks
