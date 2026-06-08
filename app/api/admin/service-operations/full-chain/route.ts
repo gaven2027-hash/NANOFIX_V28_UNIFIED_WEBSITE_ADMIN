@@ -73,16 +73,18 @@ function buildChains(payload: Record<string, Row[]>, knownServiceRequestIds: Set
     const linkedJobs = jobs.filter((job) => equalsId(job.service_request_id, serviceRequestId));
     const linkedJobIds = new Set(linkedJobs.map((job) => idOf(job, 'job_id')).filter(Boolean) as string[]);
 
-    const linkedQuotations = quotations.filter((quotation) => {
-      const quotationJobId = quotation.job_id;
-      const quotationServiceRequestId = quotation.service_request_id;
-      return linkedJobIds.has(String(quotationJobId ?? '')) || equalsId(quotationServiceRequestId, serviceRequestId);
+    const linkedQuotations = quotations.filter((quotation) => equalsId(quotation.service_request_id, serviceRequestId));
+    const linkedQuotationIds = new Set(linkedQuotations.map((quotation) => idOf(quotation, 'quotation_id')).filter(Boolean) as string[]);
+
+    const linkedInvoices = invoices.filter((invoice) => {
+      return linkedJobIds.has(String(invoice.job_id ?? '')) || linkedQuotationIds.has(String(invoice.quotation_id ?? ''));
     });
-    const linkedInvoices = invoices.filter((invoice) => linkedJobIds.has(String(invoice.job_id ?? '')));
     const linkedInvoiceIds = new Set(linkedInvoices.map((invoice) => idOf(invoice, 'invoice_id')).filter(Boolean) as string[]);
 
     const linkedPayments = payments.filter((payment) => linkedInvoiceIds.has(String(payment.invoice_id ?? '')));
-    const linkedWarranties = warranties.filter((warranty) => linkedJobIds.has(String(warranty.job_id ?? '')));
+    const linkedWarranties = warranties.filter((warranty) => {
+      return linkedJobIds.has(String(warranty.job_id ?? '')) || linkedQuotationIds.has(String(warranty.quotation_id ?? '')) || linkedInvoiceIds.has(String(warranty.invoice_id ?? ''));
+    });
 
     const objectIds = new Set<string>();
     if (serviceRequestId) objectIds.add(serviceRequestId);
@@ -120,7 +122,6 @@ function buildChains(payload: Record<string, Row[]>, knownServiceRequestIds: Set
 
   return { chains, orphan_jobs: orphanJobs };
 }
-
 
 async function fetchKnownServiceRequestIds(
   supabase: ReturnType<typeof createAdminClient>,
@@ -173,12 +174,12 @@ export async function GET(request: NextRequest) {
 
   const results = await Promise.all([
     safeList(supabase, 'service_requests', 'service_requests', 'service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,issue_type,leak_location,status,binding_status,request_origin,customer_portal_request_type,created_at,updated_at', limit),
-    safeList(supabase, 'jobs', 'jobs', 'job_id,service_request_id,customer_id,engineer_id,status,scheduled_at,notes,created_at,updated_at', limit),
-    safeList(supabase, 'quotations', 'quotations', 'quotation_id,job_id,service_request_id,current_version,total,approval_status,created_at', limit),
-    safeList(supabase, 'invoices', 'invoices', 'invoice_id,invoice_no,job_id,total,status,created_at', limit),
-    safeList(supabase, 'payments', 'payments', 'payment_id,invoice_id,amount,status,fee,reconciled_at,created_at', limit),
-    safeList(supabase, 'warranties', 'warranties', 'warranty_id,job_id,status,coverage,starts_at,ends_at,created_at', limit),
-    safeList(supabase, 'status_logs', 'status_transition_logs', 'transition_id,machine,object_id,from_status,to_status,reason,actor_role,created_at', Math.max(limit * 3, 30))
+    safeList(supabase, 'jobs', 'jobs', 'job_id,service_request_id,quotation_id,customer_id,engineer_id,status,scheduled_at,notes,created_at,updated_at', limit),
+    safeList(supabase, 'quotations', 'quotations', 'quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at', limit),
+    safeList(supabase, 'invoices', 'invoices', 'invoice_id,invoice_no,customer_id,job_id,quotation_id,total_amount,currency,status,visible_to_customer,created_at', limit),
+    safeList(supabase, 'payments', 'payments', 'payment_id,invoice_id,customer_id,amount,currency,status,reconciled_at,created_at', limit),
+    safeList(supabase, 'warranties', 'warranties', 'warranty_id,job_id,customer_id,invoice_id,quotation_id,status,coverage,starts_on,ends_on,visible_to_customer,public_ref,created_at', limit),
+    safeList(supabase, 'status_logs', 'status_transition_logs', 'transition_id,machine,object_type,object_id,from_status,to_status,reason,actor_role,created_at', Math.max(limit * 3, 30))
   ]);
 
   const payload: Record<string, Row[]> = {};

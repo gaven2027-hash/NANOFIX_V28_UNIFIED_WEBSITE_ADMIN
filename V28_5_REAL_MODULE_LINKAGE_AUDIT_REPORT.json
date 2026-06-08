@@ -1,0 +1,149 @@
+{
+  "ok": false,
+  "verifier": "verify-v28-5-real-module-linkage-batch-audit",
+  "generated_at": "2026-06-07T18:35:00+08:00",
+  "status": "stable_after_batch_7_rls_review",
+  "production_baseline": {
+    "locked_tag": "v28.4.9.2-production-live-20260606",
+    "expected_main_commit": "2dfe6388862fb7d60ef08d1577143f50504073b4",
+    "production_domain": "https://app.nanofixsg.com",
+    "supabase_project_ref": "qjwcjttdyzsgexswbygt"
+  },
+  "github_pr": {
+    "number": 19,
+    "branch": "v28-5-0-real-module-linkage-batch-audit",
+    "base_sha": "2dfe6388862fb7d60ef08d1577143f50504073b4",
+    "head_sha": "3ecb244ae0a49ea49665bf01ebf235b26d238794",
+    "draft": true,
+    "mergeable": true
+  },
+  "environment_checks": {
+    "last_verified_success_head": "3ecb244ae0a49ea49665bf01ebf235b26d238794",
+    "vercel_status_for_last_verified_head": "success",
+    "github_quality_gate_for_last_verified_head": "success",
+    "vercel_direct_connector": "blocked_by_scope_403_reauth_required",
+    "supabase_project_status": "ACTIVE_HEALTHY",
+    "supabase_changes_applied": false
+  },
+  "completed_batches": [
+    {
+      "batch": 1,
+      "module": "Customer Portal Activity Timeline",
+      "fix": "Aligned Supabase selects with production schema fields and added production schema mismatch guard.",
+      "files": [
+        "app/api/customer-portal/activity-timeline/route.ts",
+        "tools/verify-v28-5-real-module-linkage-batch-audit.mjs"
+      ]
+    },
+    {
+      "batch": 2,
+      "module": "Customer Account Claiming / Customer Record Linking",
+      "fix": "Hardened staged RLS migration without applying it to production.",
+      "file": "supabase/migrations/20260607042500_v28_5_customer_claims_record_links_rls.sql",
+      "details": [
+        "Internal access now checks both profiles and admin_profiles.",
+        "Allowed active internal roles include super_admin, admin, operations_admin, support_admin, support, finance_admin and finance.",
+        "Customer read access now supports customers.auth_user_id, customers.claimed_auth_user_id and customers.profile_id linked through profiles.auth_user_id."
+      ]
+    },
+    {
+      "batch": 3,
+      "module": "Service Operations Main Chain",
+      "fix": "Added reusable status_transition_logs helper and connected public service request creation to service_request_lifecycle logging.",
+      "files": [
+        "lib/statusTransition.ts",
+        "app/api/service-requests/route.ts"
+      ],
+      "details": [
+        "Public repair request creation now attempts a real status_transition_logs insert for object_type=service_request, from_status=null, to_status=pending_review.",
+        "Audit log records the actual status_transition_logged boolean instead of assuming success."
+      ]
+    },
+    {
+      "batch": 4,
+      "module": "Service Operations Full Chain",
+      "fix": "Aligned full-chain read API and existing V28.4.5 verifier with production Supabase schema.",
+      "files": [
+        "app/api/admin/service-operations/full-chain/route.ts",
+        "tools/verify-v28-4-5-service-ops-full-chain.mjs"
+      ],
+      "details": [
+        "Full-chain quotations now use service_request_id, customer_id, version, total_amount and status fields.",
+        "Full-chain invoices now use total_amount and quotation_id.",
+        "Full-chain payments use production payment columns only.",
+        "Full-chain warranties now use starts_on, ends_on and production-visible linkage fields.",
+        "Verifier now blocks deprecated production-schema selectors from returning."
+      ]
+    },
+    {
+      "batch": 5,
+      "module": "V28.5 Verifier Stability",
+      "fix": "Verifier now skips generated V28 report JSON files to avoid self-scanning historical audit text.",
+      "file": "tools/verify-v28-5-real-module-linkage-batch-audit.mjs",
+      "details": [
+        "Service Operations Live Core direct edits were rolled back after Preview failure and are not part of the stable batch set.",
+        "Next Live Core repair must be done as a smaller dedicated batch after route-level review."
+      ]
+    },
+    {
+      "batch": 6,
+      "module": "Payment Webhook Reconciliation",
+      "fix": "Aligned payment webhook writes with the production payments schema without changing production Supabase.",
+      "file": "app/api/webhooks/payments/route.ts",
+      "details": [
+        "Payment webhook updates now write only production payment fields: amount, currency, status and reconciled_at.",
+        "New payment records now include invoice_id, customer_id, amount, currency, status and reconciled_at.",
+        "The existing payment_intents, payment_transactions, invoice status, finance task, notification_outbox and audit log flow remains intact.",
+        "Vercel and GitHub Quality Gate for head 3ecb244ae0a49ea49665bf01ebf235b26d238794 returned success."
+      ]
+    },
+    {
+      "batch": 7,
+      "module": "Customer Account Claiming / Customer Record Linking RLS Review",
+      "fix": "Completed read-only production schema and policy review for the staged RLS migration; production remains unchanged.",
+      "file": "supabase/migrations/20260607042500_v28_5_customer_claims_record_links_rls.sql",
+      "details": [
+        "Read-only schema review confirmed staged migration dependencies exist in production: customer_account_claims.customer_id, claimed_auth_user_id; customer_record_links.customer_id, link_status; customers.auth_user_id, profile_id, claimed_auth_user_id; profiles.auth_user_id; admin_profiles.auth_user_id, role and status.",
+        "Production RLS is still disabled on customer_account_claims and customer_record_links and no existing policies were detected, so no production mutation has been applied.",
+        "Repository search found no direct runtime code references to customer_account_claims or customer_record_links, which lowers immediate breakage risk but does not replace preview/staging verification before applying RLS.",
+        "The staged policy remains ready for deliberate preview/staging or scheduled production application, not automatic blind application."
+      ]
+    }
+  ],
+  "rolled_back_batches": [
+    {
+      "batch": "5A",
+      "module": "Service Operations Live Core",
+      "reason": "The larger Live Core route edit caused Preview or Quality Gate instability and was rolled back to the last verified successful baseline.",
+      "stable_plan": "Re-review Live Core as a later small batch, separating schema-only changes from status logging changes."
+    }
+  ],
+  "remaining_blocking_findings": [
+    {
+      "priority": "P0_REVIEW_REQUIRED_BEFORE_PRODUCTION_MIGRATION",
+      "module": "Customer Account Claiming / Customer Record Linking",
+      "finding": "RLS disabled in production remains unresolved until the staged migration is verified in preview/staging or applied deliberately during a controlled production window.",
+      "tables": [
+        "customer_account_claims",
+        "customer_record_links"
+      ],
+      "safe_action": "Do not blindly apply to production. First verify Customer Center admin flows and Customer Portal own-record visibility on preview/staging. If applied to production, apply only the reviewed staged migration and monitor claim/link flows."
+    },
+    {
+      "priority": "P3_PARTIAL",
+      "module": "Service Operations Main Chain",
+      "finding": "status_transition_logs integration is connected to public service_request creation, but dedicated job, quotation, invoice, payment and warranty routes still need route-level review."
+    }
+  ],
+  "next_batch": [
+    "Wait for the Batch 7 audit-report update to return Preview/Quality Gate status.",
+    "Continue with dedicated job, quotation, invoice and warranty routes only after the current head is stable.",
+    "Keep RLS migration staged until preview/staging access paths are verified or a controlled production security window is approved."
+  ],
+  "safety_notes": [
+    "No Supabase production mutation was applied.",
+    "No production database reset or migration repair was run.",
+    "No TypeScript or ESLint bypass was introduced.",
+    "PR remains draft and main was not modified."
+  ]
+}

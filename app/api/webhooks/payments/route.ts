@@ -79,18 +79,19 @@ function parseWebhook(payload: WebhookPayload) {
 
 async function findPaymentIntent(input: { paymentIntentId: string; provider: string; providerExternalId: string; invoiceId: string }) {
   const supabase = createAdminClient();
+  const selectFields = 'payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,provider_external_id';
   if (input.paymentIntentId) {
-    const { data, error } = await supabase.from('payment_intents').select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,provider_external_id').eq('payment_intent_id', input.paymentIntentId).maybeSingle();
+    const { data, error } = await supabase.from('payment_intents').select(selectFields).eq('payment_intent_id', input.paymentIntentId).maybeSingle();
     if (error) throw new Error(error.message);
     if (data) return data as PaymentIntentRow;
   }
   if (input.providerExternalId) {
-    const { data, error } = await supabase.from('payment_intents').select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,provider_external_id').eq('provider', input.provider).eq('provider_external_id', input.providerExternalId).maybeSingle();
+    const { data, error } = await supabase.from('payment_intents').select(selectFields).eq('provider', input.provider).eq('provider_external_id', input.providerExternalId).maybeSingle();
     if (error) throw new Error(error.message);
     if (data) return data as PaymentIntentRow;
   }
   if (input.invoiceId) {
-    const { data, error } = await supabase.from('payment_intents').select('payment_intent_id,quotation_id,acceptance_id,invoice_id,job_id,customer_id,amount,currency,status,provider,payment_url,provider_external_id').eq('invoice_id', input.invoiceId).maybeSingle();
+    const { data, error } = await supabase.from('payment_intents').select(selectFields).eq('invoice_id', input.invoiceId).maybeSingle();
     if (error) throw new Error(error.message);
     if (data) return data as PaymentIntentRow;
   }
@@ -134,6 +135,7 @@ async function reconcilePayment(input: { parsed: ReturnType<typeof parseWebhook>
   const internalStatus = providerStatusToInternal(input.parsed.status, input.parsed.eventType);
   const paid = internalStatus === 'paid';
   const amount = input.parsed.amount || Number(input.paymentIntent.amount ?? 0);
+  const currency = input.parsed.currency || input.paymentIntent.currency || 'SGD';
 
   const { data: updatedIntent, error: intentError } = await supabase
     .from('payment_intents')
@@ -142,7 +144,7 @@ async function reconcilePayment(input: { parsed: ReturnType<typeof parseWebhook>
       provider: input.parsed.provider,
       provider_external_id: input.parsed.providerExternalId || input.paymentIntent.provider_external_id,
       amount,
-      currency: input.parsed.currency || input.paymentIntent.currency || 'SGD',
+      currency,
       last_webhook_event_id: input.eventId
     })
     .eq('payment_intent_id', input.paymentIntent.payment_intent_id)
@@ -162,13 +164,13 @@ async function reconcilePayment(input: { parsed: ReturnType<typeof parseWebhook>
       paymentId = existingPayment.payment_id as string;
       await supabase
         .from('payments')
-        .update({ amount, status: internalStatus, reconciled_at: paid ? new Date().toISOString() : null, visible_to_customer: true })
+        .update({ amount, currency, status: internalStatus, reconciled_at: paid ? new Date().toISOString() : null })
         .eq('payment_id', paymentId)
         .throwOnError();
     } else {
       const { data: newPayment, error: paymentInsertError } = await supabase
         .from('payments')
-        .insert({ invoice_id: input.paymentIntent.invoice_id, amount, status: internalStatus, fee: 0, reconciled_at: paid ? new Date().toISOString() : null, visible_to_customer: true })
+        .insert({ invoice_id: input.paymentIntent.invoice_id, customer_id: input.paymentIntent.customer_id, amount, currency, status: internalStatus, reconciled_at: paid ? new Date().toISOString() : null })
         .select('payment_id')
         .single();
       if (paymentInsertError) throw new Error(paymentInsertError.message);
