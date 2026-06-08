@@ -57,7 +57,7 @@ function isMachine(value: string | null): value is Machine {
   return Boolean(value && MACHINES.includes(value as Machine));
 }
 
-function isUuid(value: string | null | undefined) {
+function isUuid(value: string | null | undefined): value is string {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
 }
 
