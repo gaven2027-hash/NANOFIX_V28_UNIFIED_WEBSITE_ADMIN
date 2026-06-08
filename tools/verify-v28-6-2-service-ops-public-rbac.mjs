@@ -1,0 +1,145 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const reportJson = 'V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.json';
+const reportMd = 'V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.md';
+
+function read(file) {
+  try {
+    return fs.readFileSync(path.join(root, file), 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+function has(fileText, needle) {
+  return fileText.includes(needle);
+}
+
+function assertHas(findings, file, fileText, needle, code, message, priority = 'P1') {
+  if (!has(fileText, needle)) findings.push({ priority, code, file, message, expected: needle });
+}
+
+function assertNotHas(findings, file, fileText, needle, code, message, priority = 'P1') {
+  if (has(fileText, needle)) findings.push({ priority, code, file, message, forbidden: needle });
+}
+
+const liveCoreFile = 'app/api/admin/service-operations/route.ts';
+const publicRequestFile = 'app/api/service-requests/route.ts';
+const apiSecurityFile = 'lib/apiSecurity.ts';
+const statusTransitionFile = 'lib/statusTransition.ts';
+const fullChainFile = 'app/api/admin/service-operations/full-chain/route.ts';
+
+const liveCore = read(liveCoreFile);
+const publicRequest = read(publicRequestFile);
+const apiSecurity = read(apiSecurityFile);
+const statusTransition = read(statusTransitionFile);
+const fullChain = read(fullChainFile);
+
+const findings = [];
+
+for (const file of [liveCoreFile, publicRequestFile, apiSecurityFile, statusTransitionFile, fullChainFile]) {
+  if (!read(file)) findings.push({ priority: 'P0', code: 'MISSING_REQUIRED_FILE', file, message: `${file} is required for V28.6 Batch A verification.` });
+}
+
+assertHas(findings, liveCoreFile, liveCore, "requireActorApi", 'LIVE_CORE_RBAC_REQUIRED', 'Service Operations Live Core must use server-side RBAC.');
+assertHas(findings, liveCoreFile, liveCore, "writeAuditLog", 'LIVE_CORE_AUDIT_REQUIRED', 'Service Operations Live Core must write audit logs.');
+assertHas(findings, liveCoreFile, liveCore, "writeStatusTransitionLog", 'LIVE_CORE_STATUS_LOG_HELPER_REQUIRED', 'Create/update paths must write status_transition_logs.');
+assertHas(findings, liveCoreFile, liveCore, "logCreateTransition", 'LIVE_CORE_CREATE_TRANSITION_REQUIRED', 'Record creation must attempt initial lifecycle status logging.');
+assertHas(findings, liveCoreFile, liveCore, "logUpdateTransition", 'LIVE_CORE_UPDATE_TRANSITION_REQUIRED', 'Record update status changes must write lifecycle status logging.');
+assertHas(findings, liveCoreFile, liveCore, "statusTransitionLogged", 'LIVE_CORE_TRANSITION_RESULT_REQUIRED', 'Audit payload must record whether status transition logging actually ran.');
+assertHas(findings, liveCoreFile, liveCore, "transition_status_tx", 'LIVE_CORE_RPC_TRANSITION_REQUIRED', 'Explicit status transitions must use the existing transaction RPC.');
+
+for (const required of [
+  'service_request_id,customer_id,lead_id,intake_id',
+  'job_id,service_request_id,quotation_id,customer_id',
+  'quotation_id,service_request_id,customer_id,version,total_amount,currency,status',
+  'invoice_id,invoice_no,customer_id,job_id,quotation_id,total_amount,currency,status,visible_to_customer',
+  'payment_id,invoice_id,customer_id,amount,currency,status,reconciled_at',
+  'warranty_id,job_id,customer_id,invoice_id,quotation_id,status,coverage,starts_on,ends_on,visible_to_customer,public_ref',
+  'transition_id,machine,object_type,object_id,from_status,to_status,reason,actor_role,created_at'
+]) {
+  assertHas(findings, liveCoreFile, liveCore, required, 'LIVE_CORE_PRODUCTION_SCHEMA_SELECT_REQUIRED', `Live Core must use production schema selector: ${required}`);
+}
+
+for (const forbidden of ['current_version', 'approval_status', 'starts_at', 'ends_at', "'fee'", 'total,status,created_at']) {
+  assertNotHas(findings, liveCoreFile, liveCore, forbidden, 'LIVE_CORE_DEPRECATED_SCHEMA_FORBIDDEN', `Deprecated production-incompatible field must not return in Live Core: ${forbidden}`);
+}
+
+assertHas(findings, publicRequestFile, publicRequest, "unified_intake", 'PUBLIC_REQUEST_INTAKE_REQUIRED', 'Public service request must write unified_intake.');
+assertHas(findings, publicRequestFile, publicRequest, "leads", 'PUBLIC_REQUEST_LEAD_REQUIRED', 'Public service request must write leads.');
+assertHas(findings, publicRequestFile, publicRequest, "service_requests", 'PUBLIC_REQUEST_SERVICE_REQUEST_REQUIRED', 'Public service request must write service_requests.');
+assertHas(findings, publicRequestFile, publicRequest, "writeStatusTransitionLog", 'PUBLIC_REQUEST_STATUS_LOG_REQUIRED', 'Public service request creation must log status transition.');
+assertHas(findings, publicRequestFile, publicRequest, "status_transition_logged", 'PUBLIC_REQUEST_STATUS_RESULT_REQUIRED', 'Public request audit log must record actual status log result.');
+assertHas(findings, publicRequestFile, publicRequest, "Supabase is not configured", 'PUBLIC_REQUEST_NO_FAKE_SUCCESS_REQUIRED', 'Public submit must fail explicitly when Supabase is not configured.');
+
+assertHas(findings, apiSecurityFile, apiSecurity, "ALLOW_ADMIN_API_SECRET_FALLBACK", 'API_SECRET_FALLBACK_DISABLED_BY_DEFAULT_REQUIRED', 'Secret fallback must be disabled by default.');
+assertHas(findings, apiSecurityFile, apiSecurity, "supabase.auth.getUser", 'API_AUTH_GET_USER_REQUIRED', 'API auth must verify Supabase token server-side.');
+assertHas(findings, apiSecurityFile, apiSecurity, "profiles", 'API_PROFILE_LOOKUP_REQUIRED', 'API auth must resolve profile role from database.');
+assertHas(findings, apiSecurityFile, apiSecurity, "admin_profiles", 'API_ADMIN_PROFILE_BRIDGE_REQUIRED', 'Legacy admin profile bridge must remain explicit and active-only.');
+
+assertHas(findings, statusTransitionFile, statusTransition, "status_transition_logs", 'STATUS_TRANSITION_TABLE_REQUIRED', 'Status transition helper must write status_transition_logs.');
+assertHas(findings, statusTransitionFile, statusTransition, "object_type", 'STATUS_TRANSITION_OBJECT_TYPE_REQUIRED', 'Status transition helper must use object_type.');
+assertHas(findings, fullChainFile, fullChain, "quotation_id,service_request_id,customer_id,version,total_amount,currency,status", 'FULL_CHAIN_SCHEMA_ALIGNMENT_REQUIRED', 'Full-chain read API must remain production-schema aligned.');
+
+const blocking = findings.filter((finding) => ['P0', 'P1', 'P2'].includes(finding.priority));
+const ok = blocking.length === 0;
+
+const report = {
+  ok,
+  verifier: 'verify-v28-6-2-service-ops-public-rbac',
+  generated_at: new Date().toISOString(),
+  branch: 'v28-6-2-service-ops-public-rbac-repair',
+  base_memory_doc: 'docs/NANOFIX_V28_6_OA_ERP_REAL_MODULE_REPAIR_PLAN_20260608.md',
+  repaired_files: [liveCoreFile],
+  verified_files: [liveCoreFile, publicRequestFile, apiSecurityFile, statusTransitionFile, fullChainFile],
+  acceptance: {
+    service_operations_live_core_schema_aligned: !findings.some((f) => f.code === 'LIVE_CORE_PRODUCTION_SCHEMA_SELECT_REQUIRED' || f.code === 'LIVE_CORE_DEPRECATED_SCHEMA_FORBIDDEN'),
+    service_operations_status_logs_wired: !findings.some((f) => f.code.includes('STATUS') || f.code.includes('TRANSITION')),
+    public_submit_real_chain_present: !findings.some((f) => f.code.startsWith('PUBLIC_REQUEST_')),
+    rbac_foundation_present: !findings.some((f) => f.code.startsWith('API_'))
+  },
+  findings
+};
+
+function md(data) {
+  const lines = [
+    '# NANOFIX V28.6.2 + V28.6.9 Batch A Repair Report',
+    '',
+    `- Verifier: \`${data.verifier}\``,
+    `- Generated at: ${data.generated_at}`,
+    `- Branch: \`${data.branch}\``,
+    `- OK: **${data.ok}**`,
+    '',
+    '## Repaired Files',
+    ...data.repaired_files.map((file) => `- \`${file}\``),
+    '',
+    '## Verified Files',
+    ...data.verified_files.map((file) => `- \`${file}\``),
+    '',
+    '## Acceptance Snapshot',
+    '',
+    `- Service Operations Live Core schema aligned: ${data.acceptance.service_operations_live_core_schema_aligned}`,
+    `- Service Operations status logs wired: ${data.acceptance.service_operations_status_logs_wired}`,
+    `- Public submit real chain present: ${data.acceptance.public_submit_real_chain_present}`,
+    `- RBAC foundation present: ${data.acceptance.rbac_foundation_present}`,
+    '',
+    '## Findings',
+    ''
+  ];
+
+  if (!data.findings.length) lines.push('- No blocking findings detected by this static verifier.');
+  for (const finding of data.findings) {
+    lines.push(`- **${finding.priority} / ${finding.code} / ${finding.file}:** ${finding.message}`);
+  }
+
+  lines.push('', '## Notes', '', '- This verifier is static and does not connect to or mutate production Supabase.', '- Runtime validation still requires `npm run validate:predeploy` and `npm run build:ci` in a local/CI environment.', '');
+  return lines.join('\n');
+}
+
+fs.writeFileSync(path.join(root, reportJson), `${JSON.stringify(report, null, 2)}\n`);
+fs.writeFileSync(path.join(root, reportMd), `${md(report)}\n`);
+
+console.log(JSON.stringify({ ok: report.ok, verifier: report.verifier, findings: report.findings.length, reportJson, reportMd }, null, 2));
+if (!ok) process.exit(1);
