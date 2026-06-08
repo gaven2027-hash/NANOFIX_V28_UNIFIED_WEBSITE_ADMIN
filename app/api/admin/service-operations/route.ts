@@ -25,24 +25,24 @@ type QuerySpec = {
 const READ_QUERIES: QuerySpec[] = [
   { key: 'leads', machine: 'lead', table: 'leads', idColumn: 'lead_id', statusColumn: 'status', select: 'lead_id,name,phone,email,source_platform,request_origin,customer_portal_request_type,related_warranty_id,priority,status,binding_status,created_at,updated_at', limit: 12 },
   { key: 'service_requests', machine: 'service_request', table: 'service_requests', idColumn: 'service_request_id', statusColumn: 'status', select: 'service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,issue_type,leak_location,status,binding_status,request_origin,customer_portal_request_type,related_warranty_id,portal_attachment_urls,portal_customer_notes,created_at,updated_at', limit: 12 },
-  { key: 'jobs', machine: 'job', table: 'jobs', idColumn: 'job_id', statusColumn: 'status', select: 'job_id,service_request_id,customer_id,engineer_id,status,scheduled_at,notes,created_at,updated_at', limit: 12 },
-  { key: 'quotations', machine: 'quotation', table: 'quotations', idColumn: 'quotation_id', statusColumn: 'approval_status', select: 'quotation_id,job_id,current_version,total,approval_status,created_at', limit: 12 },
-  { key: 'invoices', machine: 'invoice', table: 'invoices', idColumn: 'invoice_id', statusColumn: 'status', select: 'invoice_id,invoice_no,job_id,total,status,created_at', limit: 12 },
-  { key: 'payments', machine: 'payment', table: 'payments', idColumn: 'payment_id', statusColumn: 'status', select: 'payment_id,invoice_id,amount,status,fee,reconciled_at,created_at', limit: 12 },
-  { key: 'warranties', machine: 'warranty', table: 'warranties', idColumn: 'warranty_id', statusColumn: 'status', select: 'warranty_id,job_id,status,coverage,starts_at,ends_at,created_at', limit: 12 },
-  { key: 'status_logs', machine: 'receipt', table: 'status_transition_logs', idColumn: 'transition_id', statusColumn: 'to_status', select: 'transition_id,machine,object_id,from_status,to_status,reason,actor_role,created_at', limit: 20 }
+  { key: 'jobs', machine: 'job', table: 'jobs', idColumn: 'job_id', statusColumn: 'status', select: 'job_id,service_request_id,quotation_id,customer_id,engineer_id,status,scheduled_at,notes,created_at,updated_at', limit: 12 },
+  { key: 'quotations', machine: 'quotation', table: 'quotations', idColumn: 'quotation_id', statusColumn: 'status', select: 'quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at', limit: 12 },
+  { key: 'invoices', machine: 'invoice', table: 'invoices', idColumn: 'invoice_id', statusColumn: 'status', select: 'invoice_id,invoice_no,customer_id,job_id,quotation_id,total_amount,currency,status,visible_to_customer,created_at,updated_at', limit: 12 },
+  { key: 'payments', machine: 'payment', table: 'payments', idColumn: 'payment_id', statusColumn: 'status', select: 'payment_id,invoice_id,customer_id,amount,currency,status,reconciled_at,created_at', limit: 12 },
+  { key: 'warranties', machine: 'warranty', table: 'warranties', idColumn: 'warranty_id', statusColumn: 'status', select: 'warranty_id,job_id,customer_id,invoice_id,quotation_id,status,coverage,starts_on,ends_on,visible_to_customer,public_ref,created_at,updated_at', limit: 12 },
+  { key: 'status_logs', machine: 'receipt', table: 'status_transition_logs', idColumn: 'transition_id', statusColumn: 'to_status', select: 'transition_id,machine,object_type,object_id,from_status,to_status,reason,actor_role,created_at', limit: 20 }
 ];
 
 const writableFields: Record<Machine, string[]> = {
   lead: ['name', 'phone', 'email', 'address', 'address_text', 'issue_type', 'message', 'source_platform', 'request_origin', 'customer_portal_request_type', 'related_warranty_id', 'priority', 'status', 'binding_status'],
   service_request: ['contact_name', 'phone', 'whatsapp', 'email', 'address_text', 'postal_code', 'leak_location', 'issue_description', 'property_type', 'property_address', 'preferred_time_text', 'status', 'binding_status', 'request_origin', 'customer_portal_request_type', 'related_warranty_id', 'portal_attachment_urls', 'portal_customer_notes', 'consent', 'admin_approval_required'],
   inspection: ['status'],
-  quotation: ['job_id', 'current_version', 'total', 'approval_status'],
-  job: ['service_request_id', 'customer_id', 'engineer_id', 'status', 'scheduled_at', 'notes'],
-  invoice: ['invoice_no', 'job_id', 'total', 'status', 'void_reason'],
-  payment: ['invoice_id', 'amount', 'status', 'fee', 'reconciled_at'],
+  quotation: ['service_request_id', 'customer_id', 'version', 'total_amount', 'currency', 'status'],
+  job: ['service_request_id', 'quotation_id', 'customer_id', 'engineer_id', 'status', 'scheduled_at', 'notes'],
+  invoice: ['invoice_no', 'customer_id', 'job_id', 'quotation_id', 'total_amount', 'currency', 'status', 'void_reason'],
+  payment: ['invoice_id', 'customer_id', 'amount', 'currency', 'status', 'reconciled_at'],
   receipt: ['status'],
-  warranty: ['job_id', 'status', 'coverage', 'starts_at', 'ends_at']
+  warranty: ['job_id', 'customer_id', 'invoice_id', 'quotation_id', 'status', 'coverage', 'starts_on', 'ends_on', 'public_ref']
 };
 
 function clampLimit(value: string | null) {
@@ -79,18 +79,18 @@ function cleanDateText(value: unknown) {
 
 function sanitizeField(field: string, value: unknown) {
   if (value === null || value === undefined || value === '') return null;
-  if (['total', 'amount', 'fee'].includes(field)) return cleanNumber(value);
-  if (['current_version'].includes(field)) {
+  if (['total_amount', 'amount'].includes(field)) return cleanNumber(value);
+  if (['version'].includes(field)) {
     const parsed = Number(value);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }
   if (['consent', 'admin_approval_required'].includes(field)) return cleanBoolean(value);
   if (field === 'portal_attachment_urls') return Array.isArray(value) ? value.map((item) => cleanText(item, 700)).filter(Boolean).slice(0, 12) : [];
-  if (field.endsWith('_id') || field === 'job_id' || field === 'invoice_id' || field === 'customer_id' || field === 'engineer_id' || field === 'service_request_id') {
+  if (field.endsWith('_id') || field === 'job_id' || field === 'invoice_id' || field === 'customer_id' || field === 'engineer_id' || field === 'service_request_id' || field === 'quotation_id') {
     const text = cleanText(value, 120);
     return isUuid(text) ? text : null;
   }
-  if (['scheduled_at', 'reconciled_at', 'starts_at', 'ends_at'].includes(field)) return cleanDateText(value);
+  if (['scheduled_at', 'reconciled_at', 'starts_on', 'ends_on'].includes(field)) return cleanDateText(value);
   return cleanText(value, field.includes('message') || field.includes('description') || field === 'notes' || field === 'portal_customer_notes' ? 1000 : 240);
 }
 
@@ -110,15 +110,16 @@ function creationPayload(machine: Machine, body: ApiPayload) {
   const phone = cleanText(body.phone, 80);
   const email = cleanText(body.email, 160);
   const notes = cleanText(body.notes, 1000) ?? cleanText(body.description, 1000) ?? 'Created from Service Operations live core.';
-  const amount = cleanNumber(body.amount) ?? cleanNumber(body.total) ?? 0;
+  const amount = cleanNumber(body.amount) ?? cleanNumber(body.total_amount) ?? 0;
+  const currency = cleanText(body.currency, 12) ?? 'SGD';
   const base = sanitizePatch(machine, body);
 
   if (machine === 'lead') return { source_platform: 'admin', request_origin: 'admin', priority: 'P2', status: 'new', binding_status: 'pending', name: title, phone, email, message: notes, ...base };
   if (machine === 'service_request') return { contact_name: title, phone, email, issue_description: notes, issue_type: cleanText(body.issue_type, 120) ?? 'General leakage inspection', status: 'pending_review', binding_status: 'pending', request_origin: 'admin', consent: true, admin_approval_required: true, ...base };
   if (machine === 'job') return { status: 'assigned', notes, ...base };
-  if (machine === 'quotation') return { current_version: 1, total: amount, approval_status: 'draft', ...base };
-  if (machine === 'invoice') return { invoice_no: cleanText(body.invoice_no, 120) ?? `NF-DRAFT-${Date.now()}`, total: amount, status: 'draft', ...base };
-  if (machine === 'payment') return { amount, fee: cleanNumber(body.fee) ?? 0, status: 'processing', ...base };
+  if (machine === 'quotation') return { version: 1, total_amount: amount, currency, status: 'draft', ...base };
+  if (machine === 'invoice') return { invoice_no: cleanText(body.invoice_no, 120) ?? `NF-DRAFT-${Date.now()}`, total_amount: amount, currency, status: 'draft', ...base };
+  if (machine === 'payment') return { amount, currency, status: 'processing', ...base };
   if (machine === 'warranty') return { status: 'draft', coverage: notes, ...base };
   return base;
 }
