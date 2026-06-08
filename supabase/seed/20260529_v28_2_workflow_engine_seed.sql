@@ -312,3 +312,37 @@ on conflict (event_id) do update set
   action = excluded.action,
   before_json = excluded.before_json,
   after_json = excluded.after_json;
+
+-- 6) Default workflow settings for platform readiness checks
+insert into public.workflow_settings (
+  setting_key,
+  setting_type,
+  name,
+  description,
+  value_json,
+  is_enabled
+)
+values
+  (
+    'notification.channel.internal.default',
+    'notification_channel',
+    'Internal Inbox default channel',
+    'Default internal notification delivery into Internal Inbox for V28.2 workflow seed readiness.',
+    '{"channel":"internal","requires_acknowledgement":true,"retry_minutes":[5,15,60],"max_attempts":3}'::jsonb,
+    true
+  ),
+  (
+    'feature_flag.automation.enabled',
+    'automation_rule_setting',
+    'Automation feature flag',
+    'Preview/staging-safe flag proving that workflow automation is intentionally enabled by configuration instead of fake success fallback.',
+    '{"enabled":true,"scope":"preview_and_staging","no_fake_success":true,"audit_required":true}'::jsonb,
+    true
+  )
+on conflict (setting_key) do update set
+  setting_type = excluded.setting_type,
+  name = excluded.name,
+  description = excluded.description,
+  value_json = excluded.value_json,
+  is_enabled = excluded.is_enabled,
+  updated_at = now();
