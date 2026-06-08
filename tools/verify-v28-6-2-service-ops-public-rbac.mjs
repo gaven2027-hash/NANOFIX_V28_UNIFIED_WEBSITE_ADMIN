@@ -28,6 +28,7 @@ function assertNotHas(findings, file, fileText, needle, code, message, priority 
 const liveCoreFile = 'app/api/admin/service-operations/route.ts';
 const publicRequestFile = 'app/api/service-requests/route.ts';
 const customerPortalServiceRequestFile = 'app/api/customer-portal/service-requests/route.ts';
+const customerPortalActivityTimelineFile = 'app/api/customer-portal/activity-timeline/route.ts';
 const globalSearchFile = 'app/api/global-search/route.ts';
 const storageAttachmentFile = 'lib/storageAttachments.ts';
 const apiSecurityFile = 'lib/apiSecurity.ts';
@@ -37,6 +38,7 @@ const fullChainFile = 'app/api/admin/service-operations/full-chain/route.ts';
 const liveCore = read(liveCoreFile);
 const publicRequest = read(publicRequestFile);
 const customerPortalServiceRequest = read(customerPortalServiceRequestFile);
+const customerPortalActivityTimeline = read(customerPortalActivityTimelineFile);
 const globalSearch = read(globalSearchFile);
 const storageAttachment = read(storageAttachmentFile);
 const apiSecurity = read(apiSecurityFile);
@@ -45,7 +47,7 @@ const fullChain = read(fullChainFile);
 
 const findings = [];
 
-for (const file of [liveCoreFile, publicRequestFile, customerPortalServiceRequestFile, globalSearchFile, storageAttachmentFile, apiSecurityFile, statusTransitionFile, fullChainFile]) {
+for (const file of [liveCoreFile, publicRequestFile, customerPortalServiceRequestFile, customerPortalActivityTimelineFile, globalSearchFile, storageAttachmentFile, apiSecurityFile, statusTransitionFile, fullChainFile]) {
   if (!read(file)) findings.push({ priority: 'P0', code: 'MISSING_REQUIRED_FILE', file, message: `${file} is required for V28.6 Batch A verification.` });
 }
 
@@ -87,6 +89,23 @@ assertHas(findings, customerPortalServiceRequestFile, customerPortalServiceReque
 assertNotHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "attachmentUrls(", 'CUSTOMER_PORTAL_RAW_ATTACHMENT_URLS_FORBIDDEN', 'Raw attachment URL passthrough must not be used.');
 assertNotHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "starts_at,ends_at", 'CUSTOMER_PORTAL_DEPRECATED_WARRANTY_FIELDS_FORBIDDEN', 'Deprecated warranty date fields must not be used.');
 
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "requireActorApi", 'CUSTOMER_TIMELINE_RBAC_REQUIRED', 'Customer Portal Activity Timeline must use server-side RBAC.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "const ALLOWED_ROLES = ['customer'] as const", 'CUSTOMER_TIMELINE_CUSTOMER_ONLY_ROLE_REQUIRED', 'Customer Portal Activity Timeline must be customer-role only.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "customerIdsForProfile", 'CUSTOMER_TIMELINE_PROFILE_TO_CUSTOMER_LOOKUP_REQUIRED', 'Timeline must resolve customer IDs from the authenticated profile.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, ".eq('profile_id', profileId)", 'CUSTOMER_TIMELINE_PROFILE_FILTER_REQUIRED', 'Timeline must filter customers by authenticated profile_id.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "service_request_id,customer_id,status,leak_location,created_at,updated_at", 'CUSTOMER_TIMELINE_SERVICE_REQUEST_SCHEMA_REQUIRED', 'Timeline must use production service request fields.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "job_id,service_request_id,customer_id,status,scheduled_at,created_at,updated_at", 'CUSTOMER_TIMELINE_JOB_SCHEMA_REQUIRED', 'Timeline must use production job fields.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "quotation_id,service_request_id,customer_id,version,total_amount,currency,status,created_at,updated_at", 'CUSTOMER_TIMELINE_QUOTATION_SCHEMA_REQUIRED', 'Timeline must use production quotation fields.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "invoice_id,invoice_no,customer_id,job_id,quotation_id,total_amount,currency,status,visible_to_customer,created_at", 'CUSTOMER_TIMELINE_INVOICE_SCHEMA_REQUIRED', 'Timeline must use production invoice fields and visible_to_customer.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "payment_id,invoice_id,customer_id,amount,currency,status,reconciled_at,created_at", 'CUSTOMER_TIMELINE_PAYMENT_SCHEMA_REQUIRED', 'Timeline must use production payment fields.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "warranty_id,job_id,customer_id,invoice_id,quotation_id,status,coverage,starts_on,ends_on,visible_to_customer,public_ref,created_at", 'CUSTOMER_TIMELINE_WARRANTY_SCHEMA_REQUIRED', 'Timeline must use production warranty fields.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "customer_portal_activity_timeline_read", 'CUSTOMER_TIMELINE_AUDIT_REQUIRED', 'Timeline read must be audit logged.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "payment_status_summary", 'CUSTOMER_TIMELINE_PAYMENT_SUMMARY_REQUIRED', 'Timeline must expose payment status summary.');
+assertHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "activity_timeline", 'CUSTOMER_TIMELINE_RESPONSE_REQUIRED', 'Timeline must expose activity_timeline response.');
+assertNotHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "starts_at,ends_at", 'CUSTOMER_TIMELINE_DEPRECATED_WARRANTY_FIELDS_FORBIDDEN', 'Timeline must not use deprecated warranty date fields.');
+assertNotHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "invoice_id,invoice_no,total,status", 'CUSTOMER_TIMELINE_DEPRECATED_INVOICE_FIELDS_FORBIDDEN', 'Timeline must not use deprecated invoice total selector.');
+assertNotHas(findings, customerPortalActivityTimelineFile, customerPortalActivityTimeline, "current_version", 'CUSTOMER_TIMELINE_DEPRECATED_QUOTATION_FIELDS_FORBIDDEN', 'Timeline must not use deprecated quotation version fields.');
+
 assertHas(findings, storageAttachmentFile, storageAttachment, "normalizeServiceAttachmentUrls", 'STORAGE_ATTACHMENT_HELPER_REQUIRED', 'Storage attachment helper must be present.');
 assertHas(findings, storageAttachmentFile, storageAttachment, "NANOFIX_ALLOWED_ATTACHMENT_BUCKETS", 'STORAGE_ATTACHMENT_BUCKET_CONFIG_REQUIRED', 'Allowed attachment buckets must be configurable.');
 assertHas(findings, storageAttachmentFile, storageAttachment, "NEXT_PUBLIC_SUPABASE_URL", 'STORAGE_ATTACHMENT_SUPABASE_ORIGIN_REQUIRED', 'Storage attachment URLs must be tied to configured Supabase origins.');
@@ -121,12 +140,13 @@ const report = {
   branch: 'v28-6-2-service-ops-public-rbac-repair',
   base_memory_doc: 'docs/NANOFIX_V28_6_OA_ERP_REAL_MODULE_REPAIR_PLAN_20260608.md',
   repaired_files: [liveCoreFile, customerPortalServiceRequestFile, globalSearchFile, storageAttachmentFile],
-  verified_files: [liveCoreFile, publicRequestFile, customerPortalServiceRequestFile, globalSearchFile, storageAttachmentFile, apiSecurityFile, statusTransitionFile, fullChainFile],
+  verified_files: [liveCoreFile, publicRequestFile, customerPortalServiceRequestFile, customerPortalActivityTimelineFile, globalSearchFile, storageAttachmentFile, apiSecurityFile, statusTransitionFile, fullChainFile],
   acceptance: {
     service_operations_live_core_schema_aligned: !findings.some((f) => f.code === 'LIVE_CORE_PRODUCTION_SCHEMA_SELECT_REQUIRED' || f.code === 'LIVE_CORE_DEPRECATED_SCHEMA_FORBIDDEN'),
     service_operations_status_logs_wired: !findings.some((f) => f.code.includes('STATUS') || f.code.includes('TRANSITION')),
     public_submit_real_chain_present: !findings.some((f) => f.code.startsWith('PUBLIC_REQUEST_')),
     customer_portal_attachment_guarded: !findings.some((f) => f.code.startsWith('CUSTOMER_PORTAL_ATTACHMENT_') || f.code.startsWith('STORAGE_ATTACHMENT_')),
+    customer_portal_activity_timeline_real_chain_present: !findings.some((f) => f.code.startsWith('CUSTOMER_TIMELINE_')),
     global_search_rbac_scoped: !findings.some((f) => f.code.startsWith('GLOBAL_SEARCH_')),
     rbac_foundation_present: !findings.some((f) => f.code.startsWith('API_'))
   },
@@ -154,6 +174,7 @@ function md(data) {
     `- Service Operations status logs wired: ${data.acceptance.service_operations_status_logs_wired}`,
     `- Public submit real chain present: ${data.acceptance.public_submit_real_chain_present}`,
     `- Customer Portal attachment guarded: ${data.acceptance.customer_portal_attachment_guarded}`,
+    `- Customer Portal activity timeline real chain present: ${data.acceptance.customer_portal_activity_timeline_real_chain_present}`,
     `- Global Search RBAC scoped: ${data.acceptance.global_search_rbac_scoped}`,
     `- RBAC foundation present: ${data.acceptance.rbac_foundation_present}`,
     '',
