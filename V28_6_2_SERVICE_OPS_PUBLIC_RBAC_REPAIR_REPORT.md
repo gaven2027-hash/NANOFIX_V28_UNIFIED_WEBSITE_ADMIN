@@ -19,13 +19,18 @@ This batch does not mutate production Supabase, does not reset production, does 
 
 - `0e001ea54ff32b124ba362d2066cd60e53ce9e7c` — aligned Service Operations Live Core with production schema and wired create/update status transition logging.
 - `5fc895ffa865f373837893bd88b53fe4edbbd8fe` — added static verifier for V28.6 Batch A Service Operations/Public/RBAC checks.
-- `5898f96eb18d0eee381add0ffd55cd59fd8e1859` — added JSON repair report.
+- `5898f96eb18d0eee381add0ffd55cd59fd8e1859` — added initial JSON repair report.
+- `422b7a9862ef9781b494013120d7fdbb53951b1c` — added initial Markdown repair report.
+- `ad9ef0d3b1f25d76de3fcb5da7d0b41e35a7442d` — hardened Global Search role scope and production fields.
+- `ad715f57051794ce5e89d6e8f2e8872530961093` — extended the Batch A verifier to cover Global Search RBAC and production-field checks.
+- `1384bb3ae1dbf88abd4f32c3b0f97c7e61ec62a7` — updated JSON repair report after Global Search hardening.
 
-## Repaired File
+## Repaired Files
 
 - `app/api/admin/service-operations/route.ts`
+- `app/api/global-search/route.ts`
 
-## Added Verifier
+## Added / Updated Verifier
 
 - `tools/verify-v28-6-2-service-ops-public-rbac.mjs`
 
@@ -86,6 +91,20 @@ This improves the V28.6 finding that status logging was incomplete beyond initia
 
 Explicit status transitions still use the existing `transition_status_tx` RPC path. This avoids replacing the transaction flow with a larger risky rewrite.
 
+### 5. Global Search role scope and production fields hardened
+
+Global Search was updated so sensitive business data search is role-scoped and auditable.
+
+Changes include:
+
+- `search_all_records` RPC is now gated through `rpcAllowed`.
+- Full sensitive RPC access is limited to `super_admin`, `operations_admin`, `finance`, and `support`.
+- `content_admin` no longer receives full global business RPC results.
+- Fallback search is split between sensitive business categories and content/operations categories.
+- Invoice fallback now uses `total_amount` and `currency` instead of deprecated `total`.
+- Job fallback now uses `notes` instead of deprecated `completion_notes`.
+- Search audit logs include role, `rpc_allowed`, result counts and request IP.
+
 ## Public Submit / RBAC Foundation Confirmed for Batch A
 
 The verifier checks the existing public submit and RBAC foundation:
@@ -94,6 +113,7 @@ The verifier checks the existing public submit and RBAC foundation:
 - It writes a real public service request status transition log.
 - It writes audit logs with `status_transition_logged` result.
 - It fails explicitly when Supabase is not configured, instead of returning fake success.
+- `app/api/global-search/route.ts` now applies role-scoped search and production-field whitelisting.
 - `lib/apiSecurity.ts` resolves users through Supabase auth tokens and profile/admin profile lookup.
 - Internal secret fallback remains disabled by default and requires explicit env enabling.
 
@@ -106,9 +126,9 @@ Remaining Batch A work:
 1. Run the new verifier in local/CI.
 2. Run `npm run validate:predeploy`.
 3. Run `npm run build:ci`.
-4. Review and repair Global Search route-level RBAC and field whitelisting.
-5. Review public upload / Storage binding so images/videos are not fake-success uploads.
-6. Continue customer account claim / customer record link RLS only through preview/staging verification, not blind production apply.
+4. Review public upload / Storage binding so images/videos are not fake-success uploads.
+5. Continue customer account claim / customer record link RLS only through preview/staging verification, not blind production apply.
+6. Continue later batches only after Batch A verifier and build gates are reviewed.
 
 ## Safety Notes
 
@@ -124,7 +144,7 @@ Remaining Batch A work:
 
 ## Acceptance Status
 
-Current status: **Batch A started and first Service Operations Live Core repair committed.**
+Current status: **Batch A started. Service Operations Live Core and Global Search foundational repairs have been committed.**
 
 Not yet complete until:
 
