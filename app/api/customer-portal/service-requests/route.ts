@@ -13,7 +13,8 @@ type ApiPayload = Record<string, unknown>;
 
 function requestTypeFromBody(value: unknown): RequestType {
   const text = cleanText(value, 80);
-  return text === 'warranty_repair' || text === 'warranty_claim' ? 'warranty_repair' : 'new_repair';
+  if (text === 'warranty_repair' || text === 'warranty_claim') return 'warranty_repair';
+  return 'new_repair';
 }
 
 function estimatePriority(issue: string, requestType: RequestType) {
