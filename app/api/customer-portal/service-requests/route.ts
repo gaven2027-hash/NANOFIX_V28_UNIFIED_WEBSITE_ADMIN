@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanText, getClientIp, jsonError, requireActorApi } from '@/lib/apiSecurity';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAuditLog } from '@/lib/audit';
+import { normalizeServiceAttachmentUrls } from '@/lib/storageAttachments';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const CUSTOMER_ROLES = ['customer'] as const;
 const REQUEST_TYPES = ['new_repair', 'warranty_repair'] as const;
@@ -12,8 +13,7 @@ type ApiPayload = Record<string, unknown>;
 
 function requestTypeFromBody(value: unknown): RequestType {
   const text = cleanText(value, 80);
-  if (text === 'warranty_repair' || text === 'warranty_claim') return 'warranty_repair';
-  return 'new_repair';
+  return text === 'warranty_repair' || text === 'warranty_claim' ? 'warranty_repair' : 'new_repair';
 }
 
 function estimatePriority(issue: string, requestType: RequestType) {
@@ -25,18 +25,11 @@ function estimatePriority(issue: string, requestType: RequestType) {
 }
 
 function urgencyScore(priority: string) {
-  if (priority === 'P0') return 95;
-  if (priority === 'P1') return 72;
-  return 40;
+  return priority === 'P0' ? 95 : priority === 'P1' ? 72 : 40;
 }
 
 function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
-}
-
-function attachmentUrls(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => cleanText(item, 700)).filter((item): item is string => Boolean(item)).slice(0, 12);
 }
 
 async function activeCustomerForProfile(profileId: string) {
@@ -54,11 +47,11 @@ async function activeCustomerForProfile(profileId: string) {
 }
 
 async function warrantyBelongsToCustomer(warrantyId: string, customerId: string) {
-  const supabase = createAdminClient();
   if (!isUuid(warrantyId)) return null;
+  const supabase = createAdminClient();
   const { data: warranty, error } = await supabase
     .from('warranties')
-    .select('warranty_id,job_id,status,coverage,starts_at,ends_at')
+    .select('warranty_id,job_id,status,coverage,starts_on,ends_on')
     .eq('warranty_id', warrantyId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -85,14 +78,7 @@ async function createCustomerPortalTaskAndInbox(input: { sourceId: string; title
       priority: input.priority,
       assignee_role: 'operations_admin',
       status: 'open',
-      metadata_json: {
-        source: 'customer_portal_unified_service_request',
-        request_origin: 'customer_portal',
-        customer_portal_request_type: input.requestType,
-        customer_id: input.customerId,
-        lead_id: input.leadId,
-        related_warranty_id: input.warrantyId
-      }
+      metadata_json: { source: 'customer_portal_unified_service_request', request_origin: 'customer_portal', customer_portal_request_type: input.requestType, customer_id: input.customerId, lead_id: input.leadId, related_warranty_id: input.warrantyId }
     })
     .select('task_id,source_module,source_table,source_id,title,status,priority,assignee_role,created_at')
     .single();
@@ -102,20 +88,10 @@ async function createCustomerPortalTaskAndInbox(input: { sourceId: string; title
 
   const { data: inbox, error: inboxError } = await supabase
     .from('internal_inbox_messages')
-    .insert({
-      recipient_role: 'operations_admin',
-      subject: input.title,
-      body: input.description,
-      category: 'customer_portal_request',
-      priority: input.priority,
-      related_object_type: 'service_request',
-      related_object_id: input.sourceId,
-      task_id: task.task_id
-    })
+    .insert({ recipient_role: 'operations_admin', subject: input.title, body: input.description, category: 'customer_portal_request', priority: input.priority, related_object_type: 'service_request', related_object_id: input.sourceId, task_id: task.task_id })
     .select('message_id,recipient_role,subject,category,priority,related_object_type,related_object_id,task_id,created_at')
     .single();
   if (inboxError) throw new Error(inboxError.message);
-
   return { task, inbox };
 }
 
@@ -128,9 +104,7 @@ async function queueCustomerConfirmation(input: { customerId: string; serviceReq
       channel: 'internal',
       recipient_customer_id: input.customerId,
       subject: warranty ? 'NANOFIX warranty repair request received' : 'NANOFIX repair request received',
-      body: warranty
-        ? 'Your warranty repair request has entered NANOFIX Service Operations for review and arrangement.'
-        : 'Your repair request has entered NANOFIX Service Operations for review and arrangement.',
+      body: warranty ? 'Your warranty repair request has entered NANOFIX Service Operations for review and arrangement.' : 'Your repair request has entered NANOFIX Service Operations for review and arrangement.',
       payload_json: { source: 'customer_portal_unified_service_request', service_request_id: input.serviceRequestId, request_type: input.requestType },
       delivery_status: 'queued',
       related_object_type: 'service_request',
@@ -183,9 +157,14 @@ export async function POST(request: NextRequest) {
   const warrantyCode = cleanText(body.warranty_code ?? body.warrantyCode, 160);
   const originalJobReference = cleanText(body.original_job_reference ?? body.originalJobReference, 200);
   const suspectedRecurringIssue = body.suspected_recurring_issue === true || body.suspectedRecurringIssue === true;
-  const attachments = attachmentUrls(body.attachment_urls ?? body.attachments);
+  const attachmentValidation = normalizeServiceAttachmentUrls(body.attachment_urls ?? body.attachments);
+  const attachments = attachmentValidation.urls;
   const customerNotes = cleanText(body.customer_notes ?? body.notes, 1200);
 
+  if (attachmentValidation.rejected.length) {
+    await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'customer_portal_service_request_attachment_rejected', objectType: 'service_request_attachment', after: { rejected_count: attachmentValidation.rejected.length, reason: 'non_nanofix_storage_url' }, ip: getClientIp(request) }).catch(() => undefined);
+    return jsonError('Only NANOFIX Supabase Storage attachment URLs are accepted.', 400);
+  }
   if (!phone && !email) return jsonError('phone or email is required.', 400);
   if (!issueDescription) return jsonError('issue_description is required.', 400);
   if (requestType === 'warranty_repair' && !isUuid(relatedWarrantyId)) return jsonError('related_warranty_id is required for warranty repair.', 400);
@@ -202,154 +181,36 @@ export async function POST(request: NextRequest) {
   const score = urgencyScore(priority);
   const supabase = createAdminClient();
   const sourcePlatform = requestType === 'warranty_repair' ? 'customer_portal_warranty_repair' : 'customer_portal_new_repair';
-  const extractedData = {
-    request_origin: 'customer_portal',
-    customer_portal_request_type: requestType,
-    name,
-    phone,
-    email,
-    address,
-    postal_code: postalCode,
-    issue_type: issueType,
-    leak_location: leakLocation,
-    related_warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null,
-    warranty_code: warrantyCode,
-    original_job_reference: originalJobReference,
-    suspected_recurring_issue: suspectedRecurringIssue,
-    preferred_appointment_time: preferredAppointmentTime,
-    attachment_urls: attachments,
-    customer_notes: customerNotes,
-    registration_mode: 'customer_portal',
-    linked_customer_id: customer.customer_id
-  };
+  const attachmentAudit = { accepted_count: attachments.length, rejected_count: 0 };
+  const extractedData = { request_origin: 'customer_portal', customer_portal_request_type: requestType, name, phone, email, address, postal_code: postalCode, issue_type: issueType, leak_location: leakLocation, related_warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null, warranty_code: warrantyCode, original_job_reference: originalJobReference, suspected_recurring_issue: suspectedRecurringIssue, preferred_appointment_time: preferredAppointmentTime, attachment_urls: attachments, attachment_validation: attachmentAudit, customer_notes: customerNotes, registration_mode: 'customer_portal', linked_customer_id: customer.customer_id };
 
   const { data: intakeRow, error: intakeError } = await supabase
     .from('unified_intake')
-    .insert({
-      source_platform: sourcePlatform,
-      source_type: 'direct',
-      source_medium: 'customer_portal_form',
-      source: sourcePlatform,
-      source_form: 'customer_portal_service_request',
-      customer_name: name,
-      phone,
-      email,
-      postal_code: postalCode,
-      address_text: address,
-      issue_type: issueType,
-      message: issueDescription,
-      pdpa_consent: true,
-      binding_status: 'linked',
-      owner_id: auth.actor.profileId,
-      raw_message: { text: issueDescription, customer_notes: customerNotes, attachment_urls: attachments },
-      extracted_data: extractedData,
-      priority,
-      urgency_score: score,
-      created_at: now
-    })
+    .insert({ source_platform: sourcePlatform, source_type: 'direct', source_medium: 'customer_portal_form', source: sourcePlatform, source_form: 'customer_portal_service_request', customer_name: name, phone, email, postal_code: postalCode, address_text: address, issue_type: issueType, message: issueDescription, pdpa_consent: true, binding_status: 'linked', owner_id: auth.actor.profileId, raw_message: { text: issueDescription, customer_notes: customerNotes, attachment_urls: attachments, attachment_validation: attachmentAudit }, extracted_data: extractedData, priority, urgency_score: score, created_at: now })
     .select('intake_id')
     .single();
   if (intakeError) return jsonError(`Intake creation failed: ${intakeError.message}`, 500);
 
   const { data: leadRow, error: leadError } = await supabase
     .from('leads')
-    .insert({
-      intake_id: intakeRow.intake_id,
-      name,
-      phone,
-      email,
-      address,
-      address_text: address,
-      issue_type: issueType,
-      message: issueDescription,
-      source_platform: sourcePlatform,
-      request_origin: 'customer_portal',
-      customer_portal_request_type: requestType,
-      related_warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null,
-      source_type: 'direct',
-      source_medium: 'customer_portal_form',
-      binding_status: 'linked',
-      priority,
-      urgency_score: score,
-      status: 'new',
-      ai_extracted_data: extractedData,
-      created_at: now
-    })
+    .insert({ intake_id: intakeRow.intake_id, name, phone, email, address, address_text: address, issue_type: issueType, message: issueDescription, source_platform: sourcePlatform, request_origin: 'customer_portal', customer_portal_request_type: requestType, related_warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null, source_type: 'direct', source_medium: 'customer_portal_form', binding_status: 'linked', priority, urgency_score: score, status: 'new', ai_extracted_data: extractedData, created_at: now })
     .select('lead_id')
     .single();
   if (leadError) return jsonError(`Lead creation failed: ${leadError.message}`, 500);
 
   const { data: requestRow, error: requestError } = await supabase
     .from('service_requests')
-    .insert({
-      intake_id: intakeRow.intake_id,
-      lead_id: leadRow.lead_id,
-      customer_id: customer.customer_id,
-      contact_name: name,
-      phone,
-      whatsapp: phone,
-      email,
-      address_text: address,
-      postal_code: postalCode,
-      leak_location: leakLocation || issueType,
-      issue_description: issueDescription,
-      preferred_time_text: preferredAppointmentTime,
-      request_type: requestType,
-      issue_type: issueType,
-      binding_status: 'linked',
-      priority,
-      status: requestType === 'warranty_repair' ? 'warranty_review_required' : 'pending_review',
-      request_origin: 'customer_portal',
-      customer_portal_request_type: requestType,
-      related_warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null,
-      portal_attachment_urls: attachments,
-      portal_customer_notes: customerNotes,
-      source_platform: sourcePlatform,
-      source_type: 'direct',
-      source_medium: 'customer_portal_form',
-      warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null,
-      warranty_code: warrantyCode,
-      created_at: now
-    })
+    .insert({ intake_id: intakeRow.intake_id, lead_id: leadRow.lead_id, customer_id: customer.customer_id, contact_name: name, phone, whatsapp: phone, email, address_text: address, postal_code: postalCode, leak_location: leakLocation || issueType, issue_description: issueDescription, preferred_time_text: preferredAppointmentTime, request_type: requestType, issue_type: issueType, binding_status: 'linked', priority, status: requestType === 'warranty_repair' ? 'warranty_review_required' : 'pending_review', request_origin: 'customer_portal', customer_portal_request_type: requestType, related_warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null, portal_attachment_urls: attachments, portal_customer_notes: customerNotes, source_platform: sourcePlatform, source_type: 'direct', source_medium: 'customer_portal_form', warranty_id: requestType === 'warranty_repair' ? relatedWarrantyId : null, warranty_code: warrantyCode, created_at: now })
     .select('service_request_id,customer_id,status,priority,binding_status,request_origin,customer_portal_request_type,related_warranty_id,portal_attachment_urls,portal_customer_notes,created_at')
     .single();
   if (requestError) return jsonError(`Service request creation failed: ${requestError.message}`, 500);
 
   const [workflow, confirmation] = await Promise.all([
-    createCustomerPortalTaskAndInbox({
-      sourceId: requestRow.service_request_id,
-      title: requestType === 'warranty_repair' ? 'Member customer warranty repair submitted' : 'Member customer new repair submitted',
-      description: `${name} submitted ${requestType} through Customer Portal. It has entered the unified Service Operations queue. Issue: ${issueType}. ${issueDescription}`,
-      priority,
-      requestType,
-      customerId: customer.customer_id as string,
-      leadId: leadRow.lead_id,
-      warrantyId: requestType === 'warranty_repair' ? relatedWarrantyId : null
-    }),
+    createCustomerPortalTaskAndInbox({ sourceId: requestRow.service_request_id, title: requestType === 'warranty_repair' ? 'Member customer warranty repair submitted' : 'Member customer new repair submitted', description: `${name} submitted ${requestType} through Customer Portal. It has entered the unified Service Operations queue. Issue: ${issueType}. ${issueDescription}`, priority, requestType, customerId: customer.customer_id as string, leadId: leadRow.lead_id, warrantyId: requestType === 'warranty_repair' ? relatedWarrantyId : null }),
     queueCustomerConfirmation({ customerId: customer.customer_id as string, serviceRequestId: requestRow.service_request_id, requestType })
   ]);
 
-  await writeAuditLog({
-    actorId: auth.actor.profileId,
-    role: auth.role,
-    action: 'customer_portal_service_request_submit_to_unified_queue',
-    objectType: 'service_request',
-    objectId: requestRow.service_request_id,
-    after: { intake_id: intakeRow.intake_id, lead_id: leadRow.lead_id, service_request: requestRow, workflow, confirmation, warranty },
-    ip: getClientIp(request)
-  }).catch(() => undefined);
+  await writeAuditLog({ actorId: auth.actor.profileId, role: auth.role, action: 'customer_portal_service_request_submit_to_unified_queue', objectType: 'service_request', objectId: requestRow.service_request_id, after: { intake_id: intakeRow.intake_id, lead_id: leadRow.lead_id, service_request: requestRow, workflow, confirmation, warranty, attachment_validation: attachmentAudit }, ip: getClientIp(request) }).catch(() => undefined);
 
-  return NextResponse.json({
-    ok: true,
-    source: 'customer_portal_linked_unified_queue',
-    requestType,
-    bindingStatus: 'linked',
-    customerId: customer.customer_id,
-    intakeId: intakeRow.intake_id,
-    leadId: leadRow.lead_id,
-    serviceRequestId: requestRow.service_request_id,
-    priority,
-    workflow,
-    confirmation
-  }, { status: 201 });
+  return NextResponse.json({ ok: true, source: 'customer_portal_linked_unified_queue', requestType, bindingStatus: 'linked', customerId: customer.customer_id, intakeId: intakeRow.intake_id, leadId: leadRow.lead_id, serviceRequestId: requestRow.service_request_id, priority, workflow, confirmation }, { status: 201 });
 }
