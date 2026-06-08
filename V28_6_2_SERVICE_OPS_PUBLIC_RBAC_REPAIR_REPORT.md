@@ -3,15 +3,15 @@
 Date: 2026-06-08  
 Branch: `v28-6-2-service-ops-public-rbac-repair`  
 Base memory doc: `docs/NANOFIX_V28_6_OA_ERP_REAL_MODULE_REPAIR_PLAN_20260608.md`  
-Latest Ready commit: `09e246c34390109520be8a8c7d35c34911f12dd7`
+Latest Ready commit: `7c9f6602e4adb39f0a7ecca747307dc18df47c1f`
 
 ## Current Status
 
 **Vercel Preview is Ready on the latest commit.**
 
-The latest deployment shown in Vercel UI for commit `09e246c` completed successfully after extending the Batch A verifier to cover the Customer Portal Activity Timeline. This means the Preview run reached Ready after `validate:predeploy && build:ci`.
+The latest deployment shown in Vercel UI for commit `7c9f660` completed successfully after adding the Batch A Preview smoke test runner. This means the Preview run reached Ready after `validate:predeploy && build:ci`.
 
-This branch still must not be merged until Batch A browser smoke testing is reviewed.
+This branch still must not be merged until Batch A smoke testing is reviewed.
 
 ## Scope
 
@@ -40,8 +40,11 @@ This batch does not mutate production Supabase, does not reset production, does 
 - `87594e8ac5f0459ff68aa3400eaed94e14f1c72c` — restored the existing Phase D.4 warranty claim workflow verifier marker without changing business behavior.
 - `e0321273784ba0c39c36b3d758ede0e77d99ac74` — updated the Batch A JSON report after the Ready preview.
 - `85af8cc3096459e56c214025834502f63e71faa4` — updated the Batch A Markdown report after the Ready preview.
-- `09e246c34390109520be8a8c7d35c34911f12dd7` — extended the Batch A verifier to cover Customer Portal Activity Timeline ownership, production fields, audit marker and timeline/payment summary response markers; latest Vercel Preview is Ready.
+- `09e246c34390109520be8a8c7d35c34911f12dd7` — extended the Batch A verifier to cover Customer Portal Activity Timeline ownership, production fields, audit marker and timeline/payment summary response markers; Vercel Preview reached Ready.
 - `4cc16ce309c8f2407cda1b2561d38f3aa7c0f18b` — updated the Batch A JSON report after the timeline verifier Ready preview.
+- `3ef763518179d071302d3cd0c96912f8fb779aef` — updated the Batch A Markdown report after the timeline verifier Ready preview.
+- `7c9f6602e4adb39f0a7ecca747307dc18df47c1f` — added Batch A Preview smoke test runner for readiness, health and unauthenticated permission boundary checks; latest Vercel Preview is Ready.
+- `63e614504287e291b3bf600de5c55f5b042c5139` — updated the Batch A JSON report after the smoke runner Ready preview.
 
 ## Repaired Files
 
@@ -50,20 +53,35 @@ This batch does not mutate production Supabase, does not reset production, does 
 - `app/api/customer-portal/service-requests/route.ts`
 - `lib/storageAttachments.ts`
 
-## Added / Updated Verifier
+## Added / Updated Verification Files
 
 - `tools/verify-v28-6-2-service-ops-public-rbac.mjs`
+- `tools/smoke-v28-6-2-batch-a-preview.mjs`
+- `V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.json`
+- `V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.md`
 
-Run with:
+Run static verifier with:
 
 ```bash
 node tools/verify-v28-6-2-service-ops-public-rbac.mjs
 ```
 
-The verifier writes:
+Run Preview smoke test with:
 
-- `V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.json`
-- `V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT.md`
+```bash
+V28_6_SMOKE_BASE_URL=https://<preview-url> node tools/smoke-v28-6-2-batch-a-preview.mjs
+```
+
+Optional invalid public-submit rejection test:
+
+```bash
+V28_6_SMOKE_BASE_URL=https://<preview-url> V28_6_SMOKE_ALLOW_INVALID_POST=1 node tools/smoke-v28-6-2-batch-a-preview.mjs
+```
+
+Smoke runner outputs:
+
+- `V28_6_2_BATCH_A_PREVIEW_SMOKE_REPORT.json`
+- `V28_6_2_BATCH_A_PREVIEW_SMOKE_REPORT.md`
 
 ## What Was Fixed
 
@@ -158,7 +176,23 @@ Public Submit Request
 → Customer Portal Activity Timeline
 ```
 
-### 7. Build gate and existing verifier compatibility fixes
+### 7. Batch A Preview smoke runner
+
+A Preview smoke test runner was added:
+
+- `tools/smoke-v28-6-2-batch-a-preview.mjs`
+
+It is read-only by default and checks:
+
+- `/api/ready`
+- `/api/system/health`
+- unauthenticated Customer Portal timeline is rejected
+- unauthenticated Admin Service Operations is rejected
+- unauthenticated Global Search is rejected or safely limited
+
+The invalid public-submit rejection test is optional and only runs when `V28_6_SMOKE_ALLOW_INVALID_POST=1` is explicitly set, to avoid accidental business-data writes during smoke testing.
+
+### 8. Build gate and existing verifier compatibility fixes
 
 Two gate fixes were completed after Vercel surfaced failures:
 
@@ -178,13 +212,14 @@ The verifier checks the existing public submit and RBAC foundation:
 - Internal secret fallback remains disabled by default and requires explicit env enabling.
 - Customer Portal attachment URLs are now guarded by controlled NANOFIX/Supabase Storage validation.
 - Customer Portal Activity Timeline is now included in the Batch A verifier gate.
+- Preview smoke runner is available to test readiness, health and unauthenticated permission boundaries against a Vercel Preview URL.
 
 ## Validation Status
 
 - Vercel Preview latest commit: **Ready**
-- Latest Ready commit: `09e246c34390109520be8a8c7d35c34911f12dd7`
+- Latest Ready commit: `7c9f6602e4adb39f0a7ecca747307dc18df47c1f`
 - TypeScript gate: **passed after UUID type guard fix**
-- `validate:predeploy`: **passed after warranty claim workflow marker restoration and timeline verifier extension**
+- `validate:predeploy`: **passed after warranty claim workflow marker restoration, timeline verifier extension and smoke runner addition**
 - `build:ci`: **passed on latest Vercel Preview shown by UI**
 
 ## Remaining Work in Batch A
@@ -193,10 +228,11 @@ This is the start of the repair plan, not the full completion of V28.6.
 
 Remaining Batch A work:
 
-1. Run the new verifier in a full local/CI checkout and archive exact runtime output when execution access is available.
-2. Continue browser smoke test: Public Submit Request → Admin Service Operations → Customer Portal timeline.
-3. Continue customer account claim / customer record link RLS only through preview/staging verification, not blind production apply.
-4. Do not start Batch B until Batch A smoke test and report review are accepted.
+1. Run `node tools/verify-v28-6-2-service-ops-public-rbac.mjs` in a full local/CI checkout and archive exact runtime output when execution access is available.
+2. Run `tools/smoke-v28-6-2-batch-a-preview.mjs` against the latest Vercel Preview URL and review the generated smoke report.
+3. Continue full browser smoke test with real test accounts: Public Submit Request → Admin Service Operations → Customer Portal timeline.
+4. Continue customer account claim / customer record link RLS only through preview/staging verification, not blind production apply.
+5. Do not start Batch B until Batch A smoke test and report review are accepted.
 
 ## Safety Notes
 
@@ -209,12 +245,13 @@ Remaining Batch A work:
 - No TypeScript or ESLint bypass.
 - No production tag overwrite.
 - No fake success / mock data / localStorage business-state fallback added.
+- Smoke runner is read-only by default and only sends invalid public-submit payload when explicitly enabled.
 
 ## Acceptance Status
 
-Current status: **Batch A implementation is build-ready on Preview. Service Operations Live Core, Global Search RBAC, Customer Portal attachment guard, Customer Portal Activity Timeline verifier coverage, and build-gate compatibility fixes have been committed.**
+Current status: **Batch A implementation is build-ready on Preview. Service Operations Live Core, Global Search RBAC, Customer Portal attachment guard, Customer Portal Activity Timeline verifier coverage, Batch A Preview smoke runner, and build-gate compatibility fixes have been committed.**
 
-Not yet complete until the browser smoke test is reviewed:
+Not yet complete until the Preview smoke test and browser smoke test are reviewed:
 
 ```text
 Public Submit Request
