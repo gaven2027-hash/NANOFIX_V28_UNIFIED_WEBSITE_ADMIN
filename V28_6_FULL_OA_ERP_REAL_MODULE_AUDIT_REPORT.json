@@ -1,0 +1,210 @@
+{
+  "ok": false,
+  "verifier": "verify-v28-6-full-oa-erp-real-module-audit",
+  "generated_at": "2026-06-08T12:00:00+08:00",
+  "report_status": "initial_static_audit_baseline_created_on_branch; run verifier to refresh with exact repository scan output",
+  "audit_mode": "read-only audit design and initial conservative baseline; no production Supabase connection; no database mutation; no business-code repair",
+  "production_baseline": {
+    "repo": "gaven2027-hash/NANOFIX_V28_UNIFIED_WEBSITE_ADMIN",
+    "branch": "v28-6-0-full-oa-erp-real-module-audit",
+    "branch_base_commit": "2ad06bd507a23b5c7f11f18e652cd2c09f7dfc82",
+    "merged_pr": 19,
+    "production_domain": "https://app.nanofixsg.com"
+  },
+  "runtime_refresh_command": "node tools/verify-v28-6-full-oa-erp-real-module-audit.mjs",
+  "required_scan_roots": [
+    "app/**",
+    "app/admin/**",
+    "app/api/**",
+    "components/**",
+    "lib/**",
+    "supabase/migrations/**",
+    "tools/verify-*.mjs"
+  ],
+  "core_chains": [
+    "A. Public Submit Request / Repair / Warranty Tracking / Customer Register & Login",
+    "B. Website Management / CMS / SEO-AEO / Public Rendering",
+    "C. Public Website -> Backend -> Customer Center -> Service Request -> Job -> Quotation -> Invoice -> Payment -> Warranty -> Customer Portal Timeline"
+  ],
+  "priority_rules": {
+    "P0": "missing workspace/API/auth boundary or unsafe auth foundation risk",
+    "P1": "placeholder/demo/fake success/browser state/static-workflow risk",
+    "P2": "API exists but no real Supabase read/write, or read-only behavior where mutation is required",
+    "P3": "read/write exists but audit/status log integration is missing or incomplete",
+    "P4": "missing linkage keys, expected tables, operation actions, or cross-module relationship terms"
+  },
+  "initial_module_scores": [
+    {
+      "key": "P0_dashboard_analytics_alerts",
+      "name": "Dashboard, Analytics & Alerts",
+      "initial_score": 66,
+      "status": "needs_runtime_verifier_and_browser_smoke_test",
+      "main_risks": [
+        "static KPI cards risk",
+        "missing live aggregation risk",
+        "audit/status coverage must be verified"
+      ]
+    },
+    {
+      "key": "P1_service_order_operations",
+      "name": "Service & Order Operations",
+      "initial_score": 72,
+      "status": "partial_real_chain_candidate",
+      "main_risks": [
+        "request-job-quotation-invoice-payment-warranty chain must be route-reviewed",
+        "status_transition_logs incomplete beyond public service request creation"
+      ]
+    },
+    {
+      "key": "P2_website_management_cms",
+      "name": "Website Management / CMS",
+      "initial_score": 70,
+      "status": "partial_real_cms_candidate",
+      "main_risks": [
+        "public rendering must be proven from CMS data",
+        "draft/preview/publish/rollback/versioning need full verification",
+        "media binding and audit logs need full verification"
+      ]
+    },
+    {
+      "key": "P3_social_media_management",
+      "name": "Social Media Management",
+      "initial_score": 56,
+      "status": "likely_partial_or_graceful_degradation",
+      "main_risks": [
+        "third-party platform binding may be disabled",
+        "AI draft review and platform preview need real API verification"
+      ]
+    },
+    {
+      "key": "P4_ai_intelligence_center",
+      "name": "AI Intelligence Center",
+      "initial_score": 56,
+      "status": "likely_partial_or_graceful_degradation",
+      "main_risks": [
+        "AI settings/logs/costs/external web search must be verified",
+        "unconfigured services must degrade clearly without fake success"
+      ]
+    },
+    {
+      "key": "P5_customer_center",
+      "name": "Customer Center",
+      "initial_score": 64,
+      "status": "needs_binding_and_security_review",
+      "main_risks": [
+        "customer_account_claims/customer_record_links RLS was still staged after V28.5",
+        "freeze/blacklist/reset/archive audit coverage must be verified"
+      ]
+    },
+    {
+      "key": "P6_customer_portal",
+      "name": "Customer Portal",
+      "initial_score": 76,
+      "status": "strong_partial_candidate",
+      "main_risks": [
+        "own-record isolation requires browser and RLS verification",
+        "quote/payment/PDF/warranty/timeline linkage must be checked end-to-end"
+      ]
+    },
+    {
+      "key": "P7_settings_backup",
+      "name": "Website & System Settings / Backup",
+      "initial_score": 58,
+      "status": "needs_real_backup_download_restore_verification",
+      "main_risks": [
+        "backup history/download/restore may be shell-only",
+        "sensitive export and audit boundaries must be verified"
+      ]
+    },
+    {
+      "key": "P8_public_global_rbac_rls",
+      "name": "Public Website / Global Search / RBAC / RLS Layer",
+      "initial_score": 68,
+      "status": "needs_public_to_internal_linkage_review",
+      "main_risks": [
+        "public submit/register/login/upload/global-search must prove real APIs and correct role boundaries",
+        "Turnstile/OTP/Storage unconfigured paths must not fake success"
+      ]
+    }
+  ],
+  "initial_core_chain_scores": [
+    {
+      "key": "chain_A_public_submit_register_login",
+      "initial_score": 68,
+      "required_checks": [
+        "public submit route",
+        "real POST API",
+        "unified_intake/leads/service_requests/customers/profiles/customer_record_links linkage",
+        "Storage upload binding",
+        "Customer Portal-only login boundary",
+        "audit/status logs"
+      ]
+    },
+    {
+      "key": "chain_B_website_cms_publish_render",
+      "initial_score": 70,
+      "required_checks": [
+        "website_pages read",
+        "website_content_blocks edit",
+        "draft/preview/publish state",
+        "SEO/AEO/FAQ/Schema/meta/internal links",
+        "Media Library upload/replace",
+        "public website renders CMS data",
+        "version/history/rollback"
+      ]
+    },
+    {
+      "key": "chain_C_full_oa_erp_timeline",
+      "initial_score": 72,
+      "required_checks": [
+        "customer_id",
+        "lead_id",
+        "service_request_id",
+        "job_id",
+        "quotation_id",
+        "invoice_id",
+        "payment_id",
+        "warranty_id",
+        "Customer Portal timeline",
+        "Admin Dashboard/Reports/Audit Logs"
+      ]
+    }
+  ],
+  "blocking_findings_seed": [
+    {
+      "priority": "P0_REVIEW",
+      "module": "All P0-P8 modules",
+      "finding": "Runtime verifier must be executed on the branch before marking any module real-operable."
+    },
+    {
+      "priority": "P0_REVIEW",
+      "module": "Customer Account Claiming / Customer Record Linking",
+      "finding": "V28.5 report already noted production RLS remained unresolved for customer_account_claims/customer_record_links until deliberate preview/staging or controlled production verification."
+    },
+    {
+      "priority": "P3_PARTIAL",
+      "module": "Service Operations Main Chain",
+      "finding": "V28.5 report noted status_transition_logs integration was connected to public service_request creation, while job/quotation/invoice/payment/warranty routes still needed route-level review."
+    }
+  ],
+  "next_repair_sequence": [
+    "V28.6.1 P0 Dashboard",
+    "V28.6.2 P1 Service & Order Operations",
+    "V28.6.3 P2 Website CMS",
+    "V28.6.4 P3 Social Media",
+    "V28.6.5 P4 AI Center",
+    "V28.6.6 P5 Customer Center",
+    "V28.6.7 P6 Customer Portal",
+    "V28.6.8 P7 Settings / Backup",
+    "V28.6.9 P8 Public Website / Global Search / RBAC / RLS"
+  ],
+  "safety_notes": [
+    "No Supabase production mutation.",
+    "No production database reset.",
+    "No blind migration repair.",
+    "No RLS disable.",
+    "No TypeScript or ESLint bypass.",
+    "No production tag overwrite.",
+    "Do not continue PR #20, PR #21, final-clean, rebased, probe, or marker branches."
+  ]
+}
