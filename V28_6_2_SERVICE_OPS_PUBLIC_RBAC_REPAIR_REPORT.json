@@ -1,8 +1,10 @@
 {
   "ok": true,
   "report": "V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT",
-  "generated_at": "2026-06-08T12:00:00+08:00",
+  "generated_at": "2026-06-08T14:30:00+08:00",
   "branch": "v28-6-2-service-ops-public-rbac-repair",
+  "latest_ready_commit": "87594e8ac5f0459ff68aa3400eaed94e14f1c72c",
+  "preview_status": "Vercel Preview Ready on latest commit; validate:predeploy and build:ci passed according to Vercel deployment UI.",
   "scope": [
     "V28.6.2 Service & Order Operations",
     "V28.6.9 Public Website / Global Search / RBAC / RLS foundational checks"
@@ -24,11 +26,33 @@
     {
       "sha": "ad715f57051794ce5e89d6e8f2e8872530961093",
       "summary": "Extended Batch A verifier to include Global Search RBAC and production-field checks."
+    },
+    {
+      "sha": "a581247d6a6d4d76cda4c0df4c1ad3fd0f4ab27f",
+      "summary": "Added controlled NANOFIX/Supabase Storage attachment URL validation helper."
+    },
+    {
+      "sha": "dc88686e02bdc351baf4c5af1d59db8d68dab8bf",
+      "summary": "Enforced Customer Portal attachment Storage validation and rejected untrusted external attachment URLs with audit logging."
+    },
+    {
+      "sha": "213f5479363b9fa48d5af9d31127b5ee3840d96c",
+      "summary": "Extended Batch A verifier to cover the Customer Portal Storage attachment guard."
+    },
+    {
+      "sha": "291c915a37954b529235cc44467acbec07047616",
+      "summary": "Fixed TypeScript strict-null build gate by narrowing Service Operations object IDs with a UUID type guard."
+    },
+    {
+      "sha": "87594e8ac5f0459ff68aa3400eaed94e14f1c72c",
+      "summary": "Restored the existing Phase D.4 warranty claim workflow verifier marker without changing business behavior; latest Vercel Preview is Ready."
     }
   ],
   "repaired_files": [
     "app/api/admin/service-operations/route.ts",
-    "app/api/global-search/route.ts"
+    "app/api/global-search/route.ts",
+    "app/api/customer-portal/service-requests/route.ts",
+    "lib/storageAttachments.ts"
   ],
   "added_or_updated_files": [
     "tools/verify-v28-6-2-service-ops-public-rbac.mjs",
@@ -48,20 +72,29 @@
     "Global Search fallback results are split between sensitive business roles and content/operations roles.",
     "Global Search invoice fallback now uses total_amount and currency instead of deprecated total.",
     "Global Search job fallback now uses notes instead of deprecated completion_notes.",
-    "Global Search audit logs now include role, rpc_allowed, result counts and request IP."
+    "Global Search audit logs now include role, rpc_allowed, result counts and request IP.",
+    "Customer Portal service request attachments are normalized and validated against NANOFIX/Supabase Storage URL rules before DB write.",
+    "Untrusted Customer Portal attachment URLs are rejected with HTTP 400 and audit_logs entries instead of fake success.",
+    "Customer Portal warranty claim request type marker required by Phase D.4 verifier is preserved."
   ],
   "public_rbac_foundation_review": {
     "public_submit_route": "app/api/service-requests/route.ts already writes unified_intake, leads and service_requests and fails explicitly when Supabase is not configured.",
     "global_search_route": "app/api/global-search/route.ts now restricts full search_all_records RPC to super_admin, operations_admin, finance and support, while content roles receive scoped fallback results only.",
     "rbac_foundation": "lib/apiSecurity.ts already resolves actor identity server-side through Supabase auth tokens, profiles/admin_profiles and default-disabled secret fallback.",
-    "status_transition_helper": "lib/statusTransition.ts writes real status_transition_logs with object_type/object_id/from_status/to_status."
+    "status_transition_helper": "lib/statusTransition.ts writes real status_transition_logs with object_type/object_id/from_status/to_status.",
+    "attachment_storage_guard": "lib/storageAttachments.ts and Customer Portal service request API now reject untrusted external attachment URLs and allow only controlled NANOFIX/Supabase Storage paths/URLs."
+  },
+  "validation_status": {
+    "vercel_preview_latest_commit": "ready",
+    "typecheck": "passed after UUID type guard fix",
+    "validate_predeploy": "passed after warranty claim workflow marker restoration",
+    "build_ci": "passed on latest Vercel Preview deployment shown by UI"
   },
   "remaining_work": [
-    "Run node tools/verify-v28-6-2-service-ops-public-rbac.mjs locally/CI to generate runtime report output.",
-    "Run npm run validate:predeploy and npm run build:ci in CI/local because this connector cannot execute the repo build.",
-    "Continue Batch A with public upload/storage binding review.",
+    "Run node tools/verify-v28-6-2-service-ops-public-rbac.mjs locally/CI to archive exact runtime JSON output when full checkout execution is available.",
+    "Continue Batch A browser smoke test: Public Submit Request -> Admin Service Operations -> Customer Portal timeline.",
     "Do not apply customer_account_claims/customer_record_links RLS to production until preview/staging verification is complete.",
-    "Continue later batches only after Batch A verifier and build gates are reviewed."
+    "Do not start Batch B until Batch A smoke test and report review are accepted."
   ],
   "safety_notes": [
     "No direct main edit.",
