@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "report": "V28_6_2_SERVICE_OPS_PUBLIC_RBAC_REPAIR_REPORT",
+  "generated_at": "2026-06-08T12:00:00+08:00",
+  "branch": "v28-6-2-service-ops-public-rbac-repair",
+  "scope": [
+    "V28.6.2 Service & Order Operations",
+    "V28.6.9 Public Website / Global Search / RBAC / RLS foundational checks"
+  ],
+  "base_memory_doc": "docs/NANOFIX_V28_6_OA_ERP_REAL_MODULE_REPAIR_PLAN_20260608.md",
+  "commits": [
+    {
+      "sha": "0e001ea54ff32b124ba362d2066cd60e53ce9e7c",
+      "summary": "Aligned Service Operations Live Core with production schema and wired create/update status transition logging."
+    },
+    {
+      "sha": "5fc895ffa865f373837893bd88b53fe4edbbd8fe",
+      "summary": "Added static verifier for V28.6 Batch A Service Operations/Public/RBAC checks."
+    }
+  ],
+  "repaired_files": [
+    "app/api/admin/service-operations/route.ts"
+  ],
+  "added_files": [
+    "tools/verify-v28-6-2-service-ops-public-rbac.mjs"
+  ],
+  "key_repairs": [
+    "Service Operations Live Core selectors now match the V28.5/production schema alignment used by the full-chain API.",
+    "Quotation fields now use version, total_amount, currency and status instead of current_version, total and approval_status.",
+    "Invoice fields now use customer_id, job_id, quotation_id, total_amount, currency, status and visible_to_customer.",
+    "Payment fields now use invoice_id, customer_id, amount, currency, status and reconciled_at, avoiding deprecated fee usage.",
+    "Warranty fields now use starts_on and ends_on, and include customer_id, invoice_id, quotation_id, visible_to_customer and public_ref.",
+    "Status transition logs are attempted for Service Operations create paths through writeStatusTransitionLog.",
+    "Status transition logs are attempted for Service Operations update paths when the module status column changes.",
+    "Audit logs now record status_transition_logged for create/update actions, avoiding assumed success."
+  ],
+  "public_rbac_foundation_review": {
+    "public_submit_route": "app/api/service-requests/route.ts already writes unified_intake, leads and service_requests and fails explicitly when Supabase is not configured.",
+    "rbac_foundation": "lib/apiSecurity.ts already resolves actor identity server-side through Supabase auth tokens, profiles/admin_profiles and default-disabled secret fallback.",
+    "status_transition_helper": "lib/statusTransition.ts writes real status_transition_logs with object_type/object_id/from_status/to_status."
+  },
+  "remaining_work": [
+    "Run node tools/verify-v28-6-2-service-ops-public-rbac.mjs locally/CI to generate runtime report output.",
+    "Run npm run validate:predeploy and npm run build:ci in CI/local because this connector cannot execute the repo build.",
+    "Continue Batch A with Global Search route-level review and public upload/storage binding review.",
+    "Do not apply customer_account_claims/customer_record_links RLS to production until preview/staging verification is complete."
+  ],
+  "safety_notes": [
+    "No direct main edit.",
+    "No production Supabase mutation.",
+    "No production database reset.",
+    "No RLS disable.",
+    "No TypeScript or ESLint bypass.",
+    "No fake success or localStorage business-state fallback added."
+  ]
+}
