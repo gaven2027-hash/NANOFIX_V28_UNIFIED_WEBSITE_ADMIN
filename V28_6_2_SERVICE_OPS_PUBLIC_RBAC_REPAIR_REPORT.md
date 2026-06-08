@@ -3,15 +3,15 @@
 Date: 2026-06-08  
 Branch: `v28-6-2-service-ops-public-rbac-repair`  
 Base memory doc: `docs/NANOFIX_V28_6_OA_ERP_REAL_MODULE_REPAIR_PLAN_20260608.md`  
-Latest Ready commit: `87594e8ac5f0459ff68aa3400eaed94e14f1c72c`
+Latest Ready commit: `09e246c34390109520be8a8c7d35c34911f12dd7`
 
 ## Current Status
 
 **Vercel Preview is Ready on the latest commit.**
 
-The latest deployment shown in Vercel UI for commit `87594e8` completed successfully after the build-gate fixes. This means the Preview run reached Ready after `validate:predeploy && build:ci`.
+The latest deployment shown in Vercel UI for commit `09e246c` completed successfully after extending the Batch A verifier to cover the Customer Portal Activity Timeline. This means the Preview run reached Ready after `validate:predeploy && build:ci`.
 
-This branch still must not be merged until Batch A smoke testing is reviewed.
+This branch still must not be merged until Batch A browser smoke testing is reviewed.
 
 ## Scope
 
@@ -37,8 +37,11 @@ This batch does not mutate production Supabase, does not reset production, does 
 - `dc88686e02bdc351baf4c5af1d59db8d68dab8bf` — enforced Customer Portal attachment Storage validation and rejected untrusted URLs with audit logging.
 - `213f5479363b9fa48d5af9d31127b5ee3840d96c` — extended the Batch A verifier to cover the Customer Portal Storage attachment guard.
 - `291c915a37954b529235cc44467acbec07047616` — fixed TypeScript strict-null build gate by narrowing Service Operations object IDs with a UUID type guard.
-- `87594e8ac5f0459ff68aa3400eaed94e14f1c72c` — restored the existing Phase D.4 warranty claim workflow verifier marker without changing business behavior; latest Vercel Preview is Ready.
+- `87594e8ac5f0459ff68aa3400eaed94e14f1c72c` — restored the existing Phase D.4 warranty claim workflow verifier marker without changing business behavior.
 - `e0321273784ba0c39c36b3d758ede0e77d99ac74` — updated the Batch A JSON report after the Ready preview.
+- `85af8cc3096459e56c214025834502f63e71faa4` — updated the Batch A Markdown report after the Ready preview.
+- `09e246c34390109520be8a8c7d35c34911f12dd7` — extended the Batch A verifier to cover Customer Portal Activity Timeline ownership, production fields, audit marker and timeline/payment summary response markers; latest Vercel Preview is Ready.
+- `4cc16ce309c8f2407cda1b2561d38f3aa7c0f18b` — updated the Batch A JSON report after the timeline verifier Ready preview.
 
 ## Repaired Files
 
@@ -134,7 +137,28 @@ The Customer Portal route now:
 - writes an `audit_logs` entry when untrusted attachment URLs are rejected,
 - avoids fake-success file attachment behavior.
 
-### 6. Build gate and existing verifier compatibility fixes
+### 6. Customer Portal Activity Timeline verifier coverage
+
+Batch A verifier now covers the Customer Portal Activity Timeline endpoint:
+
+- route: `app/api/customer-portal/activity-timeline/route.ts`
+- `requireActorApi` marker
+- customer-only actor guard marker
+- `profile_id` ownership lookup marker
+- table coverage for `service_requests`, `jobs`, `quotations`, `invoices`, `payments`, and `warranties`
+- production field markers: `total_amount`, `starts_on`, `ends_on`, `payment_status_summary`, and `activity_timeline`
+- audit marker: `customer_portal_activity_timeline_read`
+- forbidden legacy field markers: `starts_at`, `ends_at`, `current_version`, and invoice `total`
+
+This makes the end of the Batch A smoke-test chain part of the automated gate:
+
+```text
+Public Submit Request
+→ Admin Service Operations
+→ Customer Portal Activity Timeline
+```
+
+### 7. Build gate and existing verifier compatibility fixes
 
 Two gate fixes were completed after Vercel surfaced failures:
 
@@ -153,12 +177,14 @@ The verifier checks the existing public submit and RBAC foundation:
 - `lib/apiSecurity.ts` resolves users through Supabase auth tokens and profile/admin profile lookup.
 - Internal secret fallback remains disabled by default and requires explicit env enabling.
 - Customer Portal attachment URLs are now guarded by controlled NANOFIX/Supabase Storage validation.
+- Customer Portal Activity Timeline is now included in the Batch A verifier gate.
 
 ## Validation Status
 
 - Vercel Preview latest commit: **Ready**
+- Latest Ready commit: `09e246c34390109520be8a8c7d35c34911f12dd7`
 - TypeScript gate: **passed after UUID type guard fix**
-- `validate:predeploy`: **passed after warranty claim workflow marker restoration**
+- `validate:predeploy`: **passed after warranty claim workflow marker restoration and timeline verifier extension**
 - `build:ci`: **passed on latest Vercel Preview shown by UI**
 
 ## Remaining Work in Batch A
@@ -186,7 +212,7 @@ Remaining Batch A work:
 
 ## Acceptance Status
 
-Current status: **Batch A implementation is build-ready on Preview. Service Operations Live Core, Global Search RBAC, Customer Portal attachment guard, and build-gate compatibility fixes have been committed.**
+Current status: **Batch A implementation is build-ready on Preview. Service Operations Live Core, Global Search RBAC, Customer Portal attachment guard, Customer Portal Activity Timeline verifier coverage, and build-gate compatibility fixes have been committed.**
 
 Not yet complete until the browser smoke test is reviewed:
 
