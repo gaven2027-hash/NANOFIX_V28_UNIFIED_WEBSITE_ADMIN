@@ -27,21 +27,25 @@ function assertNotHas(findings, file, fileText, needle, code, message, priority 
 
 const liveCoreFile = 'app/api/admin/service-operations/route.ts';
 const publicRequestFile = 'app/api/service-requests/route.ts';
+const customerPortalServiceRequestFile = 'app/api/customer-portal/service-requests/route.ts';
 const globalSearchFile = 'app/api/global-search/route.ts';
+const storageAttachmentFile = 'lib/storageAttachments.ts';
 const apiSecurityFile = 'lib/apiSecurity.ts';
 const statusTransitionFile = 'lib/statusTransition.ts';
 const fullChainFile = 'app/api/admin/service-operations/full-chain/route.ts';
 
 const liveCore = read(liveCoreFile);
 const publicRequest = read(publicRequestFile);
+const customerPortalServiceRequest = read(customerPortalServiceRequestFile);
 const globalSearch = read(globalSearchFile);
+const storageAttachment = read(storageAttachmentFile);
 const apiSecurity = read(apiSecurityFile);
 const statusTransition = read(statusTransitionFile);
 const fullChain = read(fullChainFile);
 
 const findings = [];
 
-for (const file of [liveCoreFile, publicRequestFile, globalSearchFile, apiSecurityFile, statusTransitionFile, fullChainFile]) {
+for (const file of [liveCoreFile, publicRequestFile, customerPortalServiceRequestFile, globalSearchFile, storageAttachmentFile, apiSecurityFile, statusTransitionFile, fullChainFile]) {
   if (!read(file)) findings.push({ priority: 'P0', code: 'MISSING_REQUIRED_FILE', file, message: `${file} is required for V28.6 Batch A verification.` });
 }
 
@@ -76,6 +80,18 @@ assertHas(findings, publicRequestFile, publicRequest, "writeStatusTransitionLog"
 assertHas(findings, publicRequestFile, publicRequest, "status_transition_logged", 'PUBLIC_REQUEST_STATUS_RESULT_REQUIRED', 'Public request audit log must record actual status log result.');
 assertHas(findings, publicRequestFile, publicRequest, "Supabase is not configured", 'PUBLIC_REQUEST_NO_FAKE_SUCCESS_REQUIRED', 'Public submit must fail explicitly when Supabase is not configured.');
 
+assertHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "normalizeServiceAttachmentUrls", 'CUSTOMER_PORTAL_ATTACHMENT_VALIDATOR_REQUIRED', 'Customer Portal service request must validate attachment URLs.');
+assertHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "customer_portal_service_request_attachment_rejected", 'CUSTOMER_PORTAL_ATTACHMENT_REJECTION_AUDIT_REQUIRED', 'Rejected customer attachment submissions must be audit logged.');
+assertHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "Only NANOFIX Supabase Storage attachment URLs are accepted", 'CUSTOMER_PORTAL_ATTACHMENT_NO_FAKE_SUCCESS_REQUIRED', 'Invalid attachment URLs must fail explicitly.');
+assertHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "starts_on,ends_on", 'CUSTOMER_PORTAL_WARRANTY_SCHEMA_REQUIRED', 'Customer Portal warranty ownership check must use production warranty date fields.');
+assertNotHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "attachmentUrls(", 'CUSTOMER_PORTAL_RAW_ATTACHMENT_URLS_FORBIDDEN', 'Raw attachment URL passthrough must not be used.');
+assertNotHas(findings, customerPortalServiceRequestFile, customerPortalServiceRequest, "starts_at,ends_at", 'CUSTOMER_PORTAL_DEPRECATED_WARRANTY_FIELDS_FORBIDDEN', 'Deprecated warranty date fields must not be used.');
+
+assertHas(findings, storageAttachmentFile, storageAttachment, "normalizeServiceAttachmentUrls", 'STORAGE_ATTACHMENT_HELPER_REQUIRED', 'Storage attachment helper must be present.');
+assertHas(findings, storageAttachmentFile, storageAttachment, "NANOFIX_ALLOWED_ATTACHMENT_BUCKETS", 'STORAGE_ATTACHMENT_BUCKET_CONFIG_REQUIRED', 'Allowed attachment buckets must be configurable.');
+assertHas(findings, storageAttachmentFile, storageAttachment, "NEXT_PUBLIC_SUPABASE_URL", 'STORAGE_ATTACHMENT_SUPABASE_ORIGIN_REQUIRED', 'Storage attachment URLs must be tied to configured Supabase origins.');
+assertHas(findings, storageAttachmentFile, storageAttachment, "storage/v1/object", 'STORAGE_ATTACHMENT_OBJECT_PATH_REQUIRED', 'Storage attachment helper must recognize Supabase Storage object paths.');
+
 assertHas(findings, globalSearchFile, globalSearch, "requireAdminApi", 'GLOBAL_SEARCH_ADMIN_AUTH_REQUIRED', 'Global Search must require an internal admin actor.');
 assertHas(findings, globalSearchFile, globalSearch, "SENSITIVE_BUSINESS_ROLES", 'GLOBAL_SEARCH_ROLE_SCOPE_REQUIRED', 'Global Search must define sensitive business role scope.');
 assertHas(findings, globalSearchFile, globalSearch, "canSearchSensitiveBusiness", 'GLOBAL_SEARCH_SENSITIVE_GUARD_REQUIRED', 'Global Search must guard sensitive business categories.');
@@ -104,12 +120,13 @@ const report = {
   generated_at: new Date().toISOString(),
   branch: 'v28-6-2-service-ops-public-rbac-repair',
   base_memory_doc: 'docs/NANOFIX_V28_6_OA_ERP_REAL_MODULE_REPAIR_PLAN_20260608.md',
-  repaired_files: [liveCoreFile, globalSearchFile],
-  verified_files: [liveCoreFile, publicRequestFile, globalSearchFile, apiSecurityFile, statusTransitionFile, fullChainFile],
+  repaired_files: [liveCoreFile, customerPortalServiceRequestFile, globalSearchFile, storageAttachmentFile],
+  verified_files: [liveCoreFile, publicRequestFile, customerPortalServiceRequestFile, globalSearchFile, storageAttachmentFile, apiSecurityFile, statusTransitionFile, fullChainFile],
   acceptance: {
     service_operations_live_core_schema_aligned: !findings.some((f) => f.code === 'LIVE_CORE_PRODUCTION_SCHEMA_SELECT_REQUIRED' || f.code === 'LIVE_CORE_DEPRECATED_SCHEMA_FORBIDDEN'),
     service_operations_status_logs_wired: !findings.some((f) => f.code.includes('STATUS') || f.code.includes('TRANSITION')),
     public_submit_real_chain_present: !findings.some((f) => f.code.startsWith('PUBLIC_REQUEST_')),
+    customer_portal_attachment_guarded: !findings.some((f) => f.code.startsWith('CUSTOMER_PORTAL_ATTACHMENT_') || f.code.startsWith('STORAGE_ATTACHMENT_')),
     global_search_rbac_scoped: !findings.some((f) => f.code.startsWith('GLOBAL_SEARCH_')),
     rbac_foundation_present: !findings.some((f) => f.code.startsWith('API_'))
   },
@@ -136,6 +153,7 @@ function md(data) {
     `- Service Operations Live Core schema aligned: ${data.acceptance.service_operations_live_core_schema_aligned}`,
     `- Service Operations status logs wired: ${data.acceptance.service_operations_status_logs_wired}`,
     `- Public submit real chain present: ${data.acceptance.public_submit_real_chain_present}`,
+    `- Customer Portal attachment guarded: ${data.acceptance.customer_portal_attachment_guarded}`,
     `- Global Search RBAC scoped: ${data.acceptance.global_search_rbac_scoped}`,
     `- RBAC foundation present: ${data.acceptance.rbac_foundation_present}`,
     '',
