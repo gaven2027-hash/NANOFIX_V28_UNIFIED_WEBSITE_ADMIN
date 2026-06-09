@@ -17,6 +17,21 @@ function add(severity, area, file, message) {
   findings.push({ severity, area, file, message });
 }
 
+function functionBody(source, functionName) {
+  const start = source.indexOf(`function ${functionName}`) >= 0 ? source.indexOf(`function ${functionName}`) : source.indexOf(`async function ${functionName}`);
+  if (start < 0) return "";
+  const brace = source.indexOf("{", start);
+  if (brace < 0) return "";
+  let depth = 0;
+  for (let index = brace; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") depth += 1;
+    if (char === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  return source.slice(start);
+}
+
 for (const [key, path] of Object.entries(files)) {
   if (!fs.existsSync(path)) add("P0", "file", path, `Required ${key} file is missing.`);
 }
@@ -25,6 +40,7 @@ const jobs = read(files.jobs);
 const backupCenter = read(files.backupCenter);
 const legacySchedules = read(files.legacySchedules);
 const legacyBackup = read(files.legacyBackup);
+const runEncryptedBackupBody = functionBody(jobs, "runEncryptedBackup");
 
 for (const marker of ["BACKUP_TABLE_MANIFEST", "preferredColumns", "redaction_manifest", "SENSITIVE_COLUMN_PATTERN", "resolveExportColumns", "redactRows"]) {
   if (!jobs.includes(marker)) add("P0", "redaction", files.jobs, `Backup jobs route is missing redaction marker ${marker}.`);
@@ -38,8 +54,11 @@ if (!jobs.includes("create_signed_url") || !jobs.includes("backup.signed_downloa
   add("P0", "download_control", files.jobs, "Backup jobs route must generate signed links only through audited create_signed_url flow.");
 }
 
-if (/signed_url:\s*signed\.data\?\.signedUrl/.test(jobs) && /runEncryptedBackup[\s\S]*signed_url:\s*signed\.data\?\.signedUrl/.test(jobs)) {
+if (/signed_url:\s*signed\.data\?\.signedUrl/.test(runEncryptedBackupBody)) {
   add("P0", "download_control", files.jobs, "runEncryptedBackup still returns a signed URL directly.");
+}
+if (!/signed_url:\s*null/.test(runEncryptedBackupBody) || !/download_requires_approval:\s*true/.test(runEncryptedBackupBody)) {
+  add("P0", "download_control", files.jobs, "runEncryptedBackup must return signed_url:null and download_requires_approval:true.");
 }
 
 if (!backupCenter.includes("create_signed_url") || !backupCenter.includes("Generate audited link")) {
@@ -49,12 +68,18 @@ if (!backupCenter.includes("create_signed_url") || !backupCenter.includes("Gener
 if (/requirePermission\(request, "\*"\)/.test(legacySchedules)) {
   add("P0", "legacy_route", files.legacySchedules, "Legacy backup schedule route still uses wildcard permission.");
 }
+if (!legacySchedules.includes("requireAdmin") || !legacySchedules.includes("write:settings")) {
+  add("P0", "legacy_route", files.legacySchedules, "Legacy backup schedule route must retain visible auth markers for static production scans.");
+}
 if (!legacySchedules.includes("/backups/schedules/route") && !legacySchedules.includes("canonicalPATCH")) {
   add("P1", "legacy_route", files.legacySchedules, "Legacy backup schedule route is not clearly routed to canonical handler.");
 }
 
 if (/create_backup_job_tx|module_key|signed_url/.test(legacyBackup)) {
   add("P0", "legacy_route", files.legacyBackup, "Legacy backup route still references old RPC/columns.");
+}
+if (!legacyBackup.includes("requireAdmin") || !legacyBackup.includes("write:settings")) {
+  add("P0", "legacy_route", files.legacyBackup, "Retired legacy backup route must retain visible auth markers for static production scans.");
 }
 if (!legacyBackup.includes("status: 410") || !legacyBackup.includes("canonical_route")) {
   add("P1", "legacy_route", files.legacyBackup, "Legacy backup route should be retired with a 410 canonical-route response.");
