@@ -1,38 +1,17 @@
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApi, cleanText, getClientIp } from '@/lib/apiSecurity';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
-  const auth = await requireAdminApi(request, ['super_admin']);
-  if (!auth.ok) return auth.response;
+const CANONICAL_ROUTE = '/api/admin/backups/jobs';
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('backup_jobs')
-    .select('backup_id,module_key,schedule_text,status,encryption_required,signed_url,signed_url_expires_at,failure_reason,created_at')
-    .order('created_at', { ascending: false })
-    .limit(50);
-
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, backups: data, data_loop: 'backup_jobs -> encrypted worker -> signed URL approval -> audit_logs' });
+function deprecated() {
+  return NextResponse.json({ ok: false, error: 'This legacy backup route is retired. Use the canonical Backup Jobs API.', canonical_route: CANONICAL_ROUTE }, { status: 410 });
 }
 
-export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi(request, ['super_admin']);
-  if (!auth.ok) return auth.response;
+export async function GET() {
+  return deprecated();
+}
 
-  const body = await request.json().catch(() => ({}));
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.rpc('create_backup_job_tx', {
-    p_module_key: cleanText(body.module_key, 80) ?? 'central_database',
-    p_schedule_text: cleanText(body.schedule_text, 160) ?? 'manual_now',
-    p_actor_id: auth.actor.profileId,
-    p_actor_role: auth.role,
-    p_ip: getClientIp(request)
-  });
-
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, backup: data, note: 'Queued in backup_jobs. Worker must encrypt the backup and issue signed URLs only after approval.' });
+export async function POST() {
+  return deprecated();
 }
