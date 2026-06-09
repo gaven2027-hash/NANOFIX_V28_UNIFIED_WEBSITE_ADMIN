@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-6-1-customer-center-rls-binding-security-repair",
+  "generated_at": "2026-06-09T07:59:25.000Z",
+  "branch": "v28-6-6-1-customer-center-rls-binding-security-repair",
+  "baseline": "v28-6-6-customer-center-real-module-audit@28dfbac",
+  "scope": "Migration + verifier + report only. Production Supabase SQL is not applied by this script.",
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0
+  },
+  "repaired_tables": [
+    "public.customer_account_claims",
+    "public.customer_record_links"
+  ],
+  "findings": [],
+  "next_steps": [
+    "Run validate:predeploy.",
+    "Run build:ci.",
+    "Open Draft PR against v28-6-6-customer-center-real-module-audit.",
+    "After review, apply migration only through controlled Supabase migration flow, not blind SQL repair."
+  ]
+}
