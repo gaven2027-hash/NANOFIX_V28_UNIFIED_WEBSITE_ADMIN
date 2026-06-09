@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-public-rbac-rls-global-search-audit",
+  "generated_at": "2026-06-09T12:05:00.000Z",
+  "branch": "v28-6-9-public-rbac-rls-global-search-audit",
+  "baseline": "main@a73a531",
+  "scope": "V28.6.9 audit for public website intake, global search, RBAC, RLS and production readiness final security closure.",
+  "summary": {
+    "files_checked": 9,
+    "findings_total": 4,
+    "p0": 0,
+    "p1": 3,
+    "p2": 1
+  },
+  "audit_result": "NO_BLOCKING_P0_FOUND_AUDIT_READY_FOR_REPAIR_BATCH",
+  "next_repair_batch": [
+    "V28.6.9.1 Supabase RPC EXECUTE / SECURITY DEFINER / search_path hardening migration",
+    "V28.6.9.2 RLS static evidence and live policy verifier for unified_intake, leads, quotation_versions, audit_logs",
+    "V28.6.9.3 Optional env hardening: Turnstile and ADMIN_REPAIR_REQUEST_URL readiness lift",
+    "V28.6.9.4 Global search RPC retirement or proof-gated allowlist mode"
+  ],
+  "findings": [
+    {
+      "severity": "P1",
+      "area": "global_search_rpc",
+      "file": "app/api/global-search/route.ts",
+      "message": "Global search still calls search_all_records RPC when the role is allowed.",
+      "recommendation": "V28.6.9.1 should verify production EXECUTE grants for search_all_records or retire the RPC in favour of explicit allowlisted fallback queries only."
+    },
+    {
+      "severity": "P1",
+      "area": "public_turnstile",
+      "file": "lib/public-repair-request.ts",
+      "message": "Turnstile is optional and currently bypasses when CLOUDFLARE_TURNSTILE_SECRET_KEY is not configured.",
+      "recommendation": "Keep this as non-blocking only until Vercel env variables are configured; target readiness score 94-96 requires Turnstile envs."
+    },
+    {
+      "severity": "P1",
+      "area": "rls_static_evidence",
+      "file": "tools/verify-supabase-production-audit.mjs",
+      "message": "Supabase production audit still reports static RLS/policy evidence gaps for unified_intake, leads, quotation_versions or audit_logs.",
+      "recommendation": "V28.6.9.1 should add explicit migration evidence and/or live policy verifier for these tables without resetting production."
+    },
+    {
+      "severity": "P2",
+      "area": "public_rate_limit",
+      "file": "lib/public-repair-request.ts",
+      "message": "Rate limit may temporarily fall back to memory if Supabase rate-limit storage cannot be read.",
+      "recommendation": "Confirm form_rate_limits table exists and is included in readiness checks before calling the public form fully hardened."
+    }
+  ]
+}
