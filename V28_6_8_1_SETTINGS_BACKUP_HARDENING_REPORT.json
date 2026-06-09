@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-8-1-settings-backup-hardening",
+  "generated_at": "2026-06-09T10:58:12.226Z",
+  "branch": "v28-6-8-1-settings-backup-hardening",
+  "baseline": "main@bcbb14a",
+  "scope": "Focused hardening for V28.6.8 P1 backup findings.",
+  "summary": {
+    "files_checked": 4,
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0
+  },
+  "fixed_scope": [
+    "Backup redaction manifest / export-safe column selection",
+    "Audited signed download link action",
+    "Legacy backup schedule route permission cleanup",
+    "Legacy backup route retirement"
+  ],
+  "findings": []
+}
