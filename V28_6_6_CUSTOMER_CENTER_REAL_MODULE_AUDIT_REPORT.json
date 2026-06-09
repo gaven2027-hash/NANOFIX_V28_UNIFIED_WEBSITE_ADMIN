@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "verifier": "verify-v28-6-6-customer-center-real-module-audit",
+  "generated_at": "2026-06-09T07:30:52.648Z",
+  "branch": "v28-6-6-customer-center-real-module-audit",
+  "baseline": "main@1dbdc91 after PR #22 merge",
+  "scope": "Audit only. No production database changes. No repair yet.",
+  "summary": {
+    "required_files_checked": 13,
+    "api_files_checked": 5,
+    "findings_total": 2,
+    "p0": 2,
+    "p1": 0
+  },
+  "live_supabase_confirmation": {
+    "project_ref": "qjwcjttdyzsgexswbygt",
+    "customer_account_claims_rls_enabled": false,
+    "customer_record_links_rls_enabled": false,
+    "policies_found_for_both_tables": 0
+  },
+  "findings": [
+    {
+      "severity": "P0",
+      "area": "live_supabase_rls",
+      "table": "customer_account_claims",
+      "message": "Live Supabase check confirms RLS is disabled on public.customer_account_claims. pg_policies returned no policies."
+    },
+    {
+      "severity": "P0",
+      "area": "live_supabase_rls",
+      "table": "customer_record_links",
+      "message": "Live Supabase check confirms RLS is disabled on public.customer_record_links. pg_policies returned no policies."
+    }
+  ],
+  "recommendation": "Open a focused repair branch v28-6-6-1-customer-center-rls-binding-security-repair. Best repair path: enable RLS for customer_account_claims and customer_record_links, add deny-by-default ownership/admin policies, preserve service-role admin API writes, add verifier evidence, then run validate/build/preview smoke."
+}
