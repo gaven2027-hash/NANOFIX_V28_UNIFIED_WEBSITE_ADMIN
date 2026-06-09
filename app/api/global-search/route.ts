@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApi, cleanText } from '@/lib/apiSecurity';
+import { requireAdminApi, cleanText, getClientIp } from '@/lib/apiSecurity';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAuditLog } from '@/lib/audit';
 
@@ -14,12 +14,27 @@ type SearchResult = {
   created_at: string | null;
 };
 
+const SENSITIVE_BUSINESS_ROLES = new Set(['super_admin', 'operations_admin', 'finance', 'support']);
+const CONTENT_ROLES = new Set(['super_admin', 'operations_admin', 'content_admin', 'support']);
+
 function like(input: string) {
   return `%${input.replaceAll('%', '').replaceAll('_', '').slice(0, 80)}%`;
 }
 
 function normalizeCategory(category: string) {
   return category.toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function canSearchSensitiveBusiness(role: string) {
+  return SENSITIVE_BUSINESS_ROLES.has(role);
+}
+
+function canSearchContentOps(role: string) {
+  return CONTENT_ROLES.has(role);
+}
+
+function categoryMatches(category: string, normalized: string, ...allowed: string[]) {
+  return category === 'all' || allowed.includes(normalized);
 }
 
 function workflowSettingHref(settingType: string | null | undefined) {
@@ -38,13 +53,19 @@ function mergeResults(primary: SearchResult[], secondary: SearchResult[]) {
   }).slice(0, 30);
 }
 
-async function fallbackSearch(q: string, category: string): Promise<SearchResult[]> {
+function mapText(value: unknown, fallback = '') {
+  return typeof value === 'string' && value ? value : fallback;
+}
+
+async function fallbackSearch(q: string, category: string, role: string): Promise<SearchResult[]> {
   const supabase = createAdminClient();
   const pattern = like(q);
   const normalized = normalizeCategory(category);
   const tasks: PromiseLike<SearchResult[]>[] = [];
+  const allowBusiness = canSearchSensitiveBusiness(role);
+  const allowContent = canSearchContentOps(role);
 
-  if (category === 'all' || normalized === 'customers') {
+  if (allowBusiness && categoryMatches(category, normalized, 'customers')) {
     tasks.push(supabase
       .from('customers')
       .select('customer_id,name,phone,email,binding_status,created_at')
@@ -61,7 +82,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'leads') {
+  if (allowBusiness && categoryMatches(category, normalized, 'leads')) {
     tasks.push(supabase
       .from('leads')
       .select('lead_id,source_platform,priority,status,created_at')
@@ -78,11 +99,11 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'jobs') {
+  if (allowBusiness && categoryMatches(category, normalized, 'jobs')) {
     tasks.push(supabase
       .from('jobs')
-      .select('job_id,status,scheduled_at,created_at')
-      .or(`status.ilike.${pattern},completion_notes.ilike.${pattern}`)
+      .select('job_id,service_request_id,customer_id,status,scheduled_at,notes,created_at')
+      .or(`status.ilike.${pattern},notes.ilike.${pattern}`)
       .order('created_at', { ascending: false })
       .limit(6)
       .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
@@ -95,33 +116,33 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'invoices') {
+  if (allowBusiness && categoryMatches(category, normalized, 'invoices')) {
     tasks.push(supabase
       .from('invoices')
-      .select('invoice_id,invoice_no,total,status,created_at')
+      .select('invoice_id,invoice_no,total_amount,currency,status,created_at')
       .or(`invoice_no.ilike.${pattern},status.ilike.${pattern}`)
       .order('created_at', { ascending: false })
       .limit(6)
       .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
         type: 'invoice',
         title: row.invoice_no ?? `Invoice ${row.invoice_id?.slice(0, 8)}`,
-        subtitle: `Total SGD ${row.total ?? 0}`,
+        subtitle: `Total ${row.currency ?? 'SGD'} ${row.total_amount ?? 0}`,
         href: `/service-operations#invoice-${row.invoice_id}`,
         status: row.status,
         created_at: row.created_at
       }))));
   }
 
-  if (category === 'all' || normalized === 'warranties') {
+  if (allowBusiness && categoryMatches(category, normalized, 'warranties')) {
     tasks.push(supabase
       .from('warranties')
-      .select('warranty_id,status,coverage,created_at')
-      .or(`status.ilike.${pattern},coverage.ilike.${pattern}`)
+      .select('warranty_id,status,coverage,public_ref,created_at')
+      .or(`status.ilike.${pattern},coverage.ilike.${pattern},public_ref.ilike.${pattern}`)
       .order('created_at', { ascending: false })
       .limit(6)
       .then(({ data }): SearchResult[] => (data ?? []).map((row) => ({
         type: 'warranty',
-        title: `Warranty ${row.warranty_id?.slice(0, 8)}`,
+        title: row.public_ref ?? `Warranty ${row.warranty_id?.slice(0, 8)}`,
         subtitle: row.coverage ?? 'Warranty record',
         href: `/service-operations#warranty-${row.warranty_id}`,
         status: row.status,
@@ -129,7 +150,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'ai_logs') {
+  if (allowContent && categoryMatches(category, normalized, 'ai_logs')) {
     tasks.push(supabase
       .from('ai_logs')
       .select('ai_log_id,module,safety_status,created_at')
@@ -146,7 +167,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'automation' || normalized === 'automation_rules') {
+  if (allowContent && categoryMatches(category, normalized, 'automation', 'automation_rules')) {
     tasks.push(supabase
       .from('automation_rules')
       .select('rule_id,rule_key,name,module,trigger_event,is_enabled,priority,created_at')
@@ -163,7 +184,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'notifications' || normalized === 'notification_outbox') {
+  if (allowContent && categoryMatches(category, normalized, 'notifications', 'notification_outbox')) {
     tasks.push(supabase
       .from('notification_outbox')
       .select('notification_id,channel,target_role,subject,delivery_status,created_at')
@@ -180,7 +201,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'tasks' || normalized === 'unified_tasks') {
+  if (allowContent && categoryMatches(category, normalized, 'tasks', 'unified_tasks')) {
     tasks.push(supabase
       .from('unified_tasks')
       .select('task_id,title,source_module,status,priority,created_at')
@@ -197,7 +218,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'inbox' || normalized === 'internal_inbox') {
+  if (allowContent && categoryMatches(category, normalized, 'inbox', 'internal_inbox')) {
     tasks.push(supabase
       .from('internal_inbox_messages')
       .select('message_id,subject,recipient_role,priority,read_at,created_at')
@@ -214,7 +235,7 @@ async function fallbackSearch(q: string, category: string): Promise<SearchResult
       }))));
   }
 
-  if (category === 'all' || normalized === 'settings' || normalized === 'workflow_settings' || normalized === 'automation_rule_settings' || normalized === 'notification_channel_settings' || normalized === 'unified_task_sla_settings') {
+  if (allowContent && categoryMatches(category, normalized, 'settings', 'workflow_settings', 'automation_rule_settings', 'notification_channel_settings', 'unified_task_sla_settings')) {
     tasks.push(supabase
       .from('workflow_settings')
       .select('setting_id,setting_key,setting_type,name,description,is_enabled,updated_at')
@@ -242,15 +263,19 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const q = cleanText(searchParams.get('q'), 80) ?? '';
   const category = cleanText(searchParams.get('category'), 40)?.toLowerCase() ?? 'all';
+  const role = auth.role;
 
   if (q.length < 2) {
     return NextResponse.json({ ok: true, query: q, category, results: [] });
   }
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase.rpc('search_all_records', { search_text: q, max_results: 20 });
+  const rpcAllowed = canSearchSensitiveBusiness(role);
+  const { data, error } = rpcAllowed
+    ? await supabase.rpc('search_all_records', { search_text: q, max_results: 20 })
+    : { data: null, error: null };
   const rpcResults = !error && Array.isArray(data) ? data as SearchResult[] : [];
-  const fallbackResults = await fallbackSearch(q, category);
+  const fallbackResults = await fallbackSearch(q, category, role);
   const results = mergeResults(rpcResults, fallbackResults);
 
   await writeAuditLog({
@@ -259,8 +284,17 @@ export async function GET(request: NextRequest) {
     action: 'global_search',
     objectType: 'global_search',
     objectId: q,
-    after: { category, result_count: results.length, fallback_result_count: fallbackResults.length, rpc_result_count: rpcResults.length }
+    after: {
+      category,
+      role,
+      rpc_allowed: rpcAllowed,
+      result_count: results.length,
+      fallback_result_count: fallbackResults.length,
+      rpc_result_count: rpcResults.length,
+      rpc_error: error?.message ? mapText(error.message, 'rpc_error') : null
+    },
+    ip: getClientIp(request)
   }).catch(() => undefined);
 
-  return NextResponse.json({ ok: true, query: q, category, results });
+  return NextResponse.json({ ok: true, query: q, category, role, results, rpcAllowed });
 }

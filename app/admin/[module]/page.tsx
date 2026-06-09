@@ -1,3 +1,19 @@
+/*
+ * V28.6.3.1_ADMIN_WEBSITE_MANAGEMENT_ENTRY
+ *
+ * Website Management workspace entry marker.
+ *
+ * Admin UI must expose Website Management for CMS operations:
+ * - Website Management
+ * - website_pages
+ * - website_content_blocks
+ * - draft / preview / publish
+ * - SEO / AEO / FAQ / Schema / Meta / internal links
+ * - Media Library
+ * - version history / rollback
+ * - audit_logs
+ */
+
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
