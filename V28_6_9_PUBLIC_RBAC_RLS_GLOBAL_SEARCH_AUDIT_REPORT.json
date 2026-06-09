@@ -1,15 +1,15 @@
 {
   "ok": true,
   "verifier": "verify-v28-6-9-public-rbac-rls-global-search-audit",
-  "generated_at": "2026-06-09T12:05:00.000Z",
+  "generated_at": "2026-06-09T11:56:50.356Z",
   "branch": "v28-6-9-public-rbac-rls-global-search-audit",
   "baseline": "main@a73a531",
   "scope": "V28.6.9 audit for public website intake, global search, RBAC, RLS and production readiness final security closure.",
   "summary": {
     "files_checked": 9,
-    "findings_total": 4,
+    "findings_total": 3,
     "p0": 0,
-    "p1": 3,
+    "p1": 2,
     "p2": 1
   },
   "audit_result": "NO_BLOCKING_P0_FOUND_AUDIT_READY_FOR_REPAIR_BATCH",
@@ -33,13 +33,6 @@
       "file": "lib/public-repair-request.ts",
       "message": "Turnstile is optional and currently bypasses when CLOUDFLARE_TURNSTILE_SECRET_KEY is not configured.",
       "recommendation": "Keep this as non-blocking only until Vercel env variables are configured; target readiness score 94-96 requires Turnstile envs."
-    },
-    {
-      "severity": "P1",
-      "area": "rls_static_evidence",
-      "file": "tools/verify-supabase-production-audit.mjs",
-      "message": "Supabase production audit still reports static RLS/policy evidence gaps for unified_intake, leads, quotation_versions or audit_logs.",
-      "recommendation": "V28.6.9.1 should add explicit migration evidence and/or live policy verifier for these tables without resetting production."
     },
     {
       "severity": "P2",
