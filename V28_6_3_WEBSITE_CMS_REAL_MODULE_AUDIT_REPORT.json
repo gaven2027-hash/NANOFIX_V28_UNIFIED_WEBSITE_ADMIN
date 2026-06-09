@@ -1,13 +1,13 @@
 {
   "ok": true,
   "verifier": "verify-v28-6-3-website-cms-real-module-audit",
-  "generated_at": "2026-06-08T14:24:29.294Z",
+  "generated_at": "2026-06-09T00:45:52.362Z",
   "branch": null,
   "checked": {
     "required_markers": 4,
     "cms_api_files": 124,
     "cms_ui_files": 182,
-    "migration_files": 47
+    "migration_files": 48
   },
   "cms_api_files": [
     "app/api/admin/advertising-center/budgets/route.ts",
@@ -224,7 +224,8 @@
       "files": [
         "supabase/migrations/20260523_v28_production_hardening.sql",
         "supabase/migrations/20260604_v28_4_3_website_cms_schema_alignment.sql",
-        "supabase/migrations/20260604_v28_4_4_website_cms_real_content_seed.sql"
+        "supabase/migrations/20260604_v28_4_4_website_cms_real_content_seed.sql",
+        "supabase/migrations/20260608_v28_6_3_1_website_cms_bridge_versioning.sql"
       ]
     },
     {
@@ -233,18 +234,23 @@
       "files": [
         "supabase/migrations/20260523_v28_production_hardening.sql",
         "supabase/migrations/20260604_v28_4_3_website_cms_schema_alignment.sql",
-        "supabase/migrations/20260604_v28_4_4_website_cms_real_content_seed.sql"
+        "supabase/migrations/20260604_v28_4_4_website_cms_real_content_seed.sql",
+        "supabase/migrations/20260608_v28_6_3_1_website_cms_bridge_versioning.sql"
       ]
     },
     {
       "marker": "website_media_assets",
-      "ok": false,
-      "files": []
+      "ok": true,
+      "files": [
+        "supabase/migrations/20260608_v28_6_3_1_website_cms_bridge_versioning.sql"
+      ]
     },
     {
       "marker": "website_page_versions",
-      "ok": false,
-      "files": []
+      "ok": true,
+      "files": [
+        "supabase/migrations/20260608_v28_6_3_1_website_cms_bridge_versioning.sql"
+      ]
     },
     {
       "marker": "audit_logs",
@@ -256,7 +262,8 @@
         "supabase/migrations/202605300001_warranty_claim_admin_review.sql",
         "supabase/migrations/202605300002_warranty_claim_job_quotation_routing.sql",
         "supabase/migrations/202605300004_warranty_claim_completion_closure.sql",
-        "supabase/migrations/202605300005_warranty_claim_satisfaction.sql"
+        "supabase/migrations/202605300005_warranty_claim_satisfaction.sql",
+        "supabase/migrations/20260608_v28_6_3_1_website_cms_bridge_versioning.sql"
       ]
     },
     {
@@ -269,7 +276,8 @@
         "supabase/migrations/20260523_v28_production_hardening.sql",
         "supabase/migrations/20260601093000_advertising_connection_tables.sql",
         "supabase/migrations/20260604_v28_4_3_website_cms_schema_alignment.sql",
-        "supabase/migrations/20260604_v28_4_4_website_cms_real_content_seed.sql"
+        "supabase/migrations/20260604_v28_4_4_website_cms_real_content_seed.sql",
+        "supabase/migrations/20260608_v28_6_3_1_website_cms_bridge_versioning.sql"
       ]
     },
     {
@@ -306,24 +314,19 @@
     },
     {
       "id": "public_home_has_cms_bridge",
-      "ok": false,
+      "ok": true,
       "severity": "P1",
       "file": "app/page.tsx",
       "description": "Public website should have a CMS bridge or documented CMS mapping.",
-      "missing": [
-        "website",
-        "cms"
-      ]
+      "missing": []
     },
     {
       "id": "admin_ui_has_website_management",
-      "ok": false,
+      "ok": true,
       "severity": "P1",
       "file": "app/admin/[module]/page.tsx",
       "description": "Admin UI should expose Website Management workspace.",
-      "missing": [
-        "Website Management"
-      ]
+      "missing": []
     }
   ],
   "risk_findings": [
@@ -344,47 +347,5 @@
       "risk": "placeholder"
     }
   ],
-  "findings": [
-    {
-      "id": "public_home_has_cms_bridge",
-      "ok": false,
-      "severity": "P1",
-      "file": "app/page.tsx",
-      "description": "Public website should have a CMS bridge or documented CMS mapping.",
-      "missing": [
-        "website",
-        "cms"
-      ]
-    },
-    {
-      "id": "admin_ui_has_website_management",
-      "ok": false,
-      "severity": "P1",
-      "file": "app/admin/[module]/page.tsx",
-      "description": "Admin UI should expose Website Management workspace.",
-      "missing": [
-        "Website Management"
-      ]
-    },
-    {
-      "id": "schema_missing_website_media_assets",
-      "ok": false,
-      "severity": "P1",
-      "file": "supabase/migrations",
-      "description": "CMS schema marker missing: website_media_assets",
-      "missing": [
-        "website_media_assets"
-      ]
-    },
-    {
-      "id": "schema_missing_website_page_versions",
-      "ok": false,
-      "severity": "P1",
-      "file": "supabase/migrations",
-      "description": "CMS schema marker missing: website_page_versions",
-      "missing": [
-        "website_page_versions"
-      ]
-    }
-  ]
+  "findings": []
 }
