@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-7-customer-portal-real-chain-audit",
+  "generated_at": "2026-06-09T09:09:56.717Z",
+  "branch": "v28-6-7-customer-portal-real-chain-audit",
+  "baseline": "main@bf455ff",
+  "scope": "Audit only. No repair code and no production database changes.",
+  "summary": {
+    "required_files_checked": 11,
+    "api_files_checked": 6,
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0
+  },
+  "findings": [],
+  "recommendation": "Customer Portal real chain has no blocking structural finding. Proceed with preview/customer-session smoke and Supabase live RLS/advisor confirmation."
+}
