@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-1-rpc-security-definer-hardening",
+  "generated_at": "2026-06-09T12:20:00.000Z",
+  "branch": "v28-6-9-1-rpc-security-definer-hardening",
+  "baseline": "main@a73a531",
+  "scope": "Static verification for Supabase RPC / SECURITY DEFINER / search_path hardening migration.",
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "server_rpcs_covered": 6,
+    "touch_functions_covered": 7,
+    "policy_helpers_documented": 2
+  },
+  "production_apply_note": "Do not apply blindly. Apply only after local review, then verify production advisors and function privileges.",
+  "covered_server_rpcs": [
+    "auto_generate_warranty_after_job_completion",
+    "close_warranty_claim_tx",
+    "confirm_warranty_claim_satisfaction_tx",
+    "create_unified_task_with_inbox",
+    "review_warranty_claim_tx",
+    "route_warranty_claim_tx"
+  ],
+  "covered_touch_functions": [
+    "warranty_pdf_documents_touch_updated_at",
+    "nanofix_touch_updated_at",
+    "payment_intents_touch_updated_at",
+    "payment_checkout_sessions_touch_updated_at",
+    "document_company_settings_touch_updated_at",
+    "customer_portal_requests_touch_updated_at",
+    "warranty_claims_touch_updated_at"
+  ],
+  "policy_helpers": [
+    "current_user_role",
+    "owns_customer"
+  ],
+  "findings": []
+}
