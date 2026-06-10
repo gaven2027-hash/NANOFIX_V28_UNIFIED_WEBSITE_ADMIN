@@ -38,8 +38,15 @@ jobs:
       - name: Production npm audit
         run: npm run audit:prod
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Typecheck diagnostics
+        run: |
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          code=$?
+          echo "----- TYPECHECK TAIL START -----"
+          tail -n 80 typecheck.log
+          echo "----- TYPECHECK TAIL END -----"
+          exit $code
 
       - name: Lint
         run: npm run lint
