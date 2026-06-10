@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-2-rls-static-evidence-live-policy-verifier",
+  "generated_at": "2026-06-10T02:55:56.829Z",
+  "branch": "v28-6-9-2-rls-static-evidence-live-policy-verifier",
+  "baseline": "main@a064418",
+  "scope": "Static verification for RLS and policy evidence on unified_intake, leads, quotation_versions and audit_logs.",
+  "production_live_evidence_required": [
+    "All four tables have relrowsecurity = true.",
+    "All four policies exist with production-aligned role matrices.",
+    "validate:predeploy should remove previous RLS evidence warnings for these four tables.",
+    "/api/ready and /api/system/health stay ok:true after controlled migration apply."
+  ],
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "tables_checked": 4
+  },
+  "findings": []
+}
