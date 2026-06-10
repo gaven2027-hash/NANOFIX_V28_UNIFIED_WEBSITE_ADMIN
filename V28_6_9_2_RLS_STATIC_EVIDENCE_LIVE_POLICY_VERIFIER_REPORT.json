@@ -1,7 +1,7 @@
 {
   "ok": true,
   "verifier": "verify-v28-6-9-2-rls-static-evidence-live-policy-verifier",
-  "generated_at": "2026-06-10T02:45:00.000Z",
+  "generated_at": "2026-06-10T02:55:56.829Z",
   "branch": "v28-6-9-2-rls-static-evidence-live-policy-verifier",
   "baseline": "main@a064418",
   "scope": "Static verification for RLS and policy evidence on unified_intake, leads, quotation_versions and audit_logs.",
@@ -18,17 +18,5 @@
     "p2": 0,
     "tables_checked": 4
   },
-  "tables": [
-    "unified_intake",
-    "leads",
-    "quotation_versions",
-    "audit_logs"
-  ],
-  "policies": [
-    "unified_intake_admin_all",
-    "leads_admin_all",
-    "quotation_versions_admin_all",
-    "audit_logs_admin_select"
-  ],
   "findings": []
 }
