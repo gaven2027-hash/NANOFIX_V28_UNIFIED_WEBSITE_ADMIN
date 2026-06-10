@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-4-global-search-rpc-retirement",
+  "generated_at": "2026-06-10T16:20:00.000Z",
+  "branch": "v28-6-9-4-global-search-rpc-retirement",
+  "baseline": "main@726c5d1",
+  "scope": "Global Search RPC retirement and proof-gated explicit table allowlist verification.",
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "routes_checked": 3,
+    "allowlisted_tables": 11,
+    "field_whitelists_checked": 11
+  },
+  "evidence": {
+    "runtime_global_search_route": "app/api/global-search/route.ts",
+    "admin_global_search_route": "app/api/admin/global-search/route.ts",
+    "admin_search_route": "app/api/admin/search/route.ts",
+    "search_engine": "explicit_table_allowlist",
+    "service_role_server_only": true,
+    "rpc_retired": true,
+    "wildcard_select_forbidden": true,
+    "forgeable_headers_forbidden": true
+  },
+  "key_repairs": [
+    "Removed runtime Supabase RPC search path from app/api/global-search/route.ts.",
+    "Replaced broad RPC search with GLOBAL_SEARCH_TABLE_ALLOWLIST.",
+    "Kept service-role Supabase usage server-side behind requireAdminApi(request).",
+    "Kept customer and engineer roles outside the admin global search boundary.",
+    "Added per-table field whitelist selectors and avoided select('*').",
+    "Added normalized search input, normalized category input, role-scoped table selection and audited runtime evidence.",
+    "Returned searchEngine:'explicit_table_allowlist' and rpcRetired:true so preview/production can prove the active path."
+  ],
+  "findings": []
+}
