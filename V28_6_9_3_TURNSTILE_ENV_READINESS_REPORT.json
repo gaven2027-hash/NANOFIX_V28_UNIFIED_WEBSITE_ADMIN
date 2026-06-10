@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-3-turnstile-env-readiness",
+  "generated_at": "2026-06-10T14:36:12.732Z",
+  "branch": "v28-6-9-3-turnstile-env-readiness-lift",
+  "baseline": "main@2f94d83",
+  "scope": "Turnstile and environment readiness score alignment without making optional external webhook delivery a production blocker.",
+  "expected_production_effect": [
+    "With current production core envs and no external admin webhook enabled, /api/system/health readiness_score should lift from 83 to 94.",
+    "If both Turnstile site key and secret are later configured, the score can reach 96.",
+    "/api/ready remains ok:true because optional hardening variables are not production blockers.",
+    "Public repair requests continue to persist to Supabase and integration_outbox even when the optional forwarding URL is not configured."
+  ],
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "findings": []
+}
