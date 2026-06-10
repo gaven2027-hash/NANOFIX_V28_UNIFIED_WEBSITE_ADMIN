@@ -1,7 +1,7 @@
 {
   "ok": true,
   "verifier": "verify-v28-6-9-3-turnstile-env-readiness",
-  "generated_at": "2026-06-10T04:05:00.000Z",
+  "generated_at": "2026-06-10T14:36:12.732Z",
   "branch": "v28-6-9-3-turnstile-env-readiness-lift",
   "baseline": "main@2f94d83",
   "scope": "Turnstile and environment readiness score alignment without making optional external webhook delivery a production blocker.",
