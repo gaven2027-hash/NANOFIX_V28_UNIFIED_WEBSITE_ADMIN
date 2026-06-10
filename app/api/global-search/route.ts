@@ -25,6 +25,16 @@ type SearchTableConfig = {
   map: (row: Record<string, unknown>) => SearchResult;
 };
 
+type DynamicAllowlistQuery = {
+  select: (columns: string) => {
+    or: (filters: string) => {
+      order: (column: string, options: { ascending: boolean }) => {
+        limit: (count: number) => PromiseLike<{ data: unknown[] | null }>;
+      };
+    };
+  };
+};
+
 const BUSINESS_ROLES = ['super_admin', 'operations_admin', 'finance', 'support'];
 const CONTENT_ROLES = ['super_admin', 'operations_admin', 'content_admin', 'support'];
 
@@ -279,17 +289,21 @@ function buildOrQuery(columns: string[], pattern: string) {
   return columns.map((column) => `${column}.ilike.${pattern}`).join(',');
 }
 
-async function explicitAllowlistSearch(q: string, category: string, role: string): Promise<SearchResult[]> {
+async function runAllowlistQuery(config: SearchTableConfig, pattern: string): Promise<SearchResult[]> {
   const supabase = createAdminClient();
-  const pattern = like(q);
-  const tasks = allowedSearchConfigs(role, category).map((config) => supabase
-    .from(config.table)
+  const fromAllowlistedTable = supabase.from.bind(supabase) as unknown as (table: string) => DynamicAllowlistQuery;
+  const { data } = await fromAllowlistedTable(config.table)
     .select(config.select)
     .or(buildOrQuery(config.searchColumns, pattern))
     .order(config.orderColumn, { ascending: false })
-    .limit(config.limit)
-    .then(({ data }): SearchResult[] => (data ?? []).map((row) => config.map(row as Record<string, unknown>))));
+    .limit(config.limit);
 
+  return (Array.isArray(data) ? data : []).map((row) => config.map(row as Record<string, unknown>));
+}
+
+async function explicitAllowlistSearch(q: string, category: string, role: string): Promise<SearchResult[]> {
+  const pattern = like(q);
+  const tasks: Promise<SearchResult[]>[] = allowedSearchConfigs(role, category).map((config) => runAllowlistQuery(config, pattern));
   const settled = await Promise.allSettled(tasks);
   return settled.flatMap((item) => item.status === 'fulfilled' ? item.value : []).slice(0, 30);
 }
