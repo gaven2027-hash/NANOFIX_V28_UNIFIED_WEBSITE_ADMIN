@@ -32,7 +32,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate predeploy
+      - name: Predeploy base checks
+        run: |
+          npm run sync:seo-assets
+          npm run audit:prod
+          npm run typecheck
+          npm run lint
+          npm run verify:anchors
+
+      - name: Validate predeploy full gate
         run: npm run validate:predeploy
 
       - name: Build CI
