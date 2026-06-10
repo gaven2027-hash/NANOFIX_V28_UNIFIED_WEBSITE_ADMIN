@@ -83,7 +83,7 @@ for (const table of ['automation_rules', 'notification_outbox', 'internal_inbox_
 }
 
 const globalSearch = exists('app/api/global-search/route.ts') ? read('app/api/global-search/route.ts') : '';
-for (const marker of ['automation_rules', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'workflow_settings', 'workflowSettingHref', 'mergeResults']) {
+for (const marker of ['automation_rules', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'workflow_settings', 'workflowSettingHref', 'GLOBAL_SEARCH_TABLE_ALLOWLIST', 'explicit_table_allowlist', 'rpcRetired: true']) {
   if (!globalSearch.includes(marker)) addFailure('app/api/global-search/route.ts', `Global Search missing V28.2 marker ${marker}.`);
 }
 
