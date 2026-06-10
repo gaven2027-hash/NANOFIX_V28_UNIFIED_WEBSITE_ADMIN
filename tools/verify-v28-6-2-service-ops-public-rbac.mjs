@@ -112,12 +112,17 @@ assertHas(findings, storageAttachmentFile, storageAttachment, "NEXT_PUBLIC_SUPAB
 assertHas(findings, storageAttachmentFile, storageAttachment, "storage/v1/object", 'STORAGE_ATTACHMENT_OBJECT_PATH_REQUIRED', 'Storage attachment helper must recognize Supabase Storage object paths.');
 
 assertHas(findings, globalSearchFile, globalSearch, "requireAdminApi", 'GLOBAL_SEARCH_ADMIN_AUTH_REQUIRED', 'Global Search must require an internal admin actor.');
-assertHas(findings, globalSearchFile, globalSearch, "SENSITIVE_BUSINESS_ROLES", 'GLOBAL_SEARCH_ROLE_SCOPE_REQUIRED', 'Global Search must define sensitive business role scope.');
-assertHas(findings, globalSearchFile, globalSearch, "canSearchSensitiveBusiness", 'GLOBAL_SEARCH_SENSITIVE_GUARD_REQUIRED', 'Global Search must guard sensitive business categories.');
-assertHas(findings, globalSearchFile, globalSearch, "rpcAllowed", 'GLOBAL_SEARCH_RPC_GUARD_REQUIRED', 'search_all_records RPC must be role-gated.');
-assertHas(findings, globalSearchFile, globalSearch, "search_all_records", 'GLOBAL_SEARCH_RPC_REVIEW_REQUIRED', 'Global Search RPC use must remain explicit and auditable.');
+assertHas(findings, globalSearchFile, globalSearch, "GLOBAL_SEARCH_TABLE_ALLOWLIST", 'GLOBAL_SEARCH_ALLOWLIST_REQUIRED', 'Global Search must use an explicit table allowlist.');
+assertHas(findings, globalSearchFile, globalSearch, "BUSINESS_ROLES", 'GLOBAL_SEARCH_BUSINESS_ROLE_SCOPE_REQUIRED', 'Global Search must define business role scope.');
+assertHas(findings, globalSearchFile, globalSearch, "CONTENT_ROLES", 'GLOBAL_SEARCH_CONTENT_ROLE_SCOPE_REQUIRED', 'Global Search must define content role scope.');
+assertHas(findings, globalSearchFile, globalSearch, "allowedSearchConfigs(role, category)", 'GLOBAL_SEARCH_ROLE_CATEGORY_GATE_REQUIRED', 'Global Search must gate each table by role and category.');
+assertHas(findings, globalSearchFile, globalSearch, "explicit_table_allowlist", 'GLOBAL_SEARCH_ALLOWLIST_RUNTIME_EVIDENCE_REQUIRED', 'Global Search response/audit must prove allowlist mode.');
+assertHas(findings, globalSearchFile, globalSearch, "rpcRetired: true", 'GLOBAL_SEARCH_RPC_RETIRED_RESPONSE_REQUIRED', 'Global Search response must expose RPC retirement evidence.');
+assertHas(findings, globalSearchFile, globalSearch, "rpc_retired: true", 'GLOBAL_SEARCH_RPC_RETIRED_AUDIT_REQUIRED', 'Global Search audit log must expose RPC retirement evidence.');
 assertHas(findings, globalSearchFile, globalSearch, "total_amount,currency,status", 'GLOBAL_SEARCH_INVOICE_SCHEMA_REQUIRED', 'Global Search invoices must use total_amount/currency production fields.');
 assertHas(findings, globalSearchFile, globalSearch, "getClientIp", 'GLOBAL_SEARCH_IP_AUDIT_REQUIRED', 'Global Search audit log should include request IP.');
+assertNotHas(findings, globalSearchFile, globalSearch, ".rpc(", 'GLOBAL_SEARCH_RPC_CALL_FORBIDDEN', 'Runtime Global Search must not call Supabase RPC.');
+assertNotHas(findings, globalSearchFile, globalSearch, "search_all_records", 'GLOBAL_SEARCH_RETIRED_RPC_NAME_FORBIDDEN', 'Runtime Global Search must not reference the retired search_all_records RPC.');
 assertNotHas(findings, globalSearchFile, globalSearch, "invoice_id,invoice_no,total,status", 'GLOBAL_SEARCH_DEPRECATED_INVOICE_FIELD_FORBIDDEN', 'Global Search must not use deprecated invoice total selector.');
 assertNotHas(findings, globalSearchFile, globalSearch, "completion_notes", 'GLOBAL_SEARCH_DEPRECATED_JOB_FIELD_FORBIDDEN', 'Global Search jobs must not depend on deprecated completion_notes field.');
 
