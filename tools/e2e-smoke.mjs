@@ -155,9 +155,11 @@ function checkStaticV282SettingsSearchMarkers() {
     "/system-settings#automation-rule-settings",
     "/system-settings#notification-channel-settings",
     "/system-settings#unified-task-sla-settings",
-    "mergeResults",
-    "rpc_result_count",
-    "fallback_result_count"
+    "GLOBAL_SEARCH_TABLE_ALLOWLIST",
+    "allowedSearchConfigs",
+    "explicit_table_allowlist",
+    "rpcRetired: true",
+    "rpc_retired: true"
   ]) {
     if (!globalSearch.includes(marker)) throw new Error(`Global Search missing V28.2 settings marker: ${marker}`);
   }

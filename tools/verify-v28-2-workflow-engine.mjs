@@ -142,7 +142,7 @@ if (requiredFiles.every(exists)) {
   for (const source of ['automation_rules', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'workflow_settings']) {
     assert(search.includes(source), `Global Search missing V28.2 source: ${source}`);
   }
-  for (const marker of ['workflowSettingHref', '/system-settings#automation-rule-settings', '/system-settings#notification-channel-settings', '/system-settings#unified-task-sla-settings', 'mergeResults', 'rpc_result_count', 'fallback_result_count']) {
+  for (const marker of ['workflowSettingHref', '/system-settings#automation-rule-settings', '/system-settings#notification-channel-settings', '/system-settings#unified-task-sla-settings', 'GLOBAL_SEARCH_TABLE_ALLOWLIST', 'allowedSearchConfigs', 'explicit_table_allowlist', 'rpcRetired: true', 'rpc_retired: true']) {
     assert(search.includes(marker), `Global Search missing workflow settings/search marker: ${marker}`);
   }
 
