@@ -18,6 +18,7 @@
     "verify:v28-1-6-portals": "node tools/verify-v28-1-6-portal-boundaries.mjs",
     "verify:v28-1-6-owner-audit": "node tools/verify-v28-1-6-owner-audit.mjs",
     "verify:v28-8-phase-1": "node tools/verify-v28-8-phase-1-production-rbac-stability.mjs",
+    "verify:v28-8-phase-2-service-requests": "node tools/verify-v28-8-phase-2-service-requests.mjs",
     "verify:v28-2-workflow": "node tools/verify-v28-2-workflow-engine.mjs",
     "verify:admin-reality": "node tools/verify-admin-module-reality.mjs",
     "verify:admin-real-workspace-ui": "node tools/verify-admin-real-workspace-ui.mjs",
