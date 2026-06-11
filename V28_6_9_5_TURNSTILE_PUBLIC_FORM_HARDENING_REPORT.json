@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-5-turnstile-public-form-hardening",
+  "generated_at": "2026-06-11T02:10:00.000Z",
+  "branch": "v28-6-9-5-turnstile-public-form-hardening",
+  "baseline": "main@11a5399",
+  "scope": "Public repair request anti-spam, Turnstile, rate-limit, upload validation, Supabase storage, audit and outbox verification.",
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "files_checked": 4,
+    "handler_markers_checked": 26
+  },
+  "evidence": {
+    "route": "app/api/public-repair-request/route.ts",
+    "handler": "lib/public-repair-request.ts",
+    "shared_security": "lib/nanofix/security.ts",
+    "health": "lib/nanofix/health.ts",
+    "turnstile_server_verify": true,
+    "turnstile_optional_until_env_configured": true,
+    "public_form_rate_limit": true,
+    "honeypot_and_speed_trap": true,
+    "storage_chain": true,
+    "audit_log": true,
+    "integration_outbox": true,
+    "upload_magic_byte_validation": true
+  },
+  "findings": []
+}
