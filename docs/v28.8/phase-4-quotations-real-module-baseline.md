@@ -140,7 +140,7 @@ cd "C:\Users\Amelindo\Documents\NANOFIX_V28_UNIFIED_WEBSITE_ADMIN"
 pwd
 git status
 
-npm.cmd run verify:v28-8-phase-4-quotations
+node tools/verify-v28-8-phase-4-quotations.mjs
 ```
 
 ## Completion criteria
