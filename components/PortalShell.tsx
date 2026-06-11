@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import { CustomerReviewLinkButton } from './CustomerReviewLinkButton';
 
 const customerLinks = [
   { href: '/customer-portal#customer-register', title: 'Customer Register', zh: '客户注册' },
@@ -15,7 +16,7 @@ const customerLinks = [
   { href: '/customer-portal#my-invoices', title: 'My Invoices', zh: '我的发票' },
   { href: '/customer-portal#my-payments-receipts', title: 'My Payments & Receipts', zh: '我的付款与收据' },
   { href: '/customer-portal#my-warranties', title: 'My Warranties', zh: '我的保修' },
-  { href: '/customer-portal#submit-review', title: 'Submit Review', zh: '客户发表评论' },
+  { href: '/customer-portal#submit-review-link', title: 'Leave a Review', zh: '我要评论' },
   { href: '/customer-portal#my-reviews', title: 'My Reviews', zh: '我的评价' },
   { href: '/customer-portal#review-privacy-settings', title: 'Review Privacy Settings', zh: '评价公开信息设置' }
 ];
@@ -72,6 +73,7 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
             <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer-isolated workspace</div>
             <h1 className="mt-1 text-2xl font-black text-slate-950"><span className="mr-2 text-activeBlue">{portalOrder}</span>{heading}</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">{subheading}</p>
+            <CustomerReviewLinkButton />
           </div>
           {children}
         </main>
@@ -91,7 +93,7 @@ const portalSectionDescriptions: Record<string, string> = {
   'my-invoices': 'RLS-filtered invoice records for the current customer. / 仅显示当前客户发票。',
   'my-payments-receipts': 'Customer payment status, receipt downloads and payment proof uploads. / 客户付款状态、收据下载和付款证明上传。',
   'my-warranties': 'Active, expiring and expired warranties, terms and QR-linked records. / 有效、即将到期和已过期保修、条款与二维码绑定记录。',
-  'submit-review': 'Submit a review with rating, text, optional media and public display choices. / 提交评价、星级、文字、可选图片视频和公开展示选择。',
+  'submit-review-link': 'Click the active review link maintained by Admin and jump directly to the official review page. / 点击管理员维护的评论链接，直接跳转到官方评论页面。',
   'my-reviews': 'Track pending, approved, rejected, archived and deletion/revision requests. / 查看待审核、已批准、已驳回、已存档及删除/修改请求。',
   'review-privacy-settings': 'Choose which personal information may be public or hidden in reviews. / 选择评价中哪些个人信息可以公开或隐藏。'
 };
