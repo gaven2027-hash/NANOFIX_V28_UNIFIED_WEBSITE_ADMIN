@@ -25,6 +25,9 @@ yarn-error.log*
 pnpm-debug.log*
 v28-7-validate*.log
 
+# generated audit reports
+OA_ERP_READINESS_REPORT.json
+
 # OS / editor
 .DS_Store
 Thumbs.db
