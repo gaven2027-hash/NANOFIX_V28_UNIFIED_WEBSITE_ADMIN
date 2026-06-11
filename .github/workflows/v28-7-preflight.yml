@@ -1,0 +1,48 @@
+name: V28.7 Preflight
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  v28-7-preflight:
+    name: Verify V28.7 branch readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Run V28.7 verification scripts
+        run: |
+          node tools/verify-v28-7-admin-menu.mjs
+          node tools/verify-v28-7-real-backend-foundation.mjs
+          node tools/verify-v28-7-customer-review-links.mjs
+          node tools/verify-v28-7-customer-portal-menu.mjs
+          node tools/verify-v28-7-prerelease-stability.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
