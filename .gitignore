@@ -27,6 +27,7 @@ v28-7-validate*.log
 
 # generated audit reports
 OA_ERP_READINESS_REPORT.json
+VALIDATION_REPORT_V28.json
 
 # OS / editor
 .DS_Store
