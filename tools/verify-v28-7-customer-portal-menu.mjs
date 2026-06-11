@@ -4,9 +4,11 @@ import path from 'node:path';
 const root = process.cwd();
 const configPath = path.join(root, 'data', 'v28.7-customer-portal-navigation.ts');
 const portalShellPath = path.join(root, 'components', 'PortalShell.tsx');
+const engineerPagePath = path.join(root, 'app', 'portal', 'engineer', 'page.tsx');
 
 const config = fs.readFileSync(configPath, 'utf8');
 const portalShell = fs.readFileSync(portalShellPath, 'utf8');
+const engineerPage = fs.existsSync(engineerPagePath) ? fs.readFileSync(engineerPagePath, 'utf8') : '';
 
 const expectedMenus = [
   ['Dashboard', '我的首页', 'dashboard'],
@@ -80,7 +82,23 @@ if (!config.includes('includesReviewLink: true')) {
 }
 
 if (!portalShell.includes('customerPortalNavigation.map')) {
-  fail('PortalShell must render from customerPortalNavigation config');
+  fail('PortalShell must render customer menus from customerPortalNavigation config');
+}
+
+if (!portalShell.includes("type: PortalType") || !portalShell.includes("'customer' | 'engineer'")) {
+  fail('PortalShell must keep both customer and engineer portal type support');
+}
+
+if (!portalShell.includes('engineerPortalNavigation') || !portalShell.includes('EngineerPortalAnchors')) {
+  fail('PortalShell must keep engineer portal navigation and EngineerPortalAnchors export');
+}
+
+if (engineerPage.includes('EngineerPortalAnchors') && !portalShell.includes('export function EngineerPortalAnchors')) {
+  fail('app/portal/engineer imports EngineerPortalAnchors, but PortalShell does not export it');
+}
+
+if (engineerPage.includes('type="engineer"') && !portalShell.includes("type === 'engineer'")) {
+  fail('app/portal/engineer uses type="engineer", but PortalShell does not branch for engineer mode');
 }
 
 if (!portalShell.includes('grid grid-cols-5') || !portalShell.includes('lg:hidden')) {
@@ -96,5 +114,5 @@ if (!portalShell.includes('CustomerReviewLinkButton')) {
 }
 
 if (!process.exitCode) {
-  console.log('V28.7 customer portal menu verification passed. Customer portal is simplified to 5 menus with mobile tabs, review link support and legacy anchors.');
+  console.log('V28.7 customer portal menu verification passed. Customer portal is simplified to 5 menus with mobile tabs, review link support, legacy anchors and engineer portal compatibility.');
 }
