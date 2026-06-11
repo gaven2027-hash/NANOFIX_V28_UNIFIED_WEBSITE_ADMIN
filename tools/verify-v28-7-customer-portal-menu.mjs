@@ -85,7 +85,7 @@ if (!portalShell.includes('customerPortalNavigation.map')) {
   fail('PortalShell must render customer menus from customerPortalNavigation config');
 }
 
-if (!portalShell.includes("type: PortalType") || !portalShell.includes("'customer' | 'engineer'")) {
+if (!portalShell.includes('type PortalType') || !portalShell.includes("'customer' | 'engineer'")) {
   fail('PortalShell must keep both customer and engineer portal type support');
 }
 
@@ -97,8 +97,8 @@ if (engineerPage.includes('EngineerPortalAnchors') && !portalShell.includes('exp
   fail('app/portal/engineer imports EngineerPortalAnchors, but PortalShell does not export it');
 }
 
-if (engineerPage.includes('type="engineer"') && !portalShell.includes("type === 'engineer'")) {
-  fail('app/portal/engineer uses type="engineer", but PortalShell does not branch for engineer mode');
+if (engineerPage.includes('type="engineer"') && !portalShell.includes('engineerPortalNavigation')) {
+  fail('app/portal/engineer uses type="engineer", but PortalShell does not provide engineer navigation');
 }
 
 if (!portalShell.includes('grid grid-cols-5') || !portalShell.includes('lg:hidden')) {
