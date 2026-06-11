@@ -1,0 +1,205 @@
+{
+  "version": "V28.7 Admin Practical Backend Real-Use Upgrade",
+  "generated_at": "2026-06-11",
+  "source_branch": "main",
+  "work_branch": "v28-7-admin-menu-simplify",
+  "purpose": "Step 2-3 scan output: map the oversized current backend menu into the simplified V28.7 practical backend structure before real CMS/API/data-chain repair.",
+  "scan_basis": {
+    "navigation_file": "data/adminNavigation.ts",
+    "sidebar_renderer": "components/AdminShell.tsx imports menu from @/data/adminNavigation and renders all children",
+    "anchor_fallback": "components/MenuAnchorSections.tsx reads menu children and creates fallback anchors for module pages",
+    "confirmed_routes": [
+      "app/admin/page.tsx",
+      "app/dashboard/page.tsx",
+      "app/website-management/page.tsx",
+      "app/service-operations/page.tsx",
+      "app/customer-center/page.tsx",
+      "app/social-media/page.tsx",
+      "app/admin/advertising-center/page.tsx",
+      "app/ai-intelligence/page.tsx",
+      "app/system-settings/page.tsx"
+    ]
+  },
+  "current_menu_summary": [
+    { "order": "0", "route": "/admin", "title": "Global Search & Admin Home", "current_children": 6, "v28_7_children": 4, "action": "keep as admin home and simplify" },
+    { "order": "1", "route": "/dashboard", "title": "Dashboard, Analytics & Alerts", "current_children": 12, "v28_7_children": 6, "action": "keep as global overview, merge alerts/tasks/channel/system summaries" },
+    { "order": "2", "route": "/service-operations", "title": "Service & Order Operations", "current_children": 25, "v28_7_children": 9, "action": "merge into practical OA/ERP chain" },
+    { "order": "3", "route": "/website-management", "title": "Website Management", "current_children": 21, "v28_7_children": 8, "action": "merge into real CMS, media, forms, SEO/AEO, preview/publish/version" },
+    { "order": "4", "route": "/social-media", "title": "Social Media Management", "current_children": 16, "v28_7_children": 8, "action": "merge into accounts, inbox, AI reply, content, video, approval, leads, logs" },
+    { "order": "5", "route": "/admin/advertising-center", "title": "Advertising & Promotion Center", "current_children": 19, "v28_7_children": 8, "action": "merge into account connections, platform ads, creative, UTM, ROI" },
+    { "order": "6", "route": "/ai-intelligence", "title": "AI Intelligence Center", "current_children": 17, "v28_7_children": 7, "action": "merge into AI assistant areas with human approval orientation" },
+    { "order": "7", "route": "/customer-center", "title": "Customer Center", "current_children": 29, "v28_7_children": 8, "action": "merge into customer profile, binding, portal, tracking, quote/payment, warranty, review, privacy" },
+    { "order": "8", "route": "/system-settings", "title": "Website & System Settings", "current_children": 30, "v28_7_children": 8, "action": "merge into permissions, API credentials, Supabase/RLS, deployment, backup, security, webhooks, global settings" }
+  ],
+  "final_modules": [
+    {
+      "route": "/website-management",
+      "children": [
+        "Navigation & Homepage",
+        "Service Pages",
+        "Track Record & Warranty",
+        "Guide, FAQ & Tips",
+        "Forms & Submissions",
+        "Media Library",
+        "SEO / AEO & Analytics",
+        "Preview / Publish / Version"
+      ]
+    },
+    {
+      "route": "/service-operations",
+      "children": [
+        "Leads & Intake",
+        "Site Inspection",
+        "Quotations",
+        "Jobs & Scheduling",
+        "Engineer Tasks",
+        "Invoices",
+        "Payments",
+        "Warranty & Completion",
+        "Operations Audit"
+      ]
+    },
+    {
+      "route": "/customer-center",
+      "children": [
+        "Customer Profiles",
+        "Customer Binding & Verification",
+        "Customer Portal Accounts",
+        "Repair Tracking",
+        "Quotes & Payments",
+        "Warranty & Documents",
+        "Reviews & Feedback",
+        "Privacy & Consent"
+      ]
+    },
+    {
+      "route": "/social-media",
+      "children": [
+        "Social Accounts & API Connections",
+        "Unified Inbox & WhatsApp",
+        "AI Reply & Human Transfer",
+        "Content Studio",
+        "Multi-platform Video Generator",
+        "Preview, Approval & Publishing",
+        "Social Leads & Attribution",
+        "Social Logs & Performance"
+      ]
+    },
+    {
+      "route": "/admin/advertising-center",
+      "children": [
+        "Ads Accounts & API Connections",
+        "Google Ads",
+        "Meta Ads",
+        "TikTok Ads",
+        "X Ads",
+        "Video Ads & Creatives",
+        "Landing Pages & UTM",
+        "Budget / ROI / Performance"
+      ]
+    },
+    {
+      "route": "/ai-intelligence",
+      "children": [
+        "AI Dashboard & Alerts",
+        "Website AI Content",
+        "Social AI Content",
+        "Ads AI Assistant",
+        "Lead Scoring & Intake AI",
+        "Quote / Invoice / Warranty AI",
+        "Privacy, Risk & AI Logs"
+      ]
+    },
+    {
+      "route": "/system-settings",
+      "children": [
+        "Users, Roles & Permissions",
+        "API Credential Center",
+        "Supabase Database & RLS",
+        "GitHub / Vercel Deployment",
+        "Backup & Restore",
+        "Security & Health Checks",
+        "Webhooks & Error Logs",
+        "Global Settings"
+      ]
+    }
+  ],
+  "module_merge_map": {
+    "website-management": {
+      "Navigation & Homepage": ["navigation-menu", "homepage-content", "customer-review-carousel"],
+      "Service Pages": ["page-content", "service-page-content", "service-testimonials-block"],
+      "Track Record & Warranty": ["track-record-warranty-content", "client-testimonials-display"],
+      "Guide, FAQ & Tips": ["guide-library", "faq-tips", "seo-aeo-library", "ai-website-content-generator"],
+      "Forms & Submissions": ["forms-public-submission", "public-form-submissions", "public-upload-review", "website-organic-leads", "website-paid-landing-leads"],
+      "Media Library": ["media-library"],
+      "SEO / AEO & Analytics": ["website-leads-analytics"],
+      "Preview / Publish / Version": ["preview", "publish-approval", "version-history"]
+    },
+    "service-operations": {
+      "Leads & Intake": ["leads", "service-requests"],
+      "Site Inspection": ["inspection-scheduling", "inspections"],
+      "Quotations": ["quotations", "quotation-approval"],
+      "Jobs & Scheduling": ["jobs", "work-execution", "progress-updates"],
+      "Engineer Tasks": ["engineer-assignment"],
+      "Invoices": ["invoices", "receipts"],
+      "Payments": ["payments"],
+      "Warranty & Completion": ["warranty-records", "warranty-generation-rules", "warranty-claim-review", "warranty-claim-routing", "warranty-claim-messages", "warranty-claim-attachments", "warranty-claim-closure", "warranty-claim-satisfaction-followup"],
+      "Operations Audit": ["status-flow-logs", "super-admin-takeover-override", "rework", "warranty-satisfaction-notification-rules", "warranty-satisfaction-audit-trail"]
+    },
+    "social-media": {
+      "Social Accounts & API Connections": ["social-accounts", "google-business-profile"],
+      "Unified Inbox & WhatsApp": ["unified-social-inbox", "whatsapp-ai-reply", "live-chat-webhook-collector", "review-comment-management"],
+      "AI Reply & Human Transfer": ["transfer-to-human"],
+      "Content Studio": ["ai-social-content-studio"],
+      "Multi-platform Video Generator": [],
+      "Preview, Approval & Publishing": ["multi-platform-preview-review", "schedule-publish-approval", "campaign-posting-queue"],
+      "Social Leads & Attribution": ["organic-social-leads", "social-organic-conversion", "google-facebook-review-import"],
+      "Social Logs & Performance": ["social-logs", "social-performance"]
+    },
+    "advertising-center": {
+      "Ads Accounts & API Connections": ["ad-account-connections", "advertising-account-connection-center"],
+      "Google Ads": ["google-ads"],
+      "Meta Ads": ["paid-social-ads"],
+      "TikTok Ads": [],
+      "X Ads": [],
+      "Video Ads & Creatives": ["creatives-copy"],
+      "Landing Pages & UTM": ["utm-landing-pages", "click-to-whatsapp-ads", "paid-lead-attribution"],
+      "Budget / ROI / Performance": ["campaign-dashboard", "campaign-planning", "create-campaign-draft", "csv-excel-import", "roi-insights-alerts", "budgets-strategy", "approval-gates", "roi-comparison", "daily-spend-review", "finance-review", "super-admin-takeover", "ad-logs"]
+    },
+    "ai-intelligence": {
+      "AI Dashboard & Alerts": ["ai-alerts", "usage-cost"],
+      "Website AI Content": ["ai-website-assistant"],
+      "Social AI Content": ["ai-social-assistant", "ai-review-moderation-assist"],
+      "Ads AI Assistant": ["ai-attribution-assistant"],
+      "Lead Scoring & Intake AI": ["lead-discovery-scoring", "ai-conversation-intelligence"],
+      "Quote / Invoice / Warranty AI": ["quotation-ai-assist", "invoice-ai-assist", "material-ai-suggestions"],
+      "Privacy, Risk & AI Logs": ["global-web-search", "ai-privacy-redaction-assist", "ai-rules", "ai-api-settings", "ai-analysis-logs", "prompt-safety-audit"]
+    },
+    "customer-center": {
+      "Customer Profiles": ["add-offline-customer", "customer-list", "customer-profiles", "customer-360-timeline"],
+      "Customer Binding & Verification": ["unclaimed-customer-profiles", "claim-existing-account-review", "pending-customer-binding", "binding-review-merge", "customer-binding-rules", "data-matching-rules"],
+      "Customer Portal Accounts": ["customer-portal-management", "customer-access-control"],
+      "Repair Tracking": ["repair-tracking", "lead-source-history"],
+      "Quotes & Payments": ["customer-quotes", "customer-invoices", "customer-payments-receipts"],
+      "Warranty & Documents": ["customer-warranty-records"],
+      "Reviews & Feedback": ["customer-submit-review", "my-reviews-management", "testimonials-reviews", "review-display-locations", "review-archive"],
+      "Privacy & Consent": ["review-privacy-settings", "review-approval-privacy-redaction", "review-deletion-audit", "consent-pdpa-log", "pdpa-privacy-requests"]
+    },
+    "system-settings": {
+      "Users, Roles & Permissions": ["role-groups-permissions", "admin-accounts", "admin-registration-review", "internal-staff-login-registration"],
+      "API Credential Center": ["api-integrations"],
+      "Supabase Database & RLS": ["supabase-settings", "no-login-repair-intake-security"],
+      "GitHub / Vercel Deployment": ["github-vercel-deployment-settings"],
+      "Backup & Restore": ["backup-download-center"],
+      "Security & Health Checks": ["health-checks", "security-settings", "error-boundaries-module-isolation"],
+      "Webhooks & Error Logs": ["public-api-monitor", "audit-logs"],
+      "Global Settings": ["company-settings", "logo-brand-assets", "admin-login-branding", "customer-portal-login-branding", "customer-portal-login-registration", "search-settings", "super-admin-override-rules", "automation-rule-settings", "notification-channel-settings", "unified-task-sla-settings", "qr-backend-management", "attribution-rules", "review-privacy-publishing-rules", "public-display-consent-rules", "review-archive-deletion-rules"]
+    }
+  },
+  "execution_notes": [
+    "No existing module page is deleted in steps 1-5.",
+    "The old detailed entries are merged through legacyFrom arrays in data/v28.7-admin-navigation.ts.",
+    "data/adminNavigation.ts now re-exports the V28.7 simplified menu, so AdminShell and MenuAnchorSections consume the simplified structure without changing layout components.",
+    "The next execution batch should continue with old route redirect/hide handling, link QA, mobile sidebar check, and build/lint/typecheck before CMS real editing work."
+  ]
+}
