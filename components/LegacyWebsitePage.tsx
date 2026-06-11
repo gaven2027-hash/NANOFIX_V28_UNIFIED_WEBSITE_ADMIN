@@ -27,6 +27,9 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
   return `
 (function(){
   const pathAliases = ${JSON.stringify(pathAliases)};
+  const turnstileSiteKey = ${JSON.stringify(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "")};
+  const turnstileEnabled = typeof turnstileSiteKey === 'string' && turnstileSiteKey.length > 0;
+  window.nanofixTurnstileSiteKeyConfigured = turnstileEnabled;
   const imageCompression = {
     maxWidth: Number(${JSON.stringify(process.env.NEXT_PUBLIC_UPLOAD_IMAGE_MAX_WIDTH || "1800")}),
     quality: Number(${JSON.stringify(process.env.NEXT_PUBLIC_UPLOAD_IMAGE_QUALITY || "0.78")}),
@@ -60,6 +63,89 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
     } finally {
       if (bitmap && typeof bitmap.close === 'function') bitmap.close();
     }
+  }
+  function getLeadForms() {
+    return Array.from(document.querySelectorAll('form#nanofix-lead-form, form#quote-page-form')).filter(function(form){
+      return form && ['nanofix-lead-form', 'quote-page-form'].includes(form.id);
+    });
+  }
+  function ensureTurnstileInput(form) {
+    let input = form.querySelector('input[name="cf_turnstile_response"]');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'cf_turnstile_response';
+      input.setAttribute('data-turnstile-token-field', 'true');
+      form.appendChild(input);
+    }
+    return input;
+  }
+  function ensureTurnstileContainer(form) {
+    let container = form.querySelector('[data-nanofix-turnstile-container="true"]');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'nanofix-turnstile-widget my-3 flex justify-center';
+      container.setAttribute('data-nanofix-turnstile-container', 'true');
+      container.setAttribute('aria-label', 'Cloudflare Turnstile bot verification');
+      const submit = form.querySelector('button[type="submit"]') || document.getElementById('submitBtn');
+      if (submit && submit.parentNode) submit.parentNode.insertBefore(container, submit);
+      else form.appendChild(container);
+    }
+    return container;
+  }
+  function loadTurnstileScript() {
+    if (!turnstileEnabled) return Promise.resolve(false);
+    if (window.turnstile && typeof window.turnstile.render === 'function') return Promise.resolve(true);
+    const existing = document.querySelector('script[data-nanofix-turnstile="true"]');
+    if (existing) {
+      return new Promise(function(resolve){
+        existing.addEventListener('load', function(){ resolve(true); }, { once: true });
+        existing.addEventListener('error', function(){ resolve(false); }, { once: true });
+        setTimeout(function(){ resolve(!!window.turnstile); }, 2500);
+      });
+    }
+    return new Promise(function(resolve){
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.setAttribute('data-nanofix-turnstile', 'true');
+      script.addEventListener('load', function(){ resolve(true); }, { once: true });
+      script.addEventListener('error', function(){ resolve(false); }, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+  function renderTurnstileForForm(form) {
+    if (!turnstileEnabled || !window.turnstile || typeof window.turnstile.render !== 'function') return;
+    const input = ensureTurnstileInput(form);
+    const container = ensureTurnstileContainer(form);
+    if (container.getAttribute('data-turnstile-widget-id')) return;
+    const widgetId = window.turnstile.render(container, {
+      sitekey: turnstileSiteKey,
+      callback: function(token) { input.value = token || ''; },
+      'expired-callback': function() { input.value = ''; },
+      'error-callback': function() { input.value = ''; },
+      theme: 'light'
+    });
+    if (widgetId !== undefined && widgetId !== null) {
+      container.setAttribute('data-turnstile-widget-id', String(widgetId));
+    }
+  }
+  function initializeTurnstileWidgets() {
+    if (!turnstileEnabled) return;
+    getLeadForms().forEach(function(form){ ensureTurnstileInput(form); ensureTurnstileContainer(form); });
+    loadTurnstileScript().then(function(loaded){
+      if (!loaded) return;
+      getLeadForms().forEach(renderTurnstileForForm);
+    });
+  }
+  async function ensureTurnstileReadyForSubmit(form) {
+    if (!turnstileEnabled) return true;
+    const input = ensureTurnstileInput(form);
+    ensureTurnstileContainer(form);
+    const loaded = await loadTurnstileScript();
+    if (loaded) renderTurnstileForForm(form);
+    return !!input.value;
   }
   async function normalizeLeadFormData(form) {
     const source = new FormData(form);
@@ -196,9 +282,10 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
     window.location.hash = routeHash;
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', stampFormStartTimes, { once: true });
+    document.addEventListener('DOMContentLoaded', function(){ stampFormStartTimes(); initializeTurnstileWidgets(); }, { once: true });
   } else {
     stampFormStartTimes();
+    setTimeout(initializeTurnstileWidgets, 0);
   }
   document.addEventListener('click', function(e) {
     const langButton = e.target.closest && e.target.closest('[data-lang-toggle]');
@@ -230,6 +317,8 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
       submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
     }
     try {
+      const turnstileReady = await ensureTurnstileReadyForSubmit(form);
+      if (!turnstileReady) throw new Error('NANOFIX_TURNSTILE_REQUIRED');
       const response = await fetch('/api/public-repair-request', {
         method: 'POST',
         body: await normalizeLeadFormData(form)
@@ -245,8 +334,18 @@ function createLeadApiBridge(memberPortalUrl: string, locale: LegacyLocale) {
       const msgEN = 'Thank you. Your repair request has been received. Our NANOFIX team will review it shortly and contact you about the free inspection and quote.';
       alert(document.documentElement.lang.toLowerCase().startsWith('zh') ? msgZH : msgEN);
       form.reset();
+      if (turnstileEnabled && window.turnstile && typeof window.turnstile.reset === 'function') {
+        const container = form.querySelector('[data-nanofix-turnstile-container="true"]');
+        const widgetId = container && container.getAttribute('data-turnstile-widget-id');
+        if (widgetId) window.turnstile.reset(widgetId);
+      }
     } catch (error) {
-      alert(document.documentElement.lang.toLowerCase().startsWith('zh') ? '提交暂时失败，请通过 WhatsApp 联系我们。' : 'Submission failed. Please contact us by WhatsApp.');
+      const requiresTurnstile = error && error.message === 'NANOFIX_TURNSTILE_REQUIRED';
+      const turnstileZH = '请先完成人机验证，然后再次提交。';
+      const turnstileEN = 'Please complete the verification, then submit again.';
+      alert(requiresTurnstile
+        ? (document.documentElement.lang.toLowerCase().startsWith('zh') ? turnstileZH : turnstileEN)
+        : (document.documentElement.lang.toLowerCase().startsWith('zh') ? '提交暂时失败，请通过 WhatsApp 联系我们。' : 'Submission failed. Please contact us by WhatsApp.'));
     } finally {
       if (submitBtn) {
         submitBtn.innerHTML = originalBtnText;

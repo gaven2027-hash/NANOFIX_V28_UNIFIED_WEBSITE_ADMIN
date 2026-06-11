@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "verifier": "verify-v28-6-9-6-turnstile-widget-env-readiness",
+  "generated_at": "2026-06-11T03:15:00.000Z",
+  "branch": "v28-6-9-6-turnstile-widget-env-readiness",
+  "baseline": "main@7b899ab",
+  "scope": "Frontend Turnstile widget bridge, token submission, server verification and readiness evidence.",
+  "summary": {
+    "findings_total": 0,
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "frontend_markers_checked": 14,
+    "server_markers_checked": 6,
+    "readiness_markers_checked": 4
+  },
+  "evidence": {
+    "frontend_bridge": "components/LegacyWebsitePage.tsx",
+    "server_handler": "lib/public-repair-request.ts",
+    "health_endpoint_source": "lib/nanofix/health.ts",
+    "ready_endpoint_source": "app/api/ready/route.ts",
+    "browser_site_key_only": true,
+    "hidden_token_field": true,
+    "widget_script_explicit_render": true,
+    "submit_gate": true,
+    "server_siteverify": true,
+    "optional_until_env_pair_configured": true,
+    "readiness_visible": true
+  },
+  "findings": []
+}
