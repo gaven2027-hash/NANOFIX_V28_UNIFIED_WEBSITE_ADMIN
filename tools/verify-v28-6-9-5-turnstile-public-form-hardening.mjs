@@ -7,6 +7,8 @@ const routePath = 'app/api/public-repair-request/route.ts';
 const handlerPath = 'lib/public-repair-request.ts';
 const securityPath = 'lib/nanofix/security.ts';
 const healthPath = 'lib/nanofix/health.ts';
+const jsonReportPath = 'V28_6_9_5_TURNSTILE_PUBLIC_FORM_HARDENING_REPORT.json';
+const markdownReportPath = 'V28_6_9_5_TURNSTILE_PUBLIC_FORM_HARDENING_REPORT.md';
 
 const route = read(routePath);
 const handler = read(handlerPath);
@@ -27,6 +29,19 @@ function hasAny(text, markers) {
 
 function count(severity) {
   return findings.filter((finding) => finding.severity === severity).length;
+}
+
+function existingGeneratedAt() {
+  try {
+    const parsed = JSON.parse(read(jsonReportPath));
+    return typeof parsed.generated_at === 'string' && parsed.generated_at ? parsed.generated_at : null;
+  } catch {
+    return null;
+  }
+}
+
+function stableGeneratedAt() {
+  return process.env.NANOFIX_REPORT_GENERATED_AT || existingGeneratedAt() || '2026-06-11T02:10:00.000Z';
 }
 
 if (!route) add('P0', 'public-route', routePath, 'Public repair request route is missing.', 'Restore the public API route before deploy.');
@@ -112,7 +127,7 @@ if (health) {
 const report = {
   ok: count('P0') === 0,
   verifier: 'verify-v28-6-9-5-turnstile-public-form-hardening',
-  generated_at: new Date().toISOString(),
+  generated_at: stableGeneratedAt(),
   branch: 'v28-6-9-5-turnstile-public-form-hardening',
   baseline: 'main@11a5399',
   scope: 'Public repair request anti-spam, Turnstile, rate-limit, upload validation, Supabase storage, audit and outbox verification.',
@@ -141,8 +156,8 @@ const report = {
   findings
 };
 
-fs.writeFileSync('V28_6_9_5_TURNSTILE_PUBLIC_FORM_HARDENING_REPORT.json', JSON.stringify(report, null, 2));
-fs.writeFileSync('V28_6_9_5_TURNSTILE_PUBLIC_FORM_HARDENING_REPORT.md', [
+fs.writeFileSync(jsonReportPath, JSON.stringify(report, null, 2));
+fs.writeFileSync(markdownReportPath, [
   '# V28.6.9.5 Turnstile + Public Form Anti-Spam Hardening Report',
   '',
   `Generated: ${report.generated_at}`,
