@@ -3,18 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { customerPortalNavigation } from '@/data/v28.7-customer-portal-navigation';
+import { customerPortalNavigation, type CustomerPortalNavItem } from '@/data/v28.7-customer-portal-navigation';
 import { CustomerReviewLinkButton } from './CustomerReviewLinkButton';
 
 type PortalType = 'customer' | 'engineer';
-type BasicPortalLink = { href: string; title: string; zh: string; description: string; descriptionZh: string };
+type BasicPortalLink = { href: string; title: string; zh: string; shortTitle?: string; shortZh?: string; description: string; descriptionZh: string };
+type PortalLink = CustomerPortalNavItem | BasicPortalLink;
 
 const engineerPortalNavigation: BasicPortalLink[] = [
-  { href: '/portal/engineer#assigned-jobs', title: 'Assigned Jobs', zh: '已分配工单', description: 'Assigned inspection and repair jobs for the logged-in engineer.', descriptionZh: '当前工程师已分配的查验与维修工单。' },
-  { href: '/portal/engineer#inspection-checklist', title: 'Inspection Checklist', zh: '查验清单', description: 'On-site inspection checklist, issue photos and technician notes.', descriptionZh: '现场查验清单、问题照片与工程师记录。' },
-  { href: '/portal/engineer#upload-photos', title: 'Upload Photos', zh: '上传照片', description: 'Upload before, during and after repair photos for job records.', descriptionZh: '上传施工前、施工中、施工后的现场照片。' },
-  { href: '/portal/engineer#job-notes', title: 'Job Notes', zh: '工单记录', description: 'Engineer job notes, material usage and daily progress updates.', descriptionZh: '工程师工单记录、材料使用和每日进度。' },
-  { href: '/portal/engineer#completion-report', title: 'Completion Report', zh: '完工报告', description: 'Completion checklist, final photos and handover notes.', descriptionZh: '完工检查、最终照片与交付说明。' }
+  { href: '/portal/engineer#assigned-jobs', title: 'Assigned Jobs', zh: '已分配工单', shortTitle: 'Jobs', shortZh: '工单', description: 'Assigned inspection and repair jobs for the logged-in engineer.', descriptionZh: '当前工程师已分配的查验与维修工单。' },
+  { href: '/portal/engineer#inspection-checklist', title: 'Inspection Checklist', zh: '查验清单', shortTitle: 'Check', shortZh: '查验', description: 'On-site inspection checklist, issue photos and technician notes.', descriptionZh: '现场查验清单、问题照片与工程师记录。' },
+  { href: '/portal/engineer#upload-photos', title: 'Upload Photos', zh: '上传照片', shortTitle: 'Photos', shortZh: '照片', description: 'Upload before, during and after repair photos for job records.', descriptionZh: '上传施工前、施工中、施工后的现场照片。' },
+  { href: '/portal/engineer#job-notes', title: 'Job Notes', zh: '工单记录', shortTitle: 'Notes', shortZh: '记录', description: 'Engineer job notes, material usage and daily progress updates.', descriptionZh: '工程师工单记录、材料使用和每日进度。' },
+  { href: '/portal/engineer#completion-report', title: 'Completion Report', zh: '完工报告', shortTitle: 'Done', shortZh: '完工', description: 'Completion checklist, final photos and handover notes.', descriptionZh: '完工检查、最终照片与交付说明。' }
 ];
 
 function anchorFromHref(href: string) {
@@ -25,7 +26,7 @@ function legacyAnchorList(item: { href: string; legacyFrom?: string[] }) {
   return Array.from(new Set([anchorFromHref(item.href), ...(item.legacyFrom || [])]));
 }
 
-function navForType(type: PortalType) {
+function navForType(type: PortalType): PortalLink[] {
   return type === 'customer' ? customerPortalNavigation : engineerPortalNavigation;
 }
 
@@ -41,6 +42,14 @@ function subheadingForType(type: PortalType) {
 
 function portalLabel(type: PortalType) {
   return type === 'customer' ? 'Client Portal' : 'Engineer Portal';
+}
+
+function mobileTitle(link: PortalLink) {
+  return link.shortTitle ?? link.title;
+}
+
+function mobileZh(link: PortalLink) {
+  return link.shortZh ?? link.zh;
 }
 
 export function PortalShell({ type, children }: { type: PortalType; children: React.ReactNode }) {
@@ -110,8 +119,8 @@ export function PortalShell({ type, children }: { type: PortalType; children: Re
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-2 py-2 shadow-2xl backdrop-blur lg:hidden">
         {links.map((link) => (
           <Link key={link.href} href={link.href} className="rounded-2xl px-2 py-2 text-center text-[11px] font-black text-slate-700 hover:bg-blue-50 hover:text-activeBlue">
-            <span className="block">{'shortTitle' in link ? link.shortTitle : link.title}</span>
-            <span className="block text-[10px] font-semibold text-slate-500">{'shortZh' in link ? link.shortZh : link.zh}</span>
+            <span className="block">{mobileTitle(link)}</span>
+            <span className="block text-[10px] font-semibold text-slate-500">{mobileZh(link)}</span>
           </Link>
         ))}
       </nav>
