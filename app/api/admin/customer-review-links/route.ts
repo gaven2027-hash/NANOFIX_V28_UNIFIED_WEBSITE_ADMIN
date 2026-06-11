@@ -6,6 +6,19 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export const dynamic = 'force-dynamic';
 
 type Row = Record<string, unknown>;
+type ReviewLinkPayload = {
+  provider_key: string;
+  label_en: string;
+  label_zh: string;
+  review_url: string;
+  help_text_en: string | null;
+  help_text_zh: string | null;
+  display_order: number;
+  is_active: boolean;
+  open_in_new_tab: boolean;
+  updated_at: string;
+};
+type PayloadResult = { ok: true; data: ReviewLinkPayload } | { ok: false; error: string };
 
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
@@ -38,12 +51,13 @@ function safeProvider(value: unknown) {
   return provider || 'custom_review';
 }
 
-function payloadFromBody(body: Row) {
+function payloadFromBody(body: Row): PayloadResult {
   const reviewUrl = safeUrl(body.review_url);
-  if (!reviewUrl) return { error: 'Review URL must start with http:// or https:// / 评论链接必须以 http:// 或 https:// 开头。' };
+  if (!reviewUrl) return { ok: false, error: 'Review URL must start with http:// or https:// / 评论链接必须以 http:// 或 https:// 开头。' };
 
   const displayOrder = Number(body.display_order ?? 100);
   return {
+    ok: true,
     data: {
       provider_key: safeProvider(body.provider_key),
       label_en: cleanText(body.label_en, 160) ?? 'Leave a Review',
@@ -60,8 +74,8 @@ function payloadFromBody(body: Row) {
 }
 
 export async function GET(request: NextRequest) {
-  const actor = await requireAdminApi(request);
-  if (!actor.ok) return jsonError(actor.error, actor.status);
+  const auth = await requireAdminApi(request);
+  if (!auth.ok) return auth.response;
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -76,62 +90,64 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const actor = await requireAdminApi(request);
-  if (!actor.ok) return jsonError(actor.error, actor.status);
+  const auth = await requireAdminApi(request);
+  if (!auth.ok) return auth.response;
 
   const body = (await request.json().catch(() => ({}))) as Row;
   const payload = payloadFromBody(body);
-  if ('error' in payload) return jsonError(payload.error);
+  if (!payload.ok) return jsonError(payload.error);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('customer_review_links')
-    .insert({ ...payload.data, created_by: actor.user.id, updated_by: actor.user.id })
+    .insert({ ...payload.data, created_by: auth.actor.authUserId, updated_by: auth.actor.authUserId })
     .select('review_link_id,provider_key,label_en,label_zh,review_url,is_active,updated_at')
     .single();
 
   if (error) return jsonError(error.message, 500);
 
-  await writeAuditLog(supabase, {
-    actor_id: actor.user.id,
-    role: actor.role,
+  await writeAuditLog({
+    actorId: auth.actor.profileId,
+    role: auth.role,
     action: 'customer_review_link_create',
-    object_type: 'customer_review_link',
-    object_id: String(data?.review_link_id || ''),
-    metadata: { provider_key: payload.data.provider_key, ip: getClientIp(request) }
+    objectType: 'customer_review_link',
+    objectId: String(data?.review_link_id || ''),
+    after: { provider_key: payload.data.provider_key, is_active: payload.data.is_active },
+    ip: getClientIp(request)
   });
 
   return json({ ok: true, link: data });
 }
 
 export async function PATCH(request: NextRequest) {
-  const actor = await requireAdminApi(request);
-  if (!actor.ok) return jsonError(actor.error, actor.status);
+  const auth = await requireAdminApi(request);
+  if (!auth.ok) return auth.response;
 
   const body = (await request.json().catch(() => ({}))) as Row;
   const id = cleanText(body.review_link_id, 120);
   if (!id) return jsonError('Missing review_link_id / 缺少评论链接 ID。');
 
   const payload = payloadFromBody(body);
-  if ('error' in payload) return jsonError(payload.error);
+  if (!payload.ok) return jsonError(payload.error);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('customer_review_links')
-    .update({ ...payload.data, updated_by: actor.user.id })
+    .update({ ...payload.data, updated_by: auth.actor.authUserId })
     .eq('review_link_id', id)
     .select('review_link_id,provider_key,label_en,label_zh,review_url,is_active,updated_at')
     .single();
 
   if (error) return jsonError(error.message, 500);
 
-  await writeAuditLog(supabase, {
-    actor_id: actor.user.id,
-    role: actor.role,
+  await writeAuditLog({
+    actorId: auth.actor.profileId,
+    role: auth.role,
     action: 'customer_review_link_update',
-    object_type: 'customer_review_link',
-    object_id: id,
-    metadata: { provider_key: payload.data.provider_key, active: payload.data.is_active, ip: getClientIp(request) }
+    objectType: 'customer_review_link',
+    objectId: id,
+    after: { provider_key: payload.data.provider_key, is_active: payload.data.is_active },
+    ip: getClientIp(request)
   });
 
   return json({ ok: true, link: data });
