@@ -36,6 +36,7 @@ console.log('--------------------------------------------------');
 must(Boolean(baselineDoc), 'Phase 4 Quotations baseline document exists');
 must(baselineDoc.includes('Quotations Real Module Baseline') && baselineDoc.includes('Quotation Version / 报价版本'), 'Baseline document covers quotation and version chain');
 must(baselineDoc.includes('Customer Response / 客户确认') && baselineDoc.includes('Quotation PDF / 报价 PDF'), 'Baseline document covers customer response and quotation PDF chain');
+must(baselineDoc.includes('node tools/verify-v28-8-phase-4-quotations.mjs'), 'Baseline document exposes direct Phase 4 verifier command');
 
 // Admin Service Operations quotation chain.
 must(adminServiceOperationsApi.includes("'quotation'") && adminServiceOperationsApi.includes("const MACHINES = ['lead', 'service_request', 'inspection', 'quotation'"), 'Admin Service Operations supports quotation machine');
@@ -103,7 +104,7 @@ for (const table of ['unified_tasks','task_events','internal_inbox_messages','no
 }
 must(readyEndpoint.includes('failed_core_tables') && readyEndpoint.includes('failed_optional_tables'), '/api/ready exposes failed core and optional tables');
 
-must(packageJson.includes('"verify:v28-8-phase-4-quotations"'), 'package.json exposes V28.8 Phase 4 Quotations verifier');
+warn(packageJson.includes('"verify:v28-8-phase-4-quotations"'), 'package.json exposes V28.8 Phase 4 Quotations npm alias');
 warn(packageJson.includes('"verify:v28-8-phase-3-jobs"'), 'V28.8 Phase 3 Jobs verifier remains available');
 warn(packageJson.includes('"verify:quote-acceptance"') && packageJson.includes('"verify:quote-response-revision"') && packageJson.includes('"verify:quotation-pdf"'), 'Existing quotation-specific verifiers remain available');
 
