@@ -6,19 +6,49 @@ import clsx from 'clsx';
 import { customerPortalNavigation } from '@/data/v28.7-customer-portal-navigation';
 import { CustomerReviewLinkButton } from './CustomerReviewLinkButton';
 
+type PortalType = 'customer' | 'engineer';
+type BasicPortalLink = { href: string; title: string; zh: string; description: string; descriptionZh: string };
+
+const engineerPortalNavigation: BasicPortalLink[] = [
+  { href: '/portal/engineer#assigned-jobs', title: 'Assigned Jobs', zh: '已分配工单', description: 'Assigned inspection and repair jobs for the logged-in engineer.', descriptionZh: '当前工程师已分配的查验与维修工单。' },
+  { href: '/portal/engineer#inspection-checklist', title: 'Inspection Checklist', zh: '查验清单', description: 'On-site inspection checklist, issue photos and technician notes.', descriptionZh: '现场查验清单、问题照片与工程师记录。' },
+  { href: '/portal/engineer#upload-photos', title: 'Upload Photos', zh: '上传照片', description: 'Upload before, during and after repair photos for job records.', descriptionZh: '上传施工前、施工中、施工后的现场照片。' },
+  { href: '/portal/engineer#job-notes', title: 'Job Notes', zh: '工单记录', description: 'Engineer job notes, material usage and daily progress updates.', descriptionZh: '工程师工单记录、材料使用和每日进度。' },
+  { href: '/portal/engineer#completion-report', title: 'Completion Report', zh: '完工报告', description: 'Completion checklist, final photos and handover notes.', descriptionZh: '完工检查、最终照片与交付说明。' }
+];
+
 function anchorFromHref(href: string) {
   return href.includes('#') ? href.split('#')[1] : href.replace(/^\//, '').replace(/\//g, '-');
 }
 
-function legacyAnchorList(item: { href: string; legacyFrom: string[] }) {
-  return Array.from(new Set([anchorFromHref(item.href), ...item.legacyFrom]));
+function legacyAnchorList(item: { href: string; legacyFrom?: string[] }) {
+  return Array.from(new Set([anchorFromHref(item.href), ...(item.legacyFrom || [])]));
 }
 
-export function PortalShell({ type, children }: { type: 'customer'; children: React.ReactNode }) {
+function navForType(type: PortalType) {
+  return type === 'customer' ? customerPortalNavigation : engineerPortalNavigation;
+}
+
+function headingForType(type: PortalType) {
+  return type === 'customer' ? 'Customer Portal / 客户会员中心' : 'Engineer Portal / 工程师门户';
+}
+
+function subheadingForType(type: PortalType) {
+  return type === 'customer'
+    ? 'Customers only see their own repair, quote, payment, warranty, document and support records. / 客户只查看自己的维修、报价、付款、保修、文件和客服记录。'
+    : 'Engineers only see their assigned jobs, checklists, uploads, notes and completion records. / 工程师只查看自己分配的工单、查验清单、上传、记录和完工资料。';
+}
+
+function portalLabel(type: PortalType) {
+  return type === 'customer' ? 'Client Portal' : 'Engineer Portal';
+}
+
+export function PortalShell({ type, children }: { type: PortalType; children: React.ReactNode }) {
   const pathname = usePathname();
-  const heading = 'Customer Portal / 客户会员中心';
-  const portalOrder = 'P1';
-  const subheading = 'Customers only see their own repair, quote, payment, warranty, document and support records. / 客户只查看自己的维修、报价、付款、保修、文件和客服记录。';
+  const links = navForType(type);
+  const heading = headingForType(type);
+  const subheading = subheadingForType(type);
+  const portalOrder = type === 'customer' ? 'P1' : 'P2';
 
   return (
     <div className="min-h-screen bg-adminBg pb-24 text-slate-900 lg:pb-0">
@@ -29,11 +59,11 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
           </div>
           <div>
             <div className="text-xl font-black tracking-wide">NANOFIX</div>
-            <div className="text-[13px] text-slate-300">Client Portal</div>
+            <div className="text-[13px] text-slate-300">{portalLabel(type)}</div>
           </div>
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
-          {customerPortalNavigation.map((link) => {
+          {links.map((link) => {
             const active = pathname === link.href.split('#')[0];
             return (
               <Link
@@ -51,7 +81,9 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
           })}
         </nav>
         <div className="border-t border-white/10 p-4 text-xs text-slate-300">
-          Customer portal is simplified to five self-service menus. / 客户后台已精简为 5 个自助菜单。
+          {type === 'customer'
+            ? 'Customer portal is simplified to five self-service menus. / 客户后台已精简为 5 个自助菜单。'
+            : 'Engineer portal is isolated from Admin menus. / 工程师门户与总后台菜单隔离。'}
         </div>
       </aside>
 
@@ -59,25 +91,27 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-black text-slate-900"><span className="mr-2 text-activeBlue">{portalOrder}</span>{heading}</div>
-            <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-activeBlue">Customer-only RLS APIs / 客户独立权限接口</div>
+            <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-activeBlue">
+              {type === 'customer' ? 'Customer-only RLS APIs / 客户独立权限接口' : 'Engineer-only RLS APIs / 工程师独立权限接口'}
+            </div>
           </div>
         </div>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div id="dashboard" className="mb-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
-            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer self-service workspace</div>
+          <div id={type === 'customer' ? 'dashboard' : 'assigned-jobs'} className="mb-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">{type === 'customer' ? 'Customer self-service workspace' : 'Engineer field-service workspace'}</div>
             <h1 className="mt-1 text-2xl font-black text-slate-950"><span className="mr-2 text-activeBlue">{portalOrder}</span>{heading}</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">{subheading}</p>
-            <CustomerReviewLinkButton />
+            {type === 'customer' ? <CustomerReviewLinkButton /> : null}
           </div>
           {children}
         </main>
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-2 py-2 shadow-2xl backdrop-blur lg:hidden">
-        {customerPortalNavigation.map((link) => (
+        {links.map((link) => (
           <Link key={link.href} href={link.href} className="rounded-2xl px-2 py-2 text-center text-[11px] font-black text-slate-700 hover:bg-blue-50 hover:text-activeBlue">
-            <span className="block">{link.shortTitle}</span>
-            <span className="block text-[10px] font-semibold text-slate-500">{link.shortZh}</span>
+            <span className="block">{'shortTitle' in link ? link.shortTitle : link.title}</span>
+            <span className="block text-[10px] font-semibold text-slate-500">{'shortZh' in link ? link.shortZh : link.zh}</span>
           </Link>
         ))}
       </nav>
@@ -99,6 +133,23 @@ export function CustomerPortalAnchors() {
             <p className="mt-1 text-sm font-semibold text-slate-500">{item.zh}</p>
             <p className="mt-3 text-sm leading-6 text-slate-600">{item.description} / {item.descriptionZh}</p>
             {item.includesReviewLink ? <CustomerReviewLinkButton /> : null}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+export function EngineerPortalAnchors() {
+  return (
+    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {engineerPortalNavigation.map((item) => {
+        const id = anchorFromHref(item.href);
+        return (
+          <section key={item.href} id={id} className="scroll-mt-32 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+            <h2 className="text-lg font-black text-slate-950">{item.title}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{item.zh}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{item.description} / {item.descriptionZh}</p>
           </section>
         );
       })}
