@@ -9,7 +9,8 @@ const files = {
   settings: path.join(root, 'components', 'CustomerReviewLinkSettings.tsx'),
   button: path.join(root, 'components', 'CustomerReviewLinkButton.tsx'),
   systemPage: path.join(root, 'app', 'system-settings', 'page.tsx'),
-  portalShell: path.join(root, 'components', 'PortalShell.tsx')
+  portalShell: path.join(root, 'components', 'PortalShell.tsx'),
+  customerPortalNav: path.join(root, 'data', 'v28.7-customer-portal-navigation.ts')
 };
 
 const content = Object.fromEntries(Object.entries(files).map(([key, filePath]) => [key, fs.readFileSync(filePath, 'utf8')]));
@@ -39,8 +40,9 @@ if (!content.systemPage.includes('CustomerReviewLinkSettings')) fail('System set
 if (!content.button.includes('/api/customer/review-links')) fail('Customer button must read public customer review link API');
 if (!content.button.includes('Leave a Review / 我要评论')) fail('Customer button must show bilingual review label');
 if (!content.portalShell.includes('CustomerReviewLinkButton')) fail('Customer portal shell must render CustomerReviewLinkButton');
-if (!content.portalShell.includes('submit-review-link')) fail('Customer portal must include submit-review-link anchor');
+if (!content.customerPortalNav.includes("'submit-review-link'")) fail('Customer portal navigation config must preserve submit-review-link legacy anchor');
+if (!content.customerPortalNav.includes('includesReviewLink: true')) fail('Customer portal Support & Account must include review link flag');
 
 if (!process.exitCode) {
-  console.log('V28.7 customer review link verification passed. Admin settings, customer portal button, API validation, RLS migration and audit logging are present.');
+  console.log('V28.7 customer review link verification passed. Admin settings, customer portal button, API validation, RLS migration, legacy review anchor and audit logging are present.');
 }
