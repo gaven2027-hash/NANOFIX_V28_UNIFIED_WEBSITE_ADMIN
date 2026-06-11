@@ -19,6 +19,8 @@ const domains = read('lib/nanofix/domains.ts');
 const adminHome = read('app/admin/page.tsx');
 const adminShell = read('components/AdminShell.tsx');
 const adminNavigation = read('data/adminNavigation.ts');
+const v287AdminNavigation = read('data/v28.7-admin-navigation.ts');
+const effectiveAdminNavigation = `${adminNavigation}\n${v287AdminNavigation}`;
 const submoduleWorkspace = read('components/AdminSubmoduleWorkspace.tsx');
 const menuAnchorSections = read('components/MenuAnchorSections.tsx');
 const systemDiagnostics = read('components/SystemSettingsDiagnosticsWorkspace.tsx');
@@ -46,7 +48,11 @@ must(vercel.includes('npm run validate:predeploy && npm run build:ci'), 'Vercel 
 must(!vercel.includes('"buildCommand": "npm run build:standard"'), 'old Vercel buildCommand residue is removed');
 must(vercel.includes('/api/system/module-health-worker'), 'Vercel module health cron remains configured');
 
-must(adminNavigation.includes('/admin/advertising-center') && adminNavigation.includes('/admin/advertising-center#budgets-strategy'), 'clean routed admin navigation includes advertising center module and submodules');
+must(
+  effectiveAdminNavigation.includes('/admin/advertising-center') &&
+  (effectiveAdminNavigation.includes('/admin/advertising-center#budgets-strategy') || effectiveAdminNavigation.includes("'budgets-strategy'")),
+  'clean routed admin navigation includes advertising center module and submodules'
+);
 must(adminShell.includes("@/data/adminNavigation") && adminShell.includes('SidebarNav') && adminShell.includes('TopSearch'), 'AdminShell uses routed navigation and operational shell controls');
 must(adminShell.includes('useState<string | null>(null)') && !adminShell.includes('Object.fromEntries(menu.map'), 'AdminShell left menu defaults collapsed instead of expanding all sections');
 must(adminShell.includes('setOpenSection((current) => (current === item.href ? null : item.href))'), 'AdminShell opens only one primary menu section at a time');

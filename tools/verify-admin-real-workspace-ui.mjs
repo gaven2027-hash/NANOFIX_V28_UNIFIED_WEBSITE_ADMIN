@@ -51,15 +51,20 @@ function read(filePath) {
   return readFileSync(join(root, filePath), 'utf8');
 }
 
+function readIfExists(filePath) {
+  const absolute = join(root, filePath);
+  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : '';
+}
+
 function anchorFromHref(href) {
   return href.includes('#') ? href.split('#')[1] : href.replace(/^\//, '').replace(/\//g, '-');
 }
 
 function parseMenu(content) {
   const entries = [];
-  const blockRegex = /href:\s*['"]([^'"]+)['"][\s\S]*?children:\s*\[([\s\S]*?)\n\s*\]/g;
+  const routeRegex = /\{\s*order:\s*['"][^'"]+['"][\s\S]*?href:\s*['"]([^'"]+)['"][\s\S]*?children:\s*\[([\s\S]*?)\n\s*\][\s\S]*?\}/g;
   let block;
-  while ((block = blockRegex.exec(content))) {
+  while ((block = routeRegex.exec(content))) {
     const route = block[1];
     const children = [];
     for (const childMatch of block[2].matchAll(/child\(\s*['"]([^'"]+)['"]/g)) {
@@ -144,12 +149,13 @@ function hasDiagnosticCardCluster(content) {
 }
 
 const failures = [];
-const menuFile = 'data/adminNavigation.ts';
-const menuEntries = parseMenu(read(menuFile));
+const menuSourceFiles = ['data/adminNavigation.ts', 'data/v28.7-admin-navigation.ts'];
+const menuSource = menuSourceFiles.map(readIfExists).join('\n');
+const menuEntries = parseMenu(menuSource);
 const menuByRoute = new Map(menuEntries.map((entry) => [entry.route, entry]));
 
 for (const route of [...dailyRoutes, diagnosticRoute]) {
-  assert(menuByRoute.has(route), `adminNavigation.ts missing route ${route}`, failures);
+  assert(menuByRoute.has(route), `effective admin navigation missing route ${route}`, failures);
 }
 
 for (const entry of menuEntries) {
@@ -201,6 +207,7 @@ assert(menuAnchorContent.includes('data-admin-anchor-fallback'), 'MenuAnchorSect
 const verifierContent = read('tools/verify-admin-real-workspace-ui.mjs');
 assert(verifierContent.includes('hasDiagnosticCardCluster'), 'Admin real workspace verifier must check diagnostic card clusters without blocking normal business Task/Table labels', failures);
 assert(verifierContent.includes("const sourceRoots = ['app', 'components', 'data'];"), 'Admin real workspace verifier must not scan tooling files as app diagnostics references', failures);
+assert(verifierContent.includes("data/v28.7-admin-navigation.ts"), 'Admin real workspace verifier must read the V28.7 navigation source as part of effective admin navigation', failures);
 
 if (failures.length) {
   console.error('V28.4.2 Admin Real Workspace UI verification failed:');

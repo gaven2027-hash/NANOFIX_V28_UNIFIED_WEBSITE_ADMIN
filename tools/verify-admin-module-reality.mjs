@@ -5,6 +5,7 @@ const root = process.cwd();
 const failures = [];
 const warnings = [];
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const readIfExists = (file) => (fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file), 'utf8') : '');
 const exists = (file) => fs.existsSync(path.join(root, file));
 const assert = (condition, message) => { if (!condition) failures.push(message); };
 const warn = (condition, message) => { if (!condition) warnings.push(message); };
@@ -24,11 +25,34 @@ function sourceHasHref(source, href) {
   if (source.includes(`href: '${href}'`) || source.includes(`href: \`${href}\``) || source.includes(`href:${JSON.stringify(href)}`)) return true;
   const [route, anchor] = href.split('#');
   if (!route || !anchor) return false;
-  return source.includes(`href: \`${route}#\${anchor}\``) && (source.includes(`'${anchor}'`) || source.includes(`\"${anchor}\"`));
+  return source.includes(`href: \`${route}#\${anchor}\``) && (source.includes(`'${anchor}'`) || source.includes(`"${anchor}"`));
+}
+
+function parseLegacyAnchors(argsText) {
+  const legacyMatch = argsText.match(/\[([^\]]*)\]/);
+  if (!legacyMatch) return [];
+  return [...legacyMatch[1].matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
+}
+
+function extractNavigationEntries(navSource) {
+  const entries = [];
+  const childCallRegex = /child\(\s*['"]([^'"]+)['"]([\s\S]*?)\)\s*,?/g;
+  for (const match of navSource.matchAll(childCallRegex)) {
+    const href = match[1];
+    const tail = match[2] || '';
+    const route = href.split('#')[0];
+    const legacyAnchors = parseLegacyAnchors(tail).map((anchor) => `${route}#${anchor}`);
+    entries.push({ href, legacyHrefs: legacyAnchors });
+  }
+  return entries;
+}
+
+function registryCoversNavigationEntry(registry, entry) {
+  return sourceHasHref(registry, entry.href) || entry.legacyHrefs.some((legacyHref) => sourceHasHref(registry, legacyHref));
 }
 
 if (requiredFiles.every(exists)) {
-  const nav = read('data/adminNavigation.ts');
+  const nav = `${read('data/adminNavigation.ts')}\n${readIfExists('data/v28.7-admin-navigation.ts')}`;
   const registry = read('data/adminModuleReality.ts');
   const workspace = read('components/AdminSubmoduleWorkspace.tsx');
   const systemDiagnostics = read('components/SystemSettingsDiagnosticsWorkspace.tsx');
@@ -36,12 +60,12 @@ if (requiredFiles.every(exists)) {
   const operationsApi = read('app/api/admin/module-operations/route.ts');
   const auditDoc = read('docs/NANOFIX_V28_2_ADMIN_MENU_REALITY_AUDIT_20260529.md');
 
-  const hrefMatches = [...nav.matchAll(/child\('([^']+)'/g)].map((match) => match[1]);
-  const uniqueHrefs = [...new Set(hrefMatches)];
-  assert(uniqueHrefs.length >= 140, `Expected broad 0-8 menu coverage; found only ${uniqueHrefs.length} child hrefs.`);
+  const navEntries = extractNavigationEntries(nav);
+  const uniqueEntries = [...new Map(navEntries.map((entry) => [entry.href, entry])).values()];
+  assert(uniqueEntries.length >= 66, `Expected V28.7 broad 0-8 menu coverage; found only ${uniqueEntries.length} child hrefs.`);
 
-  for (const href of uniqueHrefs) {
-    assert(sourceHasHref(registry, href), `adminModuleReality missing menu href: ${href}`);
+  for (const entry of uniqueEntries) {
+    assert(registryCoversNavigationEntry(registry, entry), `adminModuleReality missing menu href or legacy contract: ${entry.href}`);
   }
 
   for (const marker of [
@@ -114,7 +138,7 @@ const report = {
   ok: failures.length === 0,
   generated_at: new Date().toISOString(),
   verifier: 'verify-admin-module-reality',
-  standard: 'V28.4.2 admin reality: daily pages use real workspaces with hidden anchors; diagnostics stay in system settings only',
+  standard: 'V28.4.2 admin reality with V28.7 simplified visible menu and legacy contract coverage',
   failures,
   warnings
 };

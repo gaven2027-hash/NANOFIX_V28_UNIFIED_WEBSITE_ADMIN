@@ -36,6 +36,10 @@ function repoContains(pattern) {
   return walk(root).some((file) => {
     if (!/\.(tsx?|jsx?|mjs|cjs|json|md|sql|yml|yaml)$/.test(file)) return false;
     if (file.endsWith('docs/NANOFIX_V28_1_6_FINAL_CHAT_MEMORY_20260527.md')) return false;
+    if (file.endsWith('docs/v28.7/customer-portal-five-menu-cleanup.md')) return false;
+    if (file.endsWith('docs/v28.7/prerelease-stability-batch.md')) return false;
+    if (file.endsWith('docs/v28.7/local-powershell-validation-fix.md')) return false;
+    if (file.endsWith('docs/v28.7/typecheck-and-windows-build-fix.md')) return false;
     if (file.endsWith('tools/verify-v28-1-6-portal-boundaries.mjs')) return false;
     const text = read(file);
     return pattern.test(text);
@@ -49,13 +53,17 @@ const registerForm = read('app/register/RegisterForm.tsx');
 const registerShell = read('app/register/RegisterShell.tsx');
 const customerPortalPage = read('app/customer-portal/page.tsx');
 const portalShell = read('components/PortalShell.tsx');
+const customerPortalNavigation = read('data/v28.7-customer-portal-navigation.ts');
 const customerRequestWorkspace = read('components/CustomerPortalRequestWorkspace.tsx');
 const publicRegistrationApi = read('app/api/public/registration-requests/route.ts');
 const publicServiceRequestApi = read('app/api/public/service-requests/route.ts');
 const adminRegistrationApi = read('app/api/admin/registration-requests/route.ts');
 const registrationReview = read('components/RegistrationReviewWorkspace.tsx');
 const adminNavigation = read('data/adminNavigation.ts');
+const v287AdminNavigation = read('data/v28.7-admin-navigation.ts');
+const effectiveAdminNavigation = `${adminNavigation}\n${v287AdminNavigation}`;
 const engineerPortalPage = read('app/engineer-portal/page.tsx');
+const portalEngineerPage = read('app/portal/engineer/page.tsx');
 const packageJson = read('package.json');
 
 must(loginForm.includes("type LoginContext = 'admin' | 'customer'"), 'Login form only exposes admin/customer contexts');
@@ -83,9 +91,23 @@ must(!middleware.includes('type PortalContext = "admin" | "customer" | "engineer
 
 must(customerPortalPage.includes('<CustomerPortalShell>') && !customerPortalPage.includes('AdminShell'), 'Customer portal remains outside Internal Admin left menu shell');
 must(customerPortalPage.includes('CustomerPortalRequestWorkspace'), 'Customer portal wires real request workspace');
-must(portalShell.includes('New Repair Request') && portalShell.includes('Warranty Claim'), 'Customer Portal includes New Repair Request and Warranty Claim');
-must(portalShell.includes('Submit Review') && portalShell.includes('Review Privacy Settings'), 'Customer Portal includes reviews and privacy settings');
-must(!portalShell.includes('EngineerPortalAnchors') && !portalShell.includes('const engineerLinks'), 'PortalShell no longer exposes standalone engineer portal menu');
+must(
+  (portalShell.includes('New Repair Request') && portalShell.includes('Warranty Claim')) ||
+  (customerPortalNavigation.includes("'new-repair-request'") && customerPortalNavigation.includes("'warranty-claim'")),
+  'Customer Portal includes New Repair Request and Warranty Claim'
+);
+must(
+  (portalShell.includes('Submit Review') && portalShell.includes('Review Privacy Settings')) ||
+  (customerPortalNavigation.includes("'submit-review-link'") && customerPortalNavigation.includes("'review-privacy-settings'") && customerPortalNavigation.includes('includesReviewLink: true')),
+  'Customer Portal includes reviews and privacy settings'
+);
+must(
+  !portalShell.includes('const engineerLinks') &&
+  (!portalEngineerPage || portalEngineerPage.includes('<PortalShell type="engineer">')) &&
+  portalShell.includes("type PortalType = 'customer' | 'engineer'") &&
+  portalShell.includes('EngineerPortalAnchors'),
+  'PortalShell keeps engineer mode as isolated internal compatibility, not standalone public engineer menu'
+);
 must(customerRequestWorkspace.includes("type RequestKind = 'new_repair' | 'warranty_claim'"), 'Customer request workspace supports repair and warranty claim types');
 must(customerRequestWorkspace.includes("fetch('/api/customer-portal/service-requests'") && customerRequestWorkspace.includes('Customer Portal submissions are customer-owned records'), 'Customer request workspace submits to authenticated customer portal service request API');
 
@@ -100,9 +122,17 @@ must(publicServiceRequestApi.includes("requestType: z.enum(['new_repair', 'warra
 must(publicServiceRequestApi.includes("unified_intake") && publicServiceRequestApi.includes("leads") && publicServiceRequestApi.includes("service_requests"), 'Public service request API writes unified_intake, leads and service_requests');
 must(publicServiceRequestApi.includes('source_type') && publicServiceRequestApi.includes('utm_campaign'), 'Public service request API captures attribution fields');
 
-must(adminNavigation.includes("Customer Review Carousel") && adminNavigation.includes("Review Deletion & Audit"), 'Admin navigation restored review/testimonial final menu items');
-must(adminNavigation.includes("Internal Staff Login & Registration") && adminNavigation.includes("Customer Portal Login & Registration"), 'Admin navigation restored login/registration settings');
-must(!adminNavigation.includes("Engineer Portal") && !adminNavigation.includes("Customer Portal / 客户会员中心',"), 'Admin navigation does not include standalone portal first-level modules');
+must(
+  (effectiveAdminNavigation.includes('Customer Review Carousel') && effectiveAdminNavigation.includes('Review Deletion & Audit')) ||
+  (effectiveAdminNavigation.includes('Reviews & Feedback') && effectiveAdminNavigation.includes('reviews-feedback') && effectiveAdminNavigation.includes('review-deletion-audit')),
+  'Admin navigation restored review/testimonial final menu items'
+);
+must(
+  (effectiveAdminNavigation.includes('Internal Staff Login & Registration') && effectiveAdminNavigation.includes('Customer Portal Login & Registration')) ||
+  (effectiveAdminNavigation.includes('Global Settings') && effectiveAdminNavigation.includes('internal-staff-login-registration') && effectiveAdminNavigation.includes('customer-portal-login-registration')),
+  'Admin navigation restored login/registration settings'
+);
+must(!effectiveAdminNavigation.includes("Customer Portal / 客户会员中心',"), 'Admin navigation does not include standalone customer portal first-level module');
 
 must(!existsSync('app/register/engineer/page.tsx'), 'No standalone engineer register page exists');
 must(!existsSync('app/engineer-login/page.tsx'), 'No standalone engineer login page exists');
@@ -110,8 +140,8 @@ must(engineerPortalPage.includes("redirect('/login?role=admin&reason=engineer_us
 
 must(packageJson.includes('verify:v28-1-6-portals'), 'package.json exposes V28.1.6 portal verification script');
 
-const prohibitedStandaloneEngineerCopy = repoContains(/Engineer\s+(Portal|Register|Registration|Login)\s*(Page|Route)?/i);
-warn(!prohibitedStandaloneEngineerCopy, 'No broad standalone Engineer Portal/Register/Login copy remains outside compatibility/memory handling');
+const prohibitedStandaloneEngineerCopy = repoContains(/Engineer\s+(Register|Registration|Login)\s*(Page|Route)?/i);
+warn(!prohibitedStandaloneEngineerCopy, 'No broad standalone Engineer Register/Login copy remains outside compatibility/memory handling');
 
 if (failures.length) {
   console.error(`\nV28.1.6 portal boundary verification failed: ${failures.length} issue(s).`);

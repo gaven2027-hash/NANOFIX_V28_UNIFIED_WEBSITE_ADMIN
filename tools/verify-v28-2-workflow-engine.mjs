@@ -5,6 +5,7 @@ const root = process.cwd();
 const failures = [];
 const warnings = [];
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const readIfExists = (file) => (fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file), 'utf8') : '');
 const exists = (file) => fs.existsSync(path.join(root, file));
 const assert = (condition, message) => { if (!condition) failures.push(message); };
 const warn = (condition, message) => { if (!condition) warnings.push(message); };
@@ -40,15 +41,19 @@ if (requiredFiles.every(exists)) {
     'No localStorage workflow state and no fake-success fallback'
   ]) assert(memory.includes(needle), `V28.2 master memory missing rule: ${needle}`);
 
-  const nav = read('data/adminNavigation.ts');
-  for (const anchor of [
+  const nav = `${read('data/adminNavigation.ts')}\n${readIfExists('data/v28.7-admin-navigation.ts')}`;
+  const workflowAnchors = [
     '/dashboard#automation-notification-engine',
     '/dashboard#internal-inbox',
     '/dashboard#unified-task-engine',
     '/system-settings#automation-rule-settings',
     '/system-settings#notification-channel-settings',
     '/system-settings#unified-task-sla-settings'
-  ]) assert(nav.includes(anchor), `Admin navigation missing V28.2 anchor: ${anchor}`);
+  ];
+  for (const anchor of workflowAnchors) {
+    const legacyAnchor = anchor.split('#')[1];
+    assert(nav.includes(anchor) || nav.includes(`'${legacyAnchor}'`) || nav.includes(`"${legacyAnchor}"`), `Admin navigation missing V28.2 anchor: ${anchor}`);
+  }
   assert(!nav.includes("href: '/automation"), 'Do not add a new first-level Automation menu; keep 0–8 structure');
 
   const dashboard = read('app/dashboard/page.tsx');

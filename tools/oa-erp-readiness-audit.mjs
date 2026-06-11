@@ -3,6 +3,10 @@ import path from 'node:path';
 
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const readIfExists = (file) => {
+  const fullPath = path.join(root, file);
+  return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
+};
 const exists = (file) => fs.existsSync(path.join(root, file));
 
 const routePages = [
@@ -60,10 +64,13 @@ const liveApiFiles = [
 ];
 
 function extractMenuItems() {
-  const text = read('data/adminNavigation.ts');
-  const parentMatches = [...text.matchAll(/order:\s*'([^']+)'[\s\S]*?href:\s*'([^']+)'[\s\S]*?title:\s*'([^']+)'[\s\S]*?children:\s*\[([\s\S]*?)\n\s*\]/g)];
+  const text = [
+    readIfExists('data/adminNavigation.ts'),
+    readIfExists('data/v28.7-admin-navigation.ts')
+  ].join('\n');
+  const parentMatches = [...text.matchAll(/order:\s*['"]([^'"]+)['"][\s\S]*?href:\s*['"]([^'"]+)['"][\s\S]*?title:\s*['"]([^'"]+)['"][\s\S]*?children:\s*\[([\s\S]*?)\n\s*\]/g)];
   return parentMatches.map((match) => {
-    const children = [...match[4].matchAll(/child\('([^']+)',\s*'([^']+)',\s*'([^']+)'\)/g)].map((child) => ({ href: child[1], title: child[2], zh: child[3] }));
+    const children = [...match[4].matchAll(/child\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/g)].map((child) => ({ href: child[1], title: child[2], zh: child[3] }));
     return { order: match[1], href: match[2], title: match[3], children };
   });
 }
@@ -186,7 +193,7 @@ const report = {
   ok: blockers.length === 0,
   generated_at: new Date().toISOString(),
   audit: 'oa-erp-readiness-audit',
-  standard: 'V28.4.2 admin real workspace audit: daily routes use real workspaces with MenuAnchorSections; system settings uses explicit diagnostics workspace',
+  standard: 'V28.4.2 admin real workspace audit with V28.7 simplified effective navigation source',
   liveCoverage,
   blueStyleFinding,
   menu: menu.map((item) => ({ order: item.order, href: item.href, title: item.title, submodules: item.children.length })),
