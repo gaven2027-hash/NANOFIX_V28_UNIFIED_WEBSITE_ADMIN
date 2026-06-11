@@ -61,7 +61,7 @@ export const v287AdminNavigation: MenuItem[] = [
     descriptionZh: '每日查看预警、入口、业务、收入、渠道和系统健康。',
     children: [
       child('/dashboard#executive-overview', 'Executive Overview', '总管理总览', 'One-page business and system overview.', '业务和系统的一页式总览。'),
-      child('/dashboard#urgent-action-queue', 'Urgent Action Queue', '紧急待处理队列', 'Prioritize items requiring immediate admin action.', '优先处理需要管理员立即处理的事项。'),
+      child('/dashboard#urgent-action-queue', 'Urgent Action Queue', '紧急待处理队列', 'Prioritize items requiring immediate admin action.', '优先处理需要管理员立即处理的事项。', ['automation-notification-engine', 'internal-inbox', 'unified-task-engine']),
       child('/dashboard#intake-lead-summary', 'Intake & Lead Summary', '入口与线索汇总', 'Summarize public intake, social leads and paid leads.', '汇总公开报修、社媒线索和广告线索。'),
       child('/dashboard#operations-summary', 'Operations Summary', '业务运营摘要', 'Summarize inspections, quotations, jobs and warranties.', '汇总查验、报价、工单和保修。'),
       child('/dashboard#channel-performance-snapshot', 'Channel Performance Snapshot', '渠道表现快照', 'Compare website, social, WhatsApp and ads performance.', '对比官网、社媒、WhatsApp 和广告表现。'),
