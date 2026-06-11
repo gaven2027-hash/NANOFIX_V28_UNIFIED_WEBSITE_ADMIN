@@ -83,15 +83,32 @@ const GLOBAL_SEARCH_TABLE_ALLOWLIST: SearchTableConfig[] = [
     table: 'leads',
     categories: ['leads'],
     roles: BUSINESS_ROLES,
-    select: 'lead_id,source_platform,priority,status,created_at',
-    searchColumns: ['source_platform', 'status', 'priority'],
+    select: 'lead_id,name,phone,email,source_platform,priority,status,created_at',
+    searchColumns: ['name', 'phone', 'email', 'source_platform', 'status', 'priority'],
     orderColumn: 'created_at',
     limit: 6,
     map: (row) => ({
       type: 'lead',
-      title: `Lead ${shortId(row.lead_id)}`,
-      subtitle: `${text(row.source_platform, 'unknown source')} · priority ${text(row.priority, 'P2')}`,
+      title: text(row.name, `Lead ${shortId(row.lead_id)}`),
+      subtitle: [row.phone, row.email, row.source_platform].map((item) => text(item)).filter(Boolean).join(' · ') || `priority ${text(row.priority, 'P2')}`,
       href: `/service-operations#lead-${text(row.lead_id)}`,
+      status: nullableText(row.status),
+      created_at: nullableText(row.created_at)
+    })
+  },
+  {
+    table: 'service_requests',
+    categories: ['service_requests', 'requests'],
+    roles: BUSINESS_ROLES,
+    select: 'service_request_id,contact_name,phone,email,issue_type,address_text,status,priority,created_at',
+    searchColumns: ['contact_name', 'phone', 'email', 'issue_type', 'address_text', 'status', 'priority'],
+    orderColumn: 'created_at',
+    limit: 6,
+    map: (row) => ({
+      type: 'service_request',
+      title: text(row.contact_name, `Request ${shortId(row.service_request_id)}`),
+      subtitle: [row.issue_type, row.address_text, row.phone, row.email].map((item) => text(item)).filter(Boolean).join(' · '),
+      href: `/service-operations#service-request-${text(row.service_request_id)}`,
       status: nullableText(row.status),
       created_at: nullableText(row.created_at)
     })
