@@ -23,6 +23,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+v28-7-validate*.log
 
 # OS / editor
 .DS_Store
