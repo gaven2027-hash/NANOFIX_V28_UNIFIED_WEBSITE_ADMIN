@@ -156,7 +156,7 @@ const report = {
   findings
 };
 
-fs.writeFileSync(jsonReportPath, JSON.stringify(report, null, 2));
+fs.writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`);
 fs.writeFileSync(markdownReportPath, [
   '# V28.6.9.5 Turnstile + Public Form Anti-Spam Hardening Report',
   '',
