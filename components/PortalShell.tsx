@@ -3,32 +3,25 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import { customerPortalNavigation } from '@/data/v28.7-customer-portal-navigation';
 import { CustomerReviewLinkButton } from './CustomerReviewLinkButton';
 
-const customerLinks = [
-  { href: '/customer-portal#customer-register', title: 'Customer Register', zh: '客户注册' },
-  { href: '/customer-portal#customer-login', title: 'Customer Login', zh: '客户登录' },
-  { href: '/customer-portal#submit-request', title: 'Submit Request', zh: '客户提交请求' },
-  { href: '/customer-portal#new-repair-request', title: 'New Repair Request', zh: '新增维修' },
-  { href: '/customer-portal#warranty-claim', title: 'Warranty Claim', zh: '保修范围申请' },
-  { href: '/customer-portal#my-repair-requests', title: 'My Repair Requests', zh: '我的报修记录' },
-  { href: '/customer-portal#my-quotations', title: 'My Quotations', zh: '我的报价' },
-  { href: '/customer-portal#my-invoices', title: 'My Invoices', zh: '我的发票' },
-  { href: '/customer-portal#my-payments-receipts', title: 'My Payments & Receipts', zh: '我的付款与收据' },
-  { href: '/customer-portal#my-warranties', title: 'My Warranties', zh: '我的保修' },
-  { href: '/customer-portal#submit-review-link', title: 'Leave a Review', zh: '我要评论' },
-  { href: '/customer-portal#my-reviews', title: 'My Reviews', zh: '我的评价' },
-  { href: '/customer-portal#review-privacy-settings', title: 'Review Privacy Settings', zh: '评价公开信息设置' }
-];
+function anchorFromHref(href: string) {
+  return href.includes('#') ? href.split('#')[1] : href.replace(/^\//, '').replace(/\//g, '-');
+}
+
+function legacyAnchorList(item: { href: string; legacyFrom: string[] }) {
+  return Array.from(new Set([anchorFromHref(item.href), ...item.legacyFrom]));
+}
 
 export function PortalShell({ type, children }: { type: 'customer'; children: React.ReactNode }) {
   const pathname = usePathname();
   const heading = 'Customer Portal / 客户会员中心';
   const portalOrder = 'P1';
-  const subheading = 'Customers only see their own linked repair, quote, invoice, payment, warranty and review records. / 客户只查看自己绑定的报修、报价、发票、付款、保修和评价记录。';
+  const subheading = 'Customers only see their own repair, quote, payment, warranty, document and support records. / 客户只查看自己的维修、报价、付款、保修、文件和客服记录。';
 
   return (
-    <div className="min-h-screen bg-adminBg text-slate-900">
+    <div className="min-h-screen bg-adminBg pb-24 text-slate-900 lg:pb-0">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col bg-sidebar text-white shadow-2xl lg:flex">
         <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg shadow-slate-950/25">
@@ -40,7 +33,7 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
           </div>
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
-          {customerLinks.map((link) => {
+          {customerPortalNavigation.map((link) => {
             const active = pathname === link.href.split('#')[0];
             return (
               <Link
@@ -58,9 +51,10 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
           })}
         </nav>
         <div className="border-t border-white/10 p-4 text-xs text-slate-300">
-          Admin menus are hidden in portal mode. Engineer uses Internal Admin App role login. / 门户模式不显示总后台菜单；工程师使用内部后台角色登录。
+          Customer portal is simplified to five self-service menus. / 客户后台已精简为 5 个自助菜单。
         </div>
       </aside>
+
       <div className="lg:pl-72">
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
@@ -69,8 +63,8 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
           </div>
         </div>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mb-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
-            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer-isolated workspace</div>
+          <div id="dashboard" className="mb-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-activeBlue">Customer self-service workspace</div>
             <h1 className="mt-1 text-2xl font-black text-slate-950"><span className="mr-2 text-activeBlue">{portalOrder}</span>{heading}</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">{subheading}</p>
             <CustomerReviewLinkButton />
@@ -78,36 +72,33 @@ export function PortalShell({ type, children }: { type: 'customer'; children: Re
           {children}
         </main>
       </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-2 py-2 shadow-2xl backdrop-blur lg:hidden">
+        {customerPortalNavigation.map((link) => (
+          <Link key={link.href} href={link.href} className="rounded-2xl px-2 py-2 text-center text-[11px] font-black text-slate-700 hover:bg-blue-50 hover:text-activeBlue">
+            <span className="block">{link.shortTitle}</span>
+            <span className="block text-[10px] font-semibold text-slate-500">{link.shortZh}</span>
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }
 
-const portalSectionDescriptions: Record<string, string> = {
-  'customer-register': 'Create a customer account, verify email/OTP, record PDPA consent, and optionally submit a repair request at the same time. / 创建客户账号、验证邮箱/OTP、记录隐私同意，并可选择同时提交报修。',
-  'customer-login': 'Customer-only login. Customers cannot enter the central Admin backend. / 客户专用登录，客户不能进入总后台。',
-  'submit-request': 'Customer chooses between New Repair Request and Warranty Claim before submitting details. / 客户先选择新增维修或保修范围申请，再提交资料。',
-  'new-repair-request': 'Create a new repair service request linked to the logged-in customer when possible. / 创建新的维修报修单，并尽量绑定当前客户。',
-  'warranty-claim': 'Select an existing warranty record and request review for in-warranty or out-of-warranty handling. / 选择已有保修记录，申请判断是否属于保修范围。',
-  'my-repair-requests': 'RLS-filtered repair records bound to the current customer only. / 仅显示当前客户绑定的报修记录。',
-  'my-quotations': 'RLS-filtered quotation records for the current customer. / 仅显示当前客户报价。',
-  'my-invoices': 'RLS-filtered invoice records for the current customer. / 仅显示当前客户发票。',
-  'my-payments-receipts': 'Customer payment status, receipt downloads and payment proof uploads. / 客户付款状态、收据下载和付款证明上传。',
-  'my-warranties': 'Active, expiring and expired warranties, terms and QR-linked records. / 有效、即将到期和已过期保修、条款与二维码绑定记录。',
-  'submit-review-link': 'Click the active review link maintained by Admin and jump directly to the official review page. / 点击管理员维护的评论链接，直接跳转到官方评论页面。',
-  'my-reviews': 'Track pending, approved, rejected, archived and deletion/revision requests. / 查看待审核、已批准、已驳回、已存档及删除/修改请求。',
-  'review-privacy-settings': 'Choose which personal information may be public or hidden in reviews. / 选择评价中哪些个人信息可以公开或隐藏。'
-};
-
 export function CustomerPortalAnchors() {
   return (
     <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {customerLinks.map((link) => {
-        const id = link.href.split('#')[1];
+      {customerPortalNavigation.map((item) => {
+        const id = anchorFromHref(item.href);
         return (
-          <section key={link.href} id={id} className="scroll-mt-32 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
-            <h2 className="text-lg font-black text-slate-950">{link.title}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{link.zh}</p>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{portalSectionDescriptions[id]}</p>
+          <section key={item.href} id={id} className="scroll-mt-32 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-200">
+            {legacyAnchorList(item).filter((anchor) => anchor !== id).map((anchor) => (
+              <span key={anchor} id={anchor} data-customer-portal-legacy-anchor={id} className="block scroll-mt-32" />
+            ))}
+            <h2 className="text-lg font-black text-slate-950">{item.title}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{item.zh}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{item.description} / {item.descriptionZh}</p>
+            {item.includesReviewLink ? <CustomerReviewLinkButton /> : null}
           </section>
         );
       })}
