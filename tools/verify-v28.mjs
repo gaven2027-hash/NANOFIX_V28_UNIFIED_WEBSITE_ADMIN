@@ -1,10 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import net from "node:net";
 import { join } from "node:path";
 
 const root = process.cwd();
 const nextCli = join(root, "node_modules", "next", "dist", "bin", "next");
-const port = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
+const requestedPort = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
+const port = await findAvailablePort(requestedPort, Boolean(process.env.NANOFIX_VERIFY_PORT));
 const v282ReadyTables = ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"];
 
 function run(cmd, args) {
@@ -20,6 +22,25 @@ function run(cmd, args) {
     console.error(`NANOFIX verify failed: ${label}`);
     process.exit(result.status || 1);
   }
+}
+
+function isPortAvailable(portNumber) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once("error", () => resolve(false));
+    probe.once("listening", () => {
+      probe.close(() => resolve(true));
+    });
+    probe.listen(portNumber, "127.0.0.1");
+  });
+}
+
+async function findAvailablePort(startPort, strictPort) {
+  if (strictPort) return startPort;
+  for (let candidate = startPort; candidate < startPort + 50; candidate += 1) {
+    if (await isPortAvailable(candidate)) return candidate;
+  }
+  throw new Error(`No available verification port found from ${startPort} to ${startPort + 49}`);
 }
 
 function requiredArtifactsExist() {
@@ -107,6 +128,7 @@ async function expectReadyCoverage(baseUrl) {
 
 function startNextServer() {
   const args = [nextCli, "start", "-p", String(port)];
+  console.log(`NANOFIX verify: starting Next.js production server on port ${port}`);
   return spawn(process.execPath, args, {
     cwd: root,
     env: serverEnv,
