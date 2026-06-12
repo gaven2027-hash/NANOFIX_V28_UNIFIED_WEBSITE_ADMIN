@@ -105,6 +105,31 @@ async function expectReadyCoverage(baseUrl) {
   );
 }
 
+function startNextServer() {
+  const args = ["start", "-p", String(port)];
+  const options = {
+    cwd: root,
+    env: serverEnv,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  };
+
+  if (process.platform === "win32") {
+    return spawn(nextBin, args, { ...options, shell: true });
+  }
+
+  return spawn(nextBin, args, options);
+}
+
+function stopServer(server) {
+  if (!server || server.killed) return;
+  const signal = process.platform === "win32" ? undefined : "SIGTERM";
+  server.kill(signal);
+  setTimeout(() => {
+    if (!server.killed) server.kill(process.platform === "win32" ? undefined : "SIGKILL");
+  }, 1000).unref();
+}
+
 run("npm", ["run", "typecheck"]);
 run("npm", ["run", "lint"]);
 run("npm", ["run", "build:css"]);
@@ -125,10 +150,10 @@ const serverEnv = {
 serverEnv[["NANOFIX", "ADMIN", "TOKEN", "FALLBACK", "ENABLED"].join("_")] = "false";
 serverEnv[["ALLOW", "ADMIN", "API", "SECRET", "FALLBACK"].join("_")] = "false";
 
-const server = spawn(nextBin, ["start", "-p", String(port)], {
-  cwd: root,
-  env: serverEnv,
-  stdio: ["ignore", "pipe", "pipe"]
+const server = startNextServer();
+server.on("error", (error) => {
+  console.error("NANOFIX verify failed to start Next.js production server:", error);
+  process.exitCode = 1;
 });
 server.stdout.on("data", (chunk) => process.stdout.write(chunk));
 server.stderr.on("data", (chunk) => process.stderr.write(chunk));
@@ -193,6 +218,5 @@ try {
   console.error(error);
   process.exitCode = 1;
 } finally {
-  server.kill("SIGTERM");
-  setTimeout(() => server.kill("SIGKILL"), 1000).unref();
+  stopServer(server);
 }
