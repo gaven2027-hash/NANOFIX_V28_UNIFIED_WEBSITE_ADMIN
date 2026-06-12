@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
-const nextBin = process.platform === "win32" ? join(root, "node_modules", ".bin", "next.cmd") : join(root, "node_modules", ".bin", "next");
+const nextCli = join(root, "node_modules", "next", "dist", "bin", "next");
 const port = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
 const v282ReadyTables = ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"];
 
@@ -106,27 +106,27 @@ async function expectReadyCoverage(baseUrl) {
 }
 
 function startNextServer() {
-  const args = ["start", "-p", String(port)];
-  const options = {
+  const args = [nextCli, "start", "-p", String(port)];
+  return spawn(process.execPath, args, {
     cwd: root,
     env: serverEnv,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true
-  };
-
-  if (process.platform === "win32") {
-    return spawn(nextBin, args, { ...options, shell: true });
-  }
-
-  return spawn(nextBin, args, options);
+  });
 }
 
 function stopServer(server) {
-  if (!server || server.killed) return;
-  const signal = process.platform === "win32" ? undefined : "SIGTERM";
-  server.kill(signal);
+  if (!server || !server.pid) return;
+
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+    return;
+  }
+
+  if (server.killed) return;
+  server.kill("SIGTERM");
   setTimeout(() => {
-    if (!server.killed) server.kill(process.platform === "win32" ? undefined : "SIGKILL");
+    if (!server.killed) server.kill("SIGKILL");
   }, 1000).unref();
 }
 
