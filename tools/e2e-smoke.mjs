@@ -90,7 +90,7 @@ function isPortAvailable(portNumber) {
     probe.once("listening", () => {
       probe.close(() => resolve(true));
     });
-    probe.listen(portNumber, "127.0.0.1");
+    probe.listen(portNumber);
   });
 }
 
