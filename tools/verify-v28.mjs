@@ -1,10 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import net from "node:net";
 import { join } from "node:path";
 
 const root = process.cwd();
-const nextBin = process.platform === "win32" ? join(root, "node_modules", ".bin", "next.cmd") : join(root, "node_modules", ".bin", "next");
-const port = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
+const nextCli = join(root, "node_modules", "next", "dist", "bin", "next");
+const requestedPort = Number(process.env.NANOFIX_VERIFY_PORT || 3941);
+const port = await findAvailablePort(requestedPort, Boolean(process.env.NANOFIX_VERIFY_PORT));
 const v282ReadyTables = ["automation_rules", "notification_outbox", "internal_inbox_messages", "unified_tasks", "task_events", "workflow_settings"];
 
 function run(cmd, args) {
@@ -20,6 +22,25 @@ function run(cmd, args) {
     console.error(`NANOFIX verify failed: ${label}`);
     process.exit(result.status || 1);
   }
+}
+
+function isPortAvailable(portNumber) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once("error", () => resolve(false));
+    probe.once("listening", () => {
+      probe.close(() => resolve(true));
+    });
+    probe.listen(portNumber);
+  });
+}
+
+async function findAvailablePort(startPort, strictPort) {
+  if (strictPort) return startPort;
+  for (let candidate = startPort; candidate < startPort + 50; candidate += 1) {
+    if (await isPortAvailable(candidate)) return candidate;
+  }
+  throw new Error(`No available verification port found from ${startPort} to ${startPort + 49}`);
 }
 
 function requiredArtifactsExist() {
@@ -105,6 +126,32 @@ async function expectReadyCoverage(baseUrl) {
   );
 }
 
+function startNextServer() {
+  const args = [nextCli, "start", "-p", String(port)];
+  console.log(`NANOFIX verify: starting Next.js production server on port ${port}`);
+  return spawn(process.execPath, args, {
+    cwd: root,
+    env: serverEnv,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+}
+
+function stopServer(server) {
+  if (!server || !server.pid) return;
+
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+    return;
+  }
+
+  if (server.killed) return;
+  server.kill("SIGTERM");
+  setTimeout(() => {
+    if (!server.killed) server.kill("SIGKILL");
+  }, 1000).unref();
+}
+
 run("npm", ["run", "typecheck"]);
 run("npm", ["run", "lint"]);
 run("npm", ["run", "build:css"]);
@@ -125,10 +172,10 @@ const serverEnv = {
 serverEnv[["NANOFIX", "ADMIN", "TOKEN", "FALLBACK", "ENABLED"].join("_")] = "false";
 serverEnv[["ALLOW", "ADMIN", "API", "SECRET", "FALLBACK"].join("_")] = "false";
 
-const server = spawn(nextBin, ["start", "-p", String(port)], {
-  cwd: root,
-  env: serverEnv,
-  stdio: ["ignore", "pipe", "pipe"]
+const server = startNextServer();
+server.on("error", (error) => {
+  console.error("NANOFIX verify failed to start Next.js production server:", error);
+  process.exitCode = 1;
 });
 server.stdout.on("data", (chunk) => process.stdout.write(chunk));
 server.stderr.on("data", (chunk) => process.stderr.write(chunk));
@@ -193,6 +240,5 @@ try {
   console.error(error);
   process.exitCode = 1;
 } finally {
-  server.kill("SIGTERM");
-  setTimeout(() => server.kill("SIGKILL"), 1000).unref();
+  stopServer(server);
 }
