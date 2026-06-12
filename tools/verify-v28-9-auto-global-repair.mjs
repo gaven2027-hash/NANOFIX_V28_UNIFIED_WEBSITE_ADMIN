@@ -33,6 +33,25 @@ must(runner.includes('docs/v28.8/final-release-readiness-report.md'), 'Runner ch
 must(runner.includes('docs/v28.8/final-release-note.md'), 'Runner checks release note document');
 must(runner.includes('docs/v28.8/production-health-report.md'), 'Runner checks health report document');
 
+must(scope.includes('AI Intelligence Center') || scope.includes('AI / Social / Advertising'), 'Scope document covers AI Intelligence Center');
+must(scope.includes('Social Media Management') || scope.includes('AI / Social / Advertising'), 'Scope document covers Social Media Management');
+must(scope.includes('Advertising Center') || scope.includes('campaign'), 'Scope document covers Advertising Center');
+must(runner.includes('AI / Social / Advertising coverage'), 'Runner includes AI/Social/Advertising coverage section');
+must(runner.includes('aiSurfaceFiles'), 'Runner checks AI surface files');
+must(runner.includes('socialSurfaceFiles'), 'Runner checks social surface files');
+must(runner.includes('advertisingSurfaceFiles'), 'Runner checks advertising surface files');
+must(runner.includes('websiteCmsFiles'), 'Runner checks Website Management / CMS surface files');
+must(runner.includes('serviceOperationsFiles'), 'Runner checks Service Operations surface files');
+must(runner.includes('customerPortalFiles'), 'Runner checks Customer Portal surface files');
+must(runner.includes('unsafePublishPatterns'), 'Runner scans direct publish / paid activation bypass patterns');
+must(runner.includes('content_drafts') && runner.includes('ai_logs'), 'Runner checks AI/content support tables');
+must(runner.includes('notification_outbox') && runner.includes('internal_inbox_messages'), 'Runner checks social/ad notification support tables');
+must(runner.includes('automation_rules') && runner.includes('audit_logs'), 'Runner checks automation and audit support');
+must(runner.includes('No AI/Social/Ads direct publish bypass patterns in runtime source corpus'), 'Runner blocks AI/Social/Ads direct publish bypass in runtime source');
+must(runner.includes('Website publishing stays approval-gated'), 'Runner checks website publish approval gate');
+must(runner.includes('Advertising activation remains approval-gated or non-direct'), 'Runner checks advertising activation gate');
+must(runner.includes('runtimeSourceFiles'), 'Runner avoids self-flagging docs/tools while scanning runtime source risk');
+
 if (failures.length) {
   console.error(`\nV28.9 Auto Global Repair verifier failed: ${failures.length} issue(s).`);
   for (const failure of failures) console.error(`- ${failure}`);
@@ -46,6 +65,9 @@ console.log(JSON.stringify({
   checked: {
     runner: true,
     scope: true,
-    directCommands: true
+    directCommands: true,
+    aiSocialAdsCoverage: true,
+    publishApprovalSafety: true,
+    runtimeRiskScan: true
   }
 }, null, 2));
