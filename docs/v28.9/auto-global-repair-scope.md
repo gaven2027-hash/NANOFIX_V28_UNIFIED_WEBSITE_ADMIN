@@ -33,7 +33,8 @@ cd "C:\Users\Amelindo\Documents\NANOFIX_V28_UNIFIED_WEBSITE_ADMIN"
 pwd
 git status
 
-npm.cmd run v28-9:auto-global-repair
+node tools/v28-9-auto-global-repair.mjs
+node tools/verify-v28-9-auto-global-repair.mjs
 git status
 ```
 
@@ -42,6 +43,7 @@ git status
 This step is only complete when:
 
 - the auto global repair check returns `ok: true`;
+- the verifier returns `ok: true`;
 - failures are empty;
 - local working tree is clean;
 - Vercel Preview is Ready;
