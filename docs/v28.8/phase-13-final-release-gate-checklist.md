@@ -67,8 +67,8 @@ Before final release is accepted, production `/api/ready` must confirm:
 - `supabase_configured: true`;
 - `failed_core_tables: []`;
 - `failed_optional_tables: []`;
-- required tables all `ok: true`;
-- optional tables all `ok: true`.
+- `required_tables` all `ok: true`;
+- `optional_tables` all `ok: true`.
 
 ### 5. Required production tables
 
