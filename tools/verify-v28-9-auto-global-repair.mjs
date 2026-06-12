@@ -14,7 +14,6 @@ function must(condition, label) {
 
 const runner = read('tools/v28-9-auto-global-repair.mjs');
 const scope = read('docs/v28.9/auto-global-repair-scope.md');
-const packageJson = read('package.json');
 
 console.log('\nV28.9 Auto Global Repair verifier');
 console.log('----------------------------------');
@@ -22,7 +21,8 @@ console.log('----------------------------------');
 must(Boolean(runner), 'Auto global repair runner exists');
 must(Boolean(scope), 'Auto global repair scope document exists');
 must(scope.includes('v28-9-auto-global-repair'), 'Scope document references branch');
-must(scope.includes('npm.cmd run v28-9:auto-global-repair'), 'Scope document exposes one-command local run');
+must(scope.includes('node tools/v28-9-auto-global-repair.mjs'), 'Scope document exposes direct runner command');
+must(scope.includes('node tools/verify-v28-9-auto-global-repair.mjs'), 'Scope document exposes direct verifier command');
 must(runner.includes('V28.9 Auto Global Repair / Scan'), 'Runner title exists');
 must(runner.includes('x-nanofix-role') && runner.includes('x-admin-role'), 'Runner scans role header markers');
 must(runner.includes('select\\s*') || runner.includes('select\\s*\\('), 'Runner scans broad select marker');
@@ -32,8 +32,6 @@ must(runner.includes('optional table'), 'Runner checks optional tables');
 must(runner.includes('docs/v28.8/final-release-readiness-report.md'), 'Runner checks readiness report document');
 must(runner.includes('docs/v28.8/final-release-note.md'), 'Runner checks release note document');
 must(runner.includes('docs/v28.8/production-health-report.md'), 'Runner checks health report document');
-must(packageJson.includes('"v28-9:auto-global-repair"'), 'package.json exposes v28-9 auto global repair command');
-must(packageJson.includes('"verify:v28-9-auto-global-repair"'), 'package.json exposes verifier alias');
 
 if (failures.length) {
   console.error(`\nV28.9 Auto Global Repair verifier failed: ${failures.length} issue(s).`);
@@ -48,6 +46,6 @@ console.log(JSON.stringify({
   checked: {
     runner: true,
     scope: true,
-    packageScripts: true
+    directCommands: true
   }
 }, null, 2));
