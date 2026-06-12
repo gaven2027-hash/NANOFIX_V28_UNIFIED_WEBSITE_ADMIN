@@ -15,6 +15,7 @@ The first V28.9 step covers:
 
 - admin API route scan;
 - customer and portal route scan;
+- middleware/auth verified role-header contract scan;
 - AI Intelligence Center scan;
 - Social Media Management scan;
 - Advertising Center / campaign / promotion scan;
@@ -32,6 +33,19 @@ The first V28.9 step covers:
 - final V28.8 document set coverage scan;
 - route and workflow evidence scan;
 - release command coverage scan.
+
+## Middleware / auth role-header contract
+
+The scanner now treats internal role headers as valid only when all of the following evidence exists:
+
+- `middleware.ts` is included in the scan surface;
+- incoming spoofable auth headers are deleted before protected requests continue;
+- middleware attaches `x-nanofix-auth-verified` only after Supabase/internal/preview actor verification;
+- middleware attaches `x-admin-role` from the verified actor only;
+- `lib/nanofix/auth.ts` reads role context only through `contextFromVerifiedMiddleware`;
+- `lib/nanofix/auth.ts` requires `x-nanofix-auth-verified` before accepting the internal role header.
+
+This prevents the scanner from incorrectly treating the verified middleware-to-route internal header contract as a frontend-controlled role escalation path, while still flagging any unverified role header references elsewhere.
 
 ## AI / Social / Advertising coverage
 
