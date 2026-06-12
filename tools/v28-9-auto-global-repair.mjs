@@ -61,6 +61,7 @@ const sourceFiles = files.filter((file) => {
     name.startsWith('tools/') ||
     name.startsWith('docs/v28.8/') ||
     name.startsWith('docs/v28.9/') ||
+    name === 'middleware.ts' ||
     name === 'package.json'
   );
 });
@@ -70,6 +71,8 @@ console.log('--------------------------------');
 
 const packageJson = read(path.join(root, 'package.json'));
 const readyEndpoint = read(path.join(root, 'app/api/ready/route.ts'));
+const middlewareSource = read(path.join(root, 'middleware.ts'));
+const authSource = read(path.join(root, 'lib/nanofix/auth.ts'));
 const apiFiles = sourceFiles.filter((file) => rel(file).startsWith('app/api/') && /route\.(ts|tsx|js|jsx)$/.test(rel(file)));
 const adminFiles = sourceFiles.filter((file) => rel(file).includes('/admin') || rel(file).startsWith('app/admin'));
 const customerFiles = sourceFiles.filter((file) => rel(file).includes('customer') || rel(file).includes('portal'));
@@ -83,10 +86,30 @@ const customerPortalFiles = sourceFiles.filter((file) => fileMatches(file, [/cus
 const corpus = sourceFiles.map((file) => read(file)).join('\n');
 const lowerCorpus = corpus.toLowerCase();
 
+const verifiedHeaderContractOk = Boolean(
+  middlewareSource.includes('cleanIncomingAuthSpoofHeaders') &&
+  middlewareSource.includes('headers.delete(key)') &&
+  middlewareSource.includes('"x-nanofix-auth-verified"') &&
+  middlewareSource.includes('"x-admin-role"') &&
+  middlewareSource.includes('"x-nanofix-role"') &&
+  middlewareSource.includes('headers.set("x-nanofix-auth-verified", actor.authMode)') &&
+  middlewareSource.includes('headers.set("x-admin-role", actor.role)') &&
+  authSource.includes('contextFromVerifiedMiddleware') &&
+  authSource.includes('request.headers.get("x-nanofix-auth-verified")') &&
+  authSource.includes('request.headers.get("x-admin-role")')
+);
+
+function allowsInternalRoleHeaderReference(fileName) {
+  return verifiedHeaderContractOk && (fileName === 'middleware.ts' || fileName === 'lib/nanofix/auth.ts');
+}
+
 must(sourceFiles.length > 0, 'Repository source files are visible to the scanner');
 must(apiFiles.length > 0, 'API route files are visible to the scanner');
 must(Boolean(packageJson), 'package.json is readable');
 must(Boolean(readyEndpoint), 'app/api/ready/route.ts is readable');
+must(Boolean(middlewareSource), 'middleware.ts is readable and included in scanner surface');
+must(Boolean(authSource), 'lib/nanofix/auth.ts is readable and included in scanner surface');
+must(verifiedHeaderContractOk, 'Verified middleware role-header contract is present');
 
 const unsafePublishPatterns = [
   /direct_publish_without_approval/i,
@@ -115,7 +138,7 @@ for (const file of runtimeSourceFiles) {
   const body = read(file);
   if (!body) continue;
 
-  if (/x-nanofix-role|x-admin-role/i.test(body)) {
+  if (/x-nanofix-role|x-admin-role/i.test(body) && !allowsInternalRoleHeaderReference(name)) {
     addFinding('P1', name, 'front-controllable role header reference');
   }
 
@@ -242,6 +265,7 @@ console.log(JSON.stringify({
     websiteCmsSurface: websiteCmsFiles.length,
     serviceOperationsSurface: serviceOperationsFiles.length,
     customerPortalSurface: customerPortalFiles.length,
+    verifiedHeaderContract: verifiedHeaderContractOk,
     p0: p0.length,
     p1: p1.length,
     p2: p2.length
