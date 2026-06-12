@@ -52,6 +52,15 @@ must(runner.includes('Website publishing stays approval-gated'), 'Runner checks 
 must(runner.includes('Advertising activation remains approval-gated or non-direct'), 'Runner checks advertising activation gate');
 must(runner.includes('runtimeSourceFiles'), 'Runner avoids self-flagging docs/tools while scanning runtime source risk');
 
+must(runner.includes('middleware.ts') && runner.includes('lib/nanofix/auth.ts'), 'Runner includes middleware/auth role boundary files');
+must(runner.includes('verifiedHeaderContractOk'), 'Runner verifies middleware/auth internal role-header contract');
+must(runner.includes('cleanIncomingAuthSpoofHeaders'), 'Runner requires middleware spoof-header cleanup evidence');
+must(runner.includes('headers.set("x-nanofix-auth-verified", actor.authMode)'), 'Runner requires middleware verified-auth header attachment evidence');
+must(runner.includes('headers.set("x-admin-role", actor.role)'), 'Runner requires middleware internal role attachment evidence');
+must(runner.includes('contextFromVerifiedMiddleware'), 'Runner requires auth.ts verified middleware context evidence');
+must(runner.includes('Verified middleware role-header contract is present'), 'Runner reports verified role-header contract check');
+must(runner.includes('verifiedHeaderContract: verifiedHeaderContractOk'), 'Runner exposes verified header contract in checked summary');
+
 if (failures.length) {
   console.error(`\nV28.9 Auto Global Repair verifier failed: ${failures.length} issue(s).`);
   for (const failure of failures) console.error(`- ${failure}`);
@@ -68,6 +77,7 @@ console.log(JSON.stringify({
     directCommands: true,
     aiSocialAdsCoverage: true,
     publishApprovalSafety: true,
-    runtimeRiskScan: true
+    runtimeRiskScan: true,
+    verifiedHeaderContract: true
   }
 }, null, 2));
