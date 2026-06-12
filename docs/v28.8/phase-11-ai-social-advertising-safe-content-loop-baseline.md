@@ -81,7 +81,7 @@ Advertising and promotion content must follow:
 - approval;
 - schedule/manual export;
 - audit log;
-- no direct paid-platform activation without approval.
+- No direct paid-platform activation without approval.
 
 ### 5. Customer feedback reuse safety
 
@@ -129,7 +129,7 @@ AI/social/advertising actions must keep the following expectations:
 
 ### 8. Backup continuity baseline
 
-Phase 11 inherits Phase 10 backup coverage. AI logs, content drafts, notifications, inbox messages, website/public content approval data and audit logs must remain covered by backup readiness checks.
+Phase 11 inherits Phase 10 backup coverage. `ai_logs`, `content_drafts`, `notification_outbox`, `internal_inbox_messages`, website/public content approval data and `audit_logs` must remain covered by backup readiness checks and release-gate verification.
 
 ### 9. Non-goals in this phase
 
