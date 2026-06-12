@@ -116,7 +116,7 @@ Restore dry run must continue to:
 - validate the `NANOFIX-BACKUP-V1` header;
 - return dry-run status only;
 - write `backup.restore_dry_run` audit log;
-- explicitly not overwrite production data.
+- explicitly does not overwrite production data.
 
 ### 8. Production restore prohibition baseline
 
