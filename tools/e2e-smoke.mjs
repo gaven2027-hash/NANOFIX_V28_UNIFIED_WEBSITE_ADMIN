@@ -1,12 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import net from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const root = process.cwd();
-const port = Number(process.env.NANOFIX_E2E_PORT || 3941);
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
+const requestedPort = Number(process.env.NANOFIX_E2E_PORT || 3941);
 const shouldStartServer = process.env.NANOFIX_E2E_USE_EXISTING_SERVER !== "true";
+const explicitBaseURL = process.env.PLAYWRIGHT_BASE_URL;
+const port = shouldStartServer && !explicitBaseURL
+  ? await findAvailablePort(requestedPort, Boolean(process.env.NANOFIX_E2E_PORT))
+  : requestedPort;
+const baseURL = explicitBaseURL || `http://127.0.0.1:${port}`;
 const defaultNextCli = path.join(root, "node_modules", "next", "dist", "bin", "next");
 const serverCommand = process.env.NANOFIX_E2E_SERVER_COMMAND || process.execPath;
 const serverArgs = process.env.NANOFIX_E2E_SERVER_ARGS
@@ -76,6 +81,25 @@ let serverStartError = null;
 
 function log(message) {
   console.log(`[nanofix-e2e] ${message}`);
+}
+
+function isPortAvailable(portNumber) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once("error", () => resolve(false));
+    probe.once("listening", () => {
+      probe.close(() => resolve(true));
+    });
+    probe.listen(portNumber, "127.0.0.1");
+  });
+}
+
+async function findAvailablePort(startPort, strictPort) {
+  if (strictPort) return startPort;
+  for (let candidate = startPort; candidate < startPort + 50; candidate += 1) {
+    if (await isPortAvailable(candidate)) return candidate;
+  }
+  throw new Error(`No available E2E smoke port found from ${startPort} to ${startPort + 49}`);
 }
 
 function readRepoFile(file) {
