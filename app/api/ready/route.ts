@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";
@@ -21,7 +21,7 @@ const probeTables = [
   "service_requests",
   "service_inspections",
   "service_upload_reviews",
-  "quotation_acceptances",
+  "quotation_acceptances",`r`n  "quotation_customer_responses",
   "payment_intents",
   "automation_rules",
   "unified_tasks",
