@@ -50,7 +50,15 @@ const registerAliases: Record<string, PortalContext> = {
   "/customer-register": "customer",
   "/member-register": "customer"
 };
-const apiAdminRoutes = ["/api/admin", "/api/global-search", "/api/service-requests", "/api/portal/engineer"];
+const apiAdminRoutes = [
+  "/api/admin",
+  "/api/global-search",
+  "/api/service-requests",
+  "/api/portal/engineer",
+  "/api/ai",
+  "/api/social",
+  "/api/ads"
+];
 const customerRoutes = ["/customer-portal", "/api/portal/customer"];
 
 const adminRoles: NanofixRole[] = ["super_admin", "operations_admin", "finance", "content_admin", "support", "engineer"];
@@ -363,6 +371,9 @@ export const config = {
     "/api/global-search/:path*",
     "/api/service-requests/:path*",
     "/api/portal/customer/:path*",
-    "/api/portal/engineer/:path*"
+    "/api/portal/engineer/:path*",
+    "/api/ai/:path*",
+    "/api/social/:path*",
+    "/api/ads/:path*"
   ]
 };
