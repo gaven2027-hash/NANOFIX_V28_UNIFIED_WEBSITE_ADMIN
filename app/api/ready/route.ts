@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { envChecks, productionEnvIsReady } from "@/lib/nanofix/env";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 const coreRequiredTables = [
   "profiles",
@@ -65,9 +66,19 @@ function getSupabaseConfig() {
   };
 }
 
+async function boundedFetch(url: string, init: RequestInit, timeoutMs = 4500) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function checkTable(url: string, serviceRoleKey: string, table: string): Promise<TableCheck> {
   try {
-    const response = await fetch(`${url}/rest/v1/${table}?select=*&limit=0`, {
+    const response = await boundedFetch(`${url}/rest/v1/${table}?select=*&limit=0`, {
       method: "GET",
       headers: {
         apikey: serviceRoleKey,
@@ -80,29 +91,37 @@ async function checkTable(url: string, serviceRoleKey: string, table: string): P
     const text = await response.text().catch(() => "");
     return { table, ok: false, status: response.status, error: text ? text.slice(0, 500) : response.statusText || "Supabase REST check failed" };
   } catch (error) {
-    return { table, ok: false, status: null, error: error instanceof Error ? error.message : "Unknown Supabase table check error" };
+    const message = error instanceof Error ? error.message : "Unknown Supabase table check error";
+    return { table, ok: false, status: null, error: message || "Supabase table check timed out" };
   }
 }
 
+async function checkTables(url: string, serviceRoleKey: string, tables: string[]) {
+  return Promise.all(tables.map((table) => checkTable(url, serviceRoleKey, table)));
+}
+
 export async function GET() {
+  const startedAt = Date.now();
   const envReady = process.env.NODE_ENV === "production" ? productionEnvIsReady() : true;
   const supabaseConfig = getSupabaseConfig();
   const coreTableChecks: TableCheck[] = supabaseConfig.configured
-    ? await Promise.all(coreRequiredTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
+    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, coreRequiredTables)
     : coreRequiredTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
   const optionalTableChecks: TableCheck[] = supabaseConfig.configured
-    ? await Promise.all(optionalModuleTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
+    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, optionalModuleTables)
     : optionalModuleTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
   const failedCoreTables = coreTableChecks.filter((check) => !check.ok);
   const failedOptionalTables = optionalTableChecks.filter((check) => !check.ok);
   const databaseReady = supabaseConfig.configured && failedCoreTables.length === 0;
   const optionalDatabaseReady = supabaseConfig.configured && failedOptionalTables.length === 0;
   const ok = envReady && databaseReady;
+
   return NextResponse.json(
     {
       ok,
       service: "nanofix-v28-unified-website-admin",
-      version: "28.2.0-automation-inbox-task-engine",
+      version: "28.9-production-api-health-hotfix",
+      runtime: "edge",
       environment: process.env.NODE_ENV || "development",
       env_ready: envReady,
       database_ready: databaseReady,
@@ -118,8 +137,15 @@ export async function GET() {
       })),
       required_tables: coreTableChecks,
       optional_tables: optionalTableChecks,
+      duration_ms: Date.now() - startedAt,
       timestamp: new Date().toISOString()
     },
-    { status: ok ? 200 : 503 }
+    {
+      status: ok ? 200 : 503,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    }
   );
 }
