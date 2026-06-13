@@ -252,6 +252,55 @@ function apiUnauthorized(message: string, status = 401) {
   return NextResponse.json({ ok: false, error: message }, { status, headers: { "X-Robots-Tag": "noindex, nofollow" } });
 }
 
+
+function webhookUnauthorized(message = "Webhook authorization required.", status = 401) {
+  return NextResponse.json(
+    { ok: false, error: message },
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    }
+  );
+}
+
+function webhookMethodNotAllowed() {
+  const response = NextResponse.json(
+    { ok: false, error: "Method not allowed. Use POST for webhooks." },
+    {
+      status: 405,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    }
+  );
+  response.headers.set("Allow", "POST");
+  return response;
+}
+
+function isWebhookPath(pathname: string) {
+  return startsWithAny(pathname, ["/api/webhooks"]);
+}
+
+function hasWebhookAuthEvidence(request: NextRequest) {
+  return Boolean(
+    request.headers.get("x-nanofix-webhook-secret") ||
+    request.headers.get("x-nanofix-signature") ||
+    request.headers.get("x-hub-signature-256") ||
+    request.headers.get("x-signature")
+  );
+}
+
+function guardWebhookRequest(request: NextRequest) {
+  const method = request.method.toUpperCase();
+  if (method !== "POST") return webhookMethodNotAllowed();
+  if (!hasWebhookAuthEvidence(request)) return webhookUnauthorized();
+  return null;
+}
+
 function loginRoleForPath(pathname: string): PortalContext | null {
   if (startsWithAny(pathname, [...adminRoutes, ...apiAdminRoutes, ...legacyEngineerPortalRoutes])) return "admin";
   if (startsWithAny(pathname, customerRoutes)) return "customer";
@@ -299,6 +348,12 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const host = request.nextUrl.hostname;
   const productionHost = isNanofixProductionHost(host);
+
+  if (isWebhookPath(pathname)) {
+    const webhookGuard = guardWebhookRequest(request);
+    if (webhookGuard) return webhookGuard;
+    return NextResponse.next();
+  }
 
   if (startsWithAny(pathname, legacyEngineerPortalRoutes)) return redirectLegacyEngineerPortal(request);
 
@@ -367,7 +422,8 @@ export const config = {
     "/system-settings/:path*",
     "/customer-portal/:path*",
     "/engineer-portal/:path*",
-    "/api/admin/:path*",
+    "/api/webhooks/:path*",
+"/api/admin/:path*",
     "/api/global-search/:path*",
     "/api/service-requests/:path*",
     "/api/portal/customer/:path*",
