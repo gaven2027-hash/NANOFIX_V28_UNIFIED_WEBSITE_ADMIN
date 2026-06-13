@@ -1,53 +1,20 @@
 import { NextResponse } from "next/server";
-import { envChecks, productionEnvIsReady } from "@/lib/nanofix/env";
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";
 
-const coreRequiredTables = [
-  "profiles",
-  "customers",
-  "unified_intake",
-  "leads",
-  "service_requests",
-  "jobs",
-  "service_inspections",
-  "service_upload_reviews",
-  "quotations",
-  "quotation_versions",
-  "quotation_acceptances",
-  "quotation_customer_responses",
-  "quotation_pdf_documents",
-  "invoices",
-  "invoice_pdf_documents",
-  "payments",
-  "payment_intents",
-  "payment_webhook_events",
-  "payment_checkout_sessions",
-  "warranties",
-  "warranty_pdf_documents",
-  "warranty_claims",
-  "customer_portal_requests",
-  "customer_document_feedback",
-  "unified_tasks",
-  "task_events",
-  "workflow_settings",
-  "status_transition_logs",
-  "audit_logs",
-  "document_company_settings"
+const requiredEnv = [
+  "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "NANOFIX_WEBHOOK_SECRET",
+  "NEXT_PUBLIC_MEMBER_PORTAL_URL"
 ];
 
-const optionalModuleTables = [
-  "automation_rules",
-  "notification_outbox",
-  "internal_inbox_messages",
-  "content_drafts",
-  "ai_logs",
-  "backup_jobs",
-  "app_modules",
-  "customer_account_claims",
-  "customer_record_links"
-];
+const probeTables = ["profiles", "customers", "unified_intake", "leads", "service_requests", "audit_logs"];
+const optionalProbeTables = ["content_drafts", "ai_logs", "notification_outbox", "internal_inbox_messages"];
 
 type TableCheck = {
   table: string;
@@ -56,9 +23,17 @@ type TableCheck = {
   error: string | null;
 };
 
+function getEnv(name: string) {
+  return process.env[name] || "";
+}
+
+function envReady() {
+  return requiredEnv.every((name) => Boolean(getEnv(name)));
+}
+
 function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const url = getEnv("SUPABASE_URL") || getEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
   return {
     url: url.replace(/\/$/, ""),
     serviceRoleKey,
@@ -66,11 +41,11 @@ function getSupabaseConfig() {
   };
 }
 
-async function boundedFetch(url: string, init: RequestInit, timeoutMs = 4500) {
+async function boundedFetch(url: string, init: RequestInit, timeoutMs = 2500) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal, cache: "no-store" });
   } finally {
     clearTimeout(timeout);
   }
@@ -84,15 +59,12 @@ async function checkTable(url: string, serviceRoleKey: string, table: string): P
         apikey: serviceRoleKey,
         authorization: `Bearer ${serviceRoleKey}`,
         accept: "application/json"
-      },
-      cache: "no-store"
+      }
     });
     if (response.ok) return { table, ok: true, status: response.status, error: null };
-    const text = await response.text().catch(() => "");
-    return { table, ok: false, status: response.status, error: text ? text.slice(0, 500) : response.statusText || "Supabase REST check failed" };
+    return { table, ok: false, status: response.status, error: response.statusText || "Supabase REST check failed" };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown Supabase table check error";
-    return { table, ok: false, status: null, error: message || "Supabase table check timed out" };
+    return { table, ok: false, status: null, error: error instanceof Error ? error.message : "Supabase check timeout or fetch error" };
   }
 }
 
@@ -102,19 +74,20 @@ async function checkTables(url: string, serviceRoleKey: string, tables: string[]
 
 export async function GET() {
   const startedAt = Date.now();
-  const envReady = process.env.NODE_ENV === "production" ? productionEnvIsReady() : true;
   const supabaseConfig = getSupabaseConfig();
-  const coreTableChecks: TableCheck[] = supabaseConfig.configured
-    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, coreRequiredTables)
-    : coreRequiredTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
-  const optionalTableChecks: TableCheck[] = supabaseConfig.configured
-    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, optionalModuleTables)
-    : optionalModuleTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
-  const failedCoreTables = coreTableChecks.filter((check) => !check.ok);
+  const requiredTableChecks = supabaseConfig.configured
+    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, probeTables)
+    : probeTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
+  const optionalTableChecks = supabaseConfig.configured
+    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, optionalProbeTables)
+    : optionalProbeTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
+
+  const failedRequiredTables = requiredTableChecks.filter((check) => !check.ok);
   const failedOptionalTables = optionalTableChecks.filter((check) => !check.ok);
-  const databaseReady = supabaseConfig.configured && failedCoreTables.length === 0;
+  const environmentReady = envReady();
+  const databaseReady = supabaseConfig.configured && failedRequiredTables.length === 0;
   const optionalDatabaseReady = supabaseConfig.configured && failedOptionalTables.length === 0;
-  const ok = envReady && databaseReady;
+  const ok = environmentReady && databaseReady;
 
   return NextResponse.json(
     {
@@ -122,20 +95,15 @@ export async function GET() {
       service: "nanofix-v28-unified-website-admin",
       version: "28.9-production-api-health-hotfix",
       runtime: "edge",
-      environment: process.env.NODE_ENV || "development",
-      env_ready: envReady,
+      environment: getEnv("NODE_ENV") || "production",
+      env_ready: environmentReady,
       database_ready: databaseReady,
       optional_database_ready: optionalDatabaseReady,
       supabase_configured: supabaseConfig.configured,
-      failed_core_tables: failedCoreTables.map((check) => check.table),
+      failed_core_tables: failedRequiredTables.map((check) => check.table),
       failed_optional_tables: failedOptionalTables.map((check) => check.table),
-      checks: envChecks.map((check) => ({
-        name: check.name,
-        configured: check.configured,
-        required_for_production: check.requiredForProduction,
-        description: check.description
-      })),
-      required_tables: coreTableChecks,
+      checks: requiredEnv.map((name) => ({ name, configured: Boolean(getEnv(name)), required_for_production: true })),
+      required_tables: requiredTableChecks,
       optional_tables: optionalTableChecks,
       duration_ms: Date.now() - startedAt,
       timestamp: new Date().toISOString()
