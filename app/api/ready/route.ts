@@ -8,7 +8,7 @@ const ENV = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "",
   publicSupabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
   publicSupabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  supabaseUrl: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   webhookSecret: process.env.NANOFIX_WEBHOOK_SECRET || "",
   memberPortalUrl: process.env.NEXT_PUBLIC_MEMBER_PORTAL_URL || ""
@@ -88,7 +88,7 @@ function configured(value: string) {
   );
 }
 
-function envReady() {
+function evaluateEnvReady() {
   return requiredEnv.every((item) => configured(item.value));
 }
 
@@ -149,7 +149,7 @@ async function checkTables(url: string, serviceRoleKey: string, tables: string[]
 
 export async function GET() {
   const startedAt = Date.now();
-  const environmentReady = envReady();
+  const envReady = evaluateEnvReady();
   const supabaseConfig = getSupabaseConfig();
 
   const coreTableChecks = supabaseConfig.configured
@@ -174,7 +174,7 @@ export async function GET() {
   const failedOptionalTables = optionalTableChecks.filter((check) => !check.ok);
   const databaseReady = supabaseConfig.configured && failedCoreTables.length === 0;
   const optionalDatabaseReady = supabaseConfig.configured && failedOptionalTables.length === 0;
-  const ok = environmentReady && databaseReady;
+  const ok = envReady && databaseReady;
 
   return NextResponse.json(
     {
@@ -184,7 +184,7 @@ export async function GET() {
       hotfix_version: "28.9-production-api-health-hotfix",
       runtime: "edge",
       environment: ENV.nodeEnv,
-      env_ready: environmentReady,
+      env_ready: envReady,
       database_ready: databaseReady,
       optional_database_ready: optionalDatabaseReady,
       supabase_configured: supabaseConfig.configured,
