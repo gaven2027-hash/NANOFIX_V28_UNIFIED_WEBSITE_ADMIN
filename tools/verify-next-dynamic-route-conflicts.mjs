@@ -1,4 +1,4 @@
-﻿import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = process.cwd();
@@ -6,7 +6,9 @@ const appDir = join(root, "app");
 const conflicts = [];
 
 function isDynamicSegment(name) {
-  return /^\[[A-Za-z0-9_-]+\]$/.test(name) || /^\[\.\.\.[A-Za-z0-9_-]+\]$/.test(name) || /^\[\[\.\.\.[A-Za-z0-9_-]+\]\]$/.test(name);
+  return /^\[[A-Za-z0-9_-]+\]$/.test(name) ||
+    /^\[\.\.\.[A-Za-z0-9_-]+\]$/.test(name) ||
+    /^\[\[\.\.\.[A-Za-z0-9_-]+\]\]$/.test(name);
 }
 
 function dynamicKind(name) {
@@ -51,7 +53,6 @@ if (conflicts.length) {
   for (const conflict of conflicts) {
     console.error(`- ${conflict.parent}: ${conflict.names.join(", ")}`);
   }
-  console.error("Use one dynamic segment name per sibling route level, for example only [platform] or only [provider].");
   process.exit(1);
 }
 
