@@ -421,9 +421,9 @@ export const config = {
     "/customer-center/:path*",
     "/system-settings/:path*",
     "/customer-portal/:path*",
-    "/engineer-portal/:path*",    "/api/webhooks/:path*",
-
-    "/api/admin/:path*",
+    "/engineer-portal/:path*",
+    "/api/webhooks/:path*",
+"/api/admin/:path*",
     "/api/global-search/:path*",
     "/api/service-requests/:path*",
     "/api/portal/customer/:path*",
