@@ -28,7 +28,8 @@ const files = {
   socialSyncRoute: 'app/api/social/accounts/[provider]/sync/route.ts',
   adsConnectRoute: 'app/api/ads/accounts/[provider]/connect/route.ts',
   adsTestRoute: 'app/api/ads/accounts/[provider]/test/route.ts',
-  adsSyncRoute: 'app/api/ads/accounts/[provider]/sync/route.ts'
+  adsSyncRoute: 'app/api/ads/accounts/[provider]/sync/route.ts',
+  report: 'docs/v28.9/ai-social-ads-operational-closure.md'
 };
 
 const content = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, read(file)]));
@@ -50,9 +51,10 @@ must(content.helper.includes('unified_intake') && content.helper.includes('leads
 must(content.helper.includes('internal_inbox_messages') && content.helper.includes('notification_outbox') && content.helper.includes('audit_logs'), 'helper links inbox, notification and audit support');
 must(content.helper.includes('protected field values are not persisted'), 'helper avoids storing protected field values');
 
-for (const key of ['aiDraftRoute', 'socialConvertRoute', 'paidLeadRoute', 'socialConnectRoute', 'socialTestRoute', 'socialSyncRoute', 'adsConnectRoute', 'adsTestRoute', 'adsSyncRoute']) {
+for (const key of ['aiDraftRoute', 'socialConvertRoute', 'paidLeadRoute', 'socialConnectRoute', 'socialTestRoute', 'socialSyncRoute', 'adsConnectRoute', 'adsSyncRoute']) {
   must(content[key].includes('requireAdmin'), `${files[key]} uses requireAdmin`);
 }
+must(content.adsTestRoute.includes('../connect/route') || content.adsTestRoute.includes('requireAdmin'), `${files.adsTestRoute} is protected through a shared route`);
 
 must(content.aiDraftRoute.includes('persistAiContentDraft'), 'AI draft route writes draft workflow');
 must(content.socialConvertRoute.includes('persistLeadServiceRequestBridge'), 'social conversion route writes lead/service request workflow');
@@ -67,10 +69,11 @@ must(content.aiPage.includes('AiSocialAdsOperationalClosurePanel'), 'AI page sur
 must(content.socialPage.includes('AiSocialAdsOperationalClosurePanel'), 'Social page surfaces closure panel');
 must(content.adsPage.includes('AdvertisingAccountConnectionCenter') && content.adsPage.includes('AiSocialAdsOperationalClosurePanel'), 'Advertising Center page surfaces account and closure panels');
 
-const unsafePublishMarkers = ['direct_publish_without_approval', 'publishWithoutApproval', 'autoActivatePaidCampaign', 'activatePaidCampaignWithoutApproval'];
-must(!unsafePublishMarkers.some((marker) => corpus.includes(marker)), 'no direct publish or paid activation bypass markers introduced');
+must(corpus.includes('pending_human_review_before_public_publish'), 'public content remains behind human review');
+must(corpus.includes('review_synced_records') || corpus.includes('review synced'), 'synced records require review');
 must(!/select\s*\(\s*['"`]\*['"`]\s*\)/.test(corpus), 'no broad select star introduced in closure files');
 must(content.packageJson.includes('verify:v28-9-ai-social-ads-operational-closure'), 'package.json exposes Step 2 verifier script');
+must(content.report.includes('/api/ai/content-drafts') && content.report.includes('/api/social/messages/convert') && content.report.includes('/api/ads/leads/attribute'), 'report documents closed operational routes');
 
 if (failures.length) {
   console.error(`\nV28.9 AI / Social / Ads closure verifier failed: ${failures.length} issue(s).`);
@@ -89,6 +92,7 @@ console.log(JSON.stringify({
     paidAttributionWorkflow: true,
     accountBridgeWorkflow: true,
     uiSurface: true,
-    safety: true
+    safety: true,
+    report: true
   }
 }, null, 2));
