@@ -58,7 +58,8 @@ export async function safeInsert(
   try {
     const result = await supabase.from(table).insert(record).select(selectColumns).single();
     if (result.error) return { table, ok: false, data: null, error: result.error.message };
-    return { table, ok: true, data: (result.data as Record<string, unknown> | null) || null, error: null };
+    const data = (result.data as unknown as Record<string, unknown> | null) || null;
+    return { table, ok: true, data, error: null };
   } catch (error) {
     return { table, ok: false, data: null, error: error instanceof Error ? error.message : "Unknown insert error" };
   }
