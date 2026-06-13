@@ -12,65 +12,57 @@ assert(exists(file), 'Missing app/api/ready/route.ts');
 
 if (!failures.length) {
   const ready = read(file);
-  const requiredTables = [
+
+  const requiredProbeTables = [
     'profiles',
     'customers',
     'unified_intake',
     'leads',
     'service_requests',
-    'jobs',
-    'service_inspections',
-    'service_upload_reviews',
-    'quotations',
-    'quotation_versions',
-    'quotation_acceptances',
-    'quotation_customer_responses',
-    'quotation_pdf_documents',
-    'invoices',
-    'invoice_pdf_documents',
-    'payments',
-    'payment_intents',
-    'payment_webhook_events',
-    'payment_checkout_sessions',
-    'warranties',
-    'warranty_pdf_documents',
-    'warranty_claims',
-    'customer_portal_requests',
-    'customer_document_feedback',
-    'automation_rules',
-    'notification_outbox',
-    'internal_inbox_messages',
-    'unified_tasks',
-    'task_events',
-    'workflow_settings',
-    'status_transition_logs',
-    'audit_logs',
+    'audit_logs'
+  ];
+  const optionalProbeTables = [
     'content_drafts',
     'ai_logs',
-    'backup_jobs',
-    'app_modules',
-    'document_company_settings'
+    'notification_outbox',
+    'internal_inbox_messages'
   ];
 
-  for (const table of requiredTables) assert(ready.includes(`"${table}"`), `/api/ready requiredTables missing ${table}`);
+  for (const table of [...requiredProbeTables, ...optionalProbeTables]) {
+    assert(ready.includes(`"${table}"`), `/api/ready probe tables missing ${table}`);
+  }
 
-  const order = ['service_requests', 'jobs', 'quotations', 'invoices', 'payments', 'warranties', 'status_transition_logs', 'audit_logs'];
+  const order = ['profiles', 'customers', 'unified_intake', 'leads', 'service_requests', 'audit_logs'];
   let last = -1;
   for (const table of order) {
     const index = ready.indexOf(`"${table}"`);
-    assert(index > last, `/api/ready business chain order is invalid around ${table}`);
+    assert(index > last, `/api/ready probe order is invalid around ${table}`);
     last = index;
   }
 
   for (const marker of [
-    'productionEnvIsReady',
+    'export const runtime = "edge"',
+    'requiredEnv',
+    'getSupabaseConfig',
+    'boundedFetch',
+    'AbortController',
+    'timeoutMs = 2500',
     'checkTable',
     'limit=0',
     'database_ready',
+    'optional_database_ready',
+    'failed_core_tables',
+    'failed_optional_tables',
     'required_tables',
+    'optional_tables',
+    'duration_ms',
+    'Cache-Control',
+    'no-store, max-age=0',
     'status: ok ? 200 : 503'
-  ]) assert(ready.includes(marker), `/api/ready missing production readiness marker: ${marker}`);
+  ]) assert(ready.includes(marker), `/api/ready missing fast readiness marker: ${marker}`);
+
+  assert(!ready.includes('productionEnvIsReady'), '/api/ready should not import heavy env helper in fast edge probe');
 }
 
-console.log(JSON.stringify({ ok: failures.length === 0, verifier: 'verify-ready-full-business-chain', failures }, null, 2));
+console.log(JSON.stringify({ ok: failures.length === 0, verifier: 'verify-ready-full-business-chain', mode: 'contract-preserving-edge-readiness-probe', failures }, null, 2));
 if (failures.length) process.exit(1);

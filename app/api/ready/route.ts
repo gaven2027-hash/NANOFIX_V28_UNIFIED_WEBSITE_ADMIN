@@ -1,7 +1,28 @@
 import { NextResponse } from "next/server";
-import { envChecks, productionEnvIsReady } from "@/lib/nanofix/env";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
+
+const ENV = {
+  nodeEnv: process.env.NODE_ENV || "production",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "",
+  publicSupabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  publicSupabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+  supabaseUrl: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  webhookSecret: process.env.NANOFIX_WEBHOOK_SECRET || "",
+  memberPortalUrl: process.env.NEXT_PUBLIC_MEMBER_PORTAL_URL || ""
+};
+
+const requiredEnv = [
+  { name: "NEXT_PUBLIC_SITE_URL", value: ENV.siteUrl },
+  { name: "NEXT_PUBLIC_SUPABASE_URL", value: ENV.publicSupabaseUrl },
+  { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", value: ENV.publicSupabaseAnonKey },
+  { name: "SUPABASE_URL", value: ENV.supabaseUrl },
+  { name: "SUPABASE_SERVICE_ROLE_KEY", value: ENV.supabaseServiceRoleKey },
+  { name: "NANOFIX_WEBHOOK_SECRET", value: ENV.webhookSecret },
+  { name: "NEXT_PUBLIC_MEMBER_PORTAL_URL", value: ENV.memberPortalUrl }
+];
 
 const coreRequiredTables = [
   "profiles",
@@ -55,71 +76,136 @@ type TableCheck = {
   error: string | null;
 };
 
+function configured(value: string) {
+  return Boolean(
+    value &&
+      value !== "undefined" &&
+      value !== "null" &&
+      !value.includes("YOUR_") &&
+      !value.includes("REPLACE_") &&
+      !value.includes("YOUR_PROJECT") &&
+      !value.includes("YOUR_SUPABASE")
+  );
+}
+
+function envReady() {
+  return requiredEnv.every((item) => configured(item.value));
+}
+
 function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const url = ENV.supabaseUrl;
+  const serviceRoleKey = ENV.supabaseServiceRoleKey;
   return {
     url: url.replace(/\/$/, ""),
     serviceRoleKey,
-    configured: Boolean(url && serviceRoleKey && !url.includes("YOUR_PROJECT") && !serviceRoleKey.includes("YOUR_SUPABASE"))
+    configured: configured(url) && configured(serviceRoleKey)
   };
+}
+
+async function boundedFetch(url: string, init: RequestInit, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal, cache: "no-store" });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function checkTable(url: string, serviceRoleKey: string, table: string): Promise<TableCheck> {
   try {
-    const response = await fetch(`${url}/rest/v1/${table}?select=*&limit=0`, {
+    const endpoint = url + "/rest/v1/" + table + "?select=*&limit=0";
+    const response = await boundedFetch(endpoint, {
       method: "GET",
       headers: {
         apikey: serviceRoleKey,
-        authorization: `Bearer ${serviceRoleKey}`,
+        authorization: "Bearer " + serviceRoleKey,
         accept: "application/json"
-      },
-      cache: "no-store"
+      }
     });
+
     if (response.ok) return { table, ok: true, status: response.status, error: null };
+
     const text = await response.text().catch(() => "");
-    return { table, ok: false, status: response.status, error: text ? text.slice(0, 500) : response.statusText || "Supabase REST check failed" };
+    return {
+      table,
+      ok: false,
+      status: response.status,
+      error: text ? text.slice(0, 500) : response.statusText || "Supabase REST check failed"
+    };
   } catch (error) {
-    return { table, ok: false, status: null, error: error instanceof Error ? error.message : "Unknown Supabase table check error" };
+    return {
+      table,
+      ok: false,
+      status: null,
+      error: error instanceof Error ? error.message : "Supabase check timeout or fetch error"
+    };
   }
 }
 
+async function checkTables(url: string, serviceRoleKey: string, tables: string[]) {
+  return Promise.all(tables.map((table) => checkTable(url, serviceRoleKey, table)));
+}
+
 export async function GET() {
-  const envReady = process.env.NODE_ENV === "production" ? productionEnvIsReady() : true;
+  const startedAt = Date.now();
+  const environmentReady = envReady();
   const supabaseConfig = getSupabaseConfig();
-  const coreTableChecks: TableCheck[] = supabaseConfig.configured
-    ? await Promise.all(coreRequiredTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
-    : coreRequiredTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
-  const optionalTableChecks: TableCheck[] = supabaseConfig.configured
-    ? await Promise.all(optionalModuleTables.map((table) => checkTable(supabaseConfig.url, supabaseConfig.serviceRoleKey, table)))
-    : optionalModuleTables.map((table) => ({ table, ok: false, status: null, error: "Supabase URL or service role key is not configured." }));
+
+  const coreTableChecks = supabaseConfig.configured
+    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, coreRequiredTables)
+    : coreRequiredTables.map((table) => ({
+        table,
+        ok: false,
+        status: null,
+        error: "Supabase URL or service role key is not configured."
+      }));
+
+  const optionalTableChecks = supabaseConfig.configured
+    ? await checkTables(supabaseConfig.url, supabaseConfig.serviceRoleKey, optionalModuleTables)
+    : optionalModuleTables.map((table) => ({
+        table,
+        ok: false,
+        status: null,
+        error: "Supabase URL or service role key is not configured."
+      }));
+
   const failedCoreTables = coreTableChecks.filter((check) => !check.ok);
   const failedOptionalTables = optionalTableChecks.filter((check) => !check.ok);
   const databaseReady = supabaseConfig.configured && failedCoreTables.length === 0;
   const optionalDatabaseReady = supabaseConfig.configured && failedOptionalTables.length === 0;
-  const ok = envReady && databaseReady;
+  const ok = environmentReady && databaseReady;
+
   return NextResponse.json(
     {
       ok,
       service: "nanofix-v28-unified-website-admin",
       version: "28.2.0-automation-inbox-task-engine",
-      environment: process.env.NODE_ENV || "development",
-      env_ready: envReady,
+      hotfix_version: "28.9-production-api-health-hotfix",
+      runtime: "edge",
+      environment: ENV.nodeEnv,
+      env_ready: environmentReady,
       database_ready: databaseReady,
       optional_database_ready: optionalDatabaseReady,
       supabase_configured: supabaseConfig.configured,
       failed_core_tables: failedCoreTables.map((check) => check.table),
       failed_optional_tables: failedOptionalTables.map((check) => check.table),
-      checks: envChecks.map((check) => ({
-        name: check.name,
-        configured: check.configured,
-        required_for_production: check.requiredForProduction,
-        description: check.description
+      checks: requiredEnv.map((item) => ({
+        name: item.name,
+        configured: configured(item.value),
+        required_for_production: true
       })),
       required_tables: coreTableChecks,
       optional_tables: optionalTableChecks,
+      duration_ms: Date.now() - startedAt,
       timestamp: new Date().toISOString()
     },
-    { status: ok ? 200 : 503 }
+    {
+      status: ok ? 200 : 503,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    }
   );
 }
