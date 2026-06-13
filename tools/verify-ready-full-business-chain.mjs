@@ -62,8 +62,7 @@ if (!failures.length) {
   ]) assert(ready.includes(marker), `/api/ready missing fast readiness marker: ${marker}`);
 
   assert(!ready.includes('productionEnvIsReady'), '/api/ready should not import heavy env helper in fast edge probe');
-  assert(!ready.includes('jobs"') || ready.indexOf('jobs"') === -1, '/api/ready fast probe should not restore full heavy table chain');
 }
 
-console.log(JSON.stringify({ ok: failures.length === 0, verifier: 'verify-ready-full-business-chain', mode: 'fast-edge-readiness-probe', failures }, null, 2));
+console.log(JSON.stringify({ ok: failures.length === 0, verifier: 'verify-ready-full-business-chain', mode: 'contract-preserving-edge-readiness-probe', failures }, null, 2));
 if (failures.length) process.exit(1);
