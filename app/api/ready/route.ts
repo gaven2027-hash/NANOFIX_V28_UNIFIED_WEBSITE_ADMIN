@@ -13,8 +13,20 @@ const requiredEnv = [
   "NEXT_PUBLIC_MEMBER_PORTAL_URL"
 ];
 
-const probeTables = ["profiles", "customers", "unified_intake", "leads", "service_requests", "audit_logs"];
+const probeTables = [
+  "profiles",
+  "customers",
+  "unified_intake",
+  "leads",
+  "service_requests",
+  "automation_rules",
+  "unified_tasks",
+  "task_events",
+  "workflow_settings",
+  "audit_logs"
+];
 const optionalProbeTables = ["content_drafts", "ai_logs", "notification_outbox", "internal_inbox_messages"];
+const compatibilityVersionMarker = "28.2.0-automation-inbox-task-engine";
 
 type TableCheck = {
   table: string;
@@ -93,7 +105,8 @@ export async function GET() {
     {
       ok,
       service: "nanofix-v28-unified-website-admin",
-      version: "28.9-production-api-health-hotfix",
+      version: compatibilityVersionMarker,
+      hotfix_version: "28.9-production-api-health-hotfix",
       runtime: "edge",
       environment: getEnv("NODE_ENV") || "production",
       env_ready: environmentReady,
