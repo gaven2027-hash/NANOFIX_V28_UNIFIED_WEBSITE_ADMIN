@@ -21,6 +21,8 @@ const probeTables = [
   "service_requests",
   "service_inspections",
   "service_upload_reviews",
+  "quotation_acceptances",
+  "payment_intents",
   "automation_rules",
   "unified_tasks",
   "task_events",
