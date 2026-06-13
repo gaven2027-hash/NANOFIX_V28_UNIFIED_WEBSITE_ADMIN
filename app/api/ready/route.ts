@@ -19,6 +19,8 @@ const probeTables = [
   "unified_intake",
   "leads",
   "service_requests",
+  "service_inspections",
+  "service_upload_reviews",
   "automation_rules",
   "unified_tasks",
   "task_events",
