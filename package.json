@@ -74,6 +74,7 @@
     "audit:fast-reality": "node tools/v28-fast-reality-audit.mjs",
     "audit:fast-reality:risks": "node tools/v28-print-fast-reality-risks.mjs",
     "verify:ad-center": "node tools/verify-ad-center.mjs",
+    "verify:v28-9-ai-social-ads-operational-closure": "node tools/verify-v28-9-ai-social-ads-operational-closure.mjs",
     "build:css": "tailwindcss -i ./app/globals.css -o ./public/static/nanofix-tailwind.css --minify",
     "build:preview": "npm run build:css && node tools/build-preview-package.mjs",
     "analyze:images": "node tools/analyze-images.mjs",
