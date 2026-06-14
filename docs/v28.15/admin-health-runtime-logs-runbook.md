@@ -1,4 +1,4 @@
-﻿# NANOFIX V28.15 Admin Authenticated Health Probe & Runtime Logs Access Runbook
+# NANOFIX V28.15 Admin Authenticated Health Probe & Runtime Logs Access Runbook
 
 ## Scope
 
