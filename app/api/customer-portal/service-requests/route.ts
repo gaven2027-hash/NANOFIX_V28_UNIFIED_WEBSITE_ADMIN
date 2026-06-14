@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const CUSTOMER_ROLES = ['customer'] as const;
 const REQUEST_TYPES = ['new_repair', 'warranty_repair'] as const;
 type RequestType = typeof REQUEST_TYPES[number];
+void REQUEST_TYPES;
 type ApiPayload = Record<string, unknown>;
 
 function requestTypeFromBody(value: unknown): RequestType {

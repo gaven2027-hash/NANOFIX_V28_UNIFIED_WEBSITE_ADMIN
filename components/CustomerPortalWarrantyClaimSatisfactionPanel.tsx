@@ -92,6 +92,7 @@ export function CustomerPortalWarrantyClaimSatisfactionPanel({ serviceRequestId 
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void refresh(); }, [serviceRequestId]);
 
   const ready = isClaimReadyForSatisfaction(state.claim);

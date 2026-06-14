@@ -4,7 +4,6 @@ import path from 'node:path';
 const root = process.cwd();
 const failures = [];
 const warnings = [];
-const exists = (file) => fs.existsSync(path.join(root, file));
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const assert = (ok, message) => { if (!ok) failures.push(message); };
 const warn = (ok, message) => { if (!ok) warnings.push(message); };

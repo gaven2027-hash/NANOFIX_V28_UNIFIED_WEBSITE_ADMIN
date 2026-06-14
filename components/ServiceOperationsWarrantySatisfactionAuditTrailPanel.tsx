@@ -23,6 +23,7 @@ export function ServiceOperationsWarrantySatisfactionAuditTrailPanel() {
     try { const data = await loadAuditTrail(id); setState({ loading: false, error: null, ...data }); }
     catch (error) { setState((s) => ({ ...s, loading: false, error: error instanceof Error ? error.message : String(error) })); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void refresh(''); }, []);
   const csvHref = `/api/admin/service-operations/warranty-satisfaction-audit-trail?format=csv${serviceRequestId ? `&service_request_id=${encodeURIComponent(serviceRequestId)}` : ''}`;
   return (

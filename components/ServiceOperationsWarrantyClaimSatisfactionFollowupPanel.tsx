@@ -80,6 +80,7 @@ export function ServiceOperationsWarrantyClaimSatisfactionFollowupPanel() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void refresh(filter); }, [filter]);
 
   const groupedMessages = useMemo(() => {

@@ -35,8 +35,6 @@ const contractGrowth = {
   evidence: 'OA/ERP contract scaffold exists; production workflow requires dedicated API/table/audit implementation.'
 };
 
-const workflowTables = ['automation_rules', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'task_events', 'audit_logs'];
-const workflowApis = ['/api/admin/automation-notifications', '/api/admin/internal-inbox', '/api/admin/unified-tasks', '/api/admin/workflow-audit'];
 
 const serviceTables = ['leads', 'unified_intake', 'service_requests', 'jobs', 'quotations', 'invoices', 'payments', 'warranties', 'audit_logs'];
 const warrantyClaimTables = ['service_requests', 'customers', 'warranties', 'jobs', 'quotations', 'invoices', 'payments', 'warranty_claim_messages', 'warranty_claim_attachments', 'notification_outbox', 'internal_inbox_messages', 'unified_tasks', 'task_events', 'status_transition_logs', 'audit_logs'];

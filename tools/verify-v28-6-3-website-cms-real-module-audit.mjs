@@ -1,4 +1,4 @@
-﻿import fs from "node:fs";
+import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -41,10 +41,6 @@ const requiredMarkers = [
     description: "Admin UI should expose Website Management workspace.",
   },
 ];
-
-function exists(rel) {
-  return fs.existsSync(path.join(root, rel));
-}
 
 function read(rel) {
   const p = path.join(root, rel);
@@ -126,11 +122,7 @@ const schemaPresence = schemaMarkers.map((marker) => {
   };
 });
 
-const staticRiskFiles = [
-  "app/page.tsx",
-  "components",
-  "lib",
-];
+
 
 const riskyPatterns = [
   { id: "localStorage", pattern: "localStorage" },

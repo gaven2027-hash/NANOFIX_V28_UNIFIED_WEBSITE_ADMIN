@@ -140,7 +140,8 @@ export function WebsiteManagementLiveCore() {
     }
   }
 
-  useEffect(() => { void load('pages'); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void load('pages');  }, []);
 
   async function chooseSection(key: string) {
     setSection(key);
