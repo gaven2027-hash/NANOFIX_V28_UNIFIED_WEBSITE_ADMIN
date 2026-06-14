@@ -112,7 +112,8 @@ async function expectReadyCoverage(baseUrl) {
   }
 
   const requiredTables = Array.isArray(body.required_tables) ? body.required_tables : [];
-  const tableNames = requiredTables.map((item) => item.table).filter(Boolean);
+  const optionalTables = Array.isArray(body.optional_tables) ? body.optional_tables : [];
+  const tableNames = [...requiredTables, ...optionalTables].map((item) => item.table).filter(Boolean);
   const missingTables = v282ReadyTables.filter((table) => !tableNames.includes(table));
 
   if (tableNames.length && missingTables.length === 0) {
