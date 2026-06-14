@@ -143,6 +143,7 @@ export function CustomerPortalWarrantyClaimAttachmentsPanel({ serviceRequestId }
     setState({ loading: false, uploading: false, error: null, message: 'Attachment uploaded for admin review. / 附件已上传并等待后台审核。', attachments, result: registered.payload });
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void refreshAttachments(); }, [serviceRequestId]);
 
   return (

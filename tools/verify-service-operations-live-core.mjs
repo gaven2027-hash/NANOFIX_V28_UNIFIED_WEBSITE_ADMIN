@@ -7,7 +7,6 @@ const warnings = [];
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const exists = (file) => fs.existsSync(path.join(root, file));
 const assert = (condition, message) => { if (!condition) failures.push(message); };
-const warn = (condition, message) => { if (!condition) warnings.push(message); };
 const assertMarkers = (content, markers, label) => { for (const marker of markers) assert(content.includes(marker), `${label} missing marker: ${marker}`); };
 const assertNoBrowserStorage = (content, label) => assert(!/localStorage|sessionStorage/.test(content), `${label} must not use browser storage.`);
 const assertNoSelectStar = (content, label) => assert(!/select\(['"]\*['"]\)/.test(content), `${label} must not use select("*").`);

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 
 type Row = Record<string, unknown>;
 type State = { loading: boolean; error: string | null; message: string | null; claims: Row[]; result: Row | null };

@@ -86,6 +86,7 @@ export function ServiceOperationsWarrantyClaimAttachmentReviewPanel() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void refresh(''); }, []);
 
   return (

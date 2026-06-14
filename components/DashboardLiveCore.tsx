@@ -132,7 +132,8 @@ export function DashboardLiveCore() {
     }
   }
 
-  useEffect(() => { void load('new_leads'); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void load('new_leads');  }, []);
 
   async function chooseSection(key: string) {
     setSection(key);

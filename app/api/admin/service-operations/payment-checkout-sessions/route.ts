@@ -80,6 +80,8 @@ function buildConfiguredProviderPlaceholder(provider: Provider, input: { payment
   if (!providerConfigured(provider)) throw new Error(`${provider} checkout adapter is not configured. Add provider keys before generating live checkout links.`);
   const successUrl = cleanText(input.body.success_url, 700) || `${baseUrl()}/customer-portal/financial?payment_intent_id=${input.paymentIntent.payment_intent_id}&status=success`;
   const cancelUrl = cleanText(input.body.cancel_url, 700) || `${baseUrl()}/customer-portal/financial?payment_intent_id=${input.paymentIntent.payment_intent_id}&status=cancelled`;
+  void successUrl;
+  void cancelUrl;
   throw new Error(`${provider} live checkout call is intentionally disabled until provider-specific request signing is completed. Use manual payment_url or complete adapter implementation.`);
 }
 

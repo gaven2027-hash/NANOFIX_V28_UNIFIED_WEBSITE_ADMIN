@@ -6,7 +6,8 @@ import { writeAuditLog } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const ALLOWED_ROLES = ['customer'] as const;
-const RESPONSE_TYPES = ['accept', 'request_revision', 'decline'] as const;
+type ResponseType = 'accept' | 'request_revision' | 'decline';
+const RESPONSE_TYPES = new Set<ResponseType>(['accept', 'request_revision', 'decline']);
 
 type Row = Record<string, unknown>;
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -26,8 +27,8 @@ function numberOf(row: Row | null | undefined, key: string, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function isResponseType(value: string | null): value is typeof RESPONSE_TYPES[number] {
-  return value === 'accept' || value === 'request_revision' || value === 'decline';
+function isResponseType(value: string | null): value is ResponseType {
+  return typeof value === 'string' && RESPONSE_TYPES.has(value as ResponseType);
 }
 
 async function customerIdsForProfile(supabase: AdminClient, profileId: string) {
@@ -92,13 +93,13 @@ async function resolveQuotationOwner(
   return null;
 }
 
-function statusForResponse(responseType: typeof RESPONSE_TYPES[number]) {
+function statusForResponse(responseType: ResponseType) {
   if (responseType === 'accept') return 'customer_accepted';
   if (responseType === 'request_revision') return 'customer_revision_requested';
   return 'customer_declined';
 }
 
-function labelForResponse(responseType: typeof RESPONSE_TYPES[number]) {
+function labelForResponse(responseType: ResponseType) {
   if (responseType === 'accept') return 'Customer accepted quotation';
   if (responseType === 'request_revision') return 'Customer requested quotation revision';
   return 'Customer declined quotation';
