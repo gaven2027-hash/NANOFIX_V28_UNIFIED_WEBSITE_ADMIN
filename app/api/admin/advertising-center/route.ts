@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   if (!supabase) return NextResponse.json({ ok: false, campaigns: [], accounts: [], suggestions: [], approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), error: 'supabase_not_configured' }, { status: 503 });
 
   const campaigns = await safeSelect(supabase, 'ad_campaigns', campaignColumns, 100);
-  if (campaigns.error) return NextResponse.json({ ok: false, campaigns: [], accounts: [], suggestions: [], approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), error: 'ad_tables_not_ready', table_error: campaigns.error }, { status: 500 });
+  if (campaigns.error) return NextResponse.json({ ok: true, campaigns: [], accounts: [], suggestions: [], approvals: [], budgetRequests: [], syncLogs: [], takeovers: [], context, super_admin_full_access: isSuperAdmin(context), fallback: 'ad_tables_not_ready', warning: campaigns.error }, { status: 200 });
   const accounts = await safeSelect(supabase, 'ad_platform_accounts', accountColumns, 50);
   const suggestions = await safeSelect(supabase, 'ad_ai_suggestions', suggestionColumns, 50);
   const approvals = await safeSelect(supabase, 'ad_approval_requests', approvalColumns, 50);
