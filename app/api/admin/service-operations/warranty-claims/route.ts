@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('service_requests')
-    .select('service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,postal_code,issue_type,leak_location,issue_description,preferred_time_text,status,binding_status,priority,request_origin,customer_portal_request_type,related_warranty_id,warranty_id,warranty_code,portal_attachment_urls,portal_customer_notes,warranty_claim_decision,warranty_claim_next_action,warranty_claim_decision_notes,warranty_claim_reviewed_by,warranty_claim_reviewed_at,created_at,updated_at')
+    .select('service_request_id,customer_id,contact_name,phone,whatsapp,email,address_text,postal_code,issue_type,leak_location,issue_description,preferred_time_text,status,binding_status,priority,request_origin,customer_portal_request_type,related_warranty_id,portal_attachment_urls,portal_customer_notes,warranty_claim_decision,warranty_claim_next_action,warranty_claim_decision_notes,warranty_claim_reviewed_by,warranty_claim_reviewed_at,created_at,updated_at')
     .eq('request_origin', 'customer_portal')
     .eq('customer_portal_request_type', 'warranty_repair')
     .order('created_at', { ascending: false })
