@@ -85,7 +85,13 @@ export async function GET(request: NextRequest) {
     .order('updated_at', { ascending: false })
     .limit(50);
 
-  if (error) return jsonError(error.message, 500);
+  if (error) {
+    const missingTable = error.message.includes('Could not find the table') || error.message.includes('schema cache');
+    if (missingTable) {
+      return json({ ok: true, links: [], fallback: 'customer_review_links_table_not_ready', warning: error.message });
+    }
+    return jsonError(error.message, 500);
+  }
   return json({ ok: true, links: data || [] });
 }
 
