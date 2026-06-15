@@ -85,7 +85,7 @@ const specs: DashboardSpec[] = [
     idField: 'quotation_id',
     route: '/service-operations#quotations',
     tone: 'cyan',
-    statusField: 'approval_status',
+    statusField: 'status',
     statuses: ['draft', 'pending_review', 'sent', 'viewed'],
     limit: 40
   },
