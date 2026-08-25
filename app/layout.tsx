@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
-
-const GOOGLE_ADS_ID = "AW-17953055869";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.nanofixsg.com"),
@@ -144,20 +141,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <Script
-          id="google-ads-gtag-loader"
-          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script
-          id="google-ads-gtag-config"
-          strategy="afterInteractive"
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17953055869" />
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${GOOGLE_ADS_ID}');
+              gtag('config', 'AW-17953055869');
             `
           }}
         />
