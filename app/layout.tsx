@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
+
+const GOOGLE_ADS_ID = "AW-17953055869";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.nanofixsg.com"),
@@ -75,7 +78,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         logo: `${siteUrl}/icon.png`,
         image: `${siteUrl}/assets/images/home_sg_brand_hero.webp`,
         description:
-          "Singapore leak detection, no-hacking leak repair and waterproofing specialist for HDB, condominium, commercial and industrial properties.",
+          "Singapore leak detection, no-hacking leak repair and waterproofing specialist for HDB, condominium and commercial properties.",
         telephone: "+65 80387877",
         email: "info@nanofixsg.com",
         address: {
@@ -141,23 +144,29 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17953055869" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'AW-17953055869');
-            `
-          }}
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
       <body>
+        <Script
+          id="google-ads-gtag-loader"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script
+          id="google-ads-gtag-config"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GOOGLE_ADS_ID}');
+            `
+          }}
+        />
         {children}
         <script src="/nanofix-phone-country-splitter.js" defer />
       </body>
