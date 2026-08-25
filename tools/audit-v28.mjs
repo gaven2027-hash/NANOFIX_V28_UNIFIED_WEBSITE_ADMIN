@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -32,7 +32,7 @@ const required = [
 required.forEach((file) => assert(exists(file), `Missing required file: ${file}`));
 
 const pkg = JSON.parse(read("package.json"));
-assert(pkg.dependencies?.next === "15.5.18", "Next.js dependency should remain pinned to 15.5.18 for reproducible Vercel builds.");
+assert(pkg.dependencies?.next === "15.5.23", "Next.js dependency should remain pinned to 15.5.23 for reproducible Vercel builds.");
 assert(
   pkg.scripts?.build === "bash tools/safe-next-build.sh" || pkg.scripts?.build === "next build --experimental-build-mode=compile",
   "Default npm run build should use either the safe Next build wrapper or the verified compile mode for this Legacy visual-lock package."
@@ -176,3 +176,4 @@ if (warn.length) {
   console.log("Warnings / future improvements:");
   warn.forEach((item) => console.log(`- ${item}`));
 }
+
